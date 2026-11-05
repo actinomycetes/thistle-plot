@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.6.0 (Beta)</title>
+<title>Thistle Plot v0.7.0 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -91,6 +91,11 @@ select:focus,input:focus{outline:1px solid var(--ac);border-color:var(--ac)}
 /* Options */
 .opts-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .opt-lbl{font-size:11px;color:var(--mu);margin-bottom:3px}
+.opt-hint{font-size:10.5px;color:var(--mu);line-height:1.4;margin-top:3px;font-style:italic}
+.run-opts{font-size:11px;color:var(--mu);background:var(--surf2);border:1px dashed var(--bd);border-radius:6px;padding:6px 9px;margin-bottom:8px;line-height:1.5}
+.run-opts b{color:var(--tx)}
+.ex-row{display:flex;gap:6px;align-items:center}.ex-row select{flex:1;min-width:0}
+.btn-ex{white-space:nowrap;font-size:11px;padding:4px 8px}
 .full-col{grid-column:1/-1}
 input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 .check-row{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx);cursor:pointer}
@@ -172,13 +177,12 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.6.0</span>
+  <span class="badge" id="app-version" title="Version">v0.7.0</span>
   <span class="badge">Pure JS</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
   <button class="btn" onclick="document.getElementById('fi-load').click()">📂 Load</button>
   <button class="btn" onclick="document.getElementById('fi-csv').click()">⬆ CSV</button>
-  <button class="btn" onclick="loadExample()">📋 Example</button>
   <button class="btn" onclick="clearData()">🗑 Clear</button>
   <button class="btn" onclick="openHelp()" title="Help and manuals (F1)">❓ Help</button>
   <button class="btn" id="theme-btn" onclick="toggleTheme()" title="Toggle dark/light mode" style="font-size:16px;padding:4px 9px">🌙</button>
@@ -220,6 +224,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
       <div class="pane-scroll" style="display:flex;flex-direction:column">
         <div id="tbl-wrap" style="flex:1"><table id="dtbl"><tbody id="dtbody"></tbody></table></div>
         <div style="padding:3px 0;font-size:11px;color:var(--mu)">💡 Paste from Excel/Sheets (Ctrl/Cmd+V in table)</div>
+        <div id="data-note" style="display:none;padding:4px 7px;margin-top:3px;font-size:11px;border-radius:5px;background:var(--surf2);border:1px solid var(--bd);color:var(--tx)"></div>
       </div>
     </div>
 
@@ -232,14 +237,14 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
         <!-- Plot (Visualisation first) -->
         <div class="sec">
           <div class="sec-lbl">Visualisation</div>
-          <select id="psel" onchange="onPlotTypeChange()"></select>
+          <div class="ex-row"><select id="psel" onchange="onPlotTypeChange()"></select><button class="btn btn-ex" onclick="loadExampleFor('plot')" title="Load example data suited to this plot type (replaces the table; undo with Ctrl/Cmd+Z)">📋 Example</button></div>
           <div id="popts" style="margin-top:8px"></div>
         </div>
 
         <!-- Analysis -->
         <div class="sec sec-stat">
           <div class="sec-lbl">Statistical Test</div>
-          <select id="asel" onchange="onTypeChange()"></select>
+          <div class="ex-row"><select id="asel" onchange="onTypeChange()"></select><button class="btn btn-ex" onclick="loadExampleFor('stat')" title="Load example data suited to this test (replaces the table; undo with Ctrl/Cmd+Z)">📋 Example</button></div>
           <div class="hint" id="ahint"></div>
           <div id="aopts" style="margin-top:8px"></div>
         </div>
@@ -295,6 +300,7 @@ let activeDS=0; // index into datasets[]
 let plotTabs=[], statTabs=[], activePT=-1, activeST=-1, ptCount=0, stCount=0;
 let chartInst={}; // tabId -> Chart instance
 // Significance bracket data passed from runAnalysis to auto-plot
+let lastStatRowPairs=null,_autoPlotGroupBy=null,_suppressAutoPlot=false; // per-row tests: [{row,i,j,stars}]
 let lastStatPairs=null; // [{i,j,stars}] group-index pairs with significance stars
 let lastStatTabId=null; // most recently created stat tab id
 let lastPlotTabId=null; // most recently created plot tab id
@@ -312,13 +318,13 @@ function undoAction(){
   if(!undoStack.length)return;
   redoStack.push(JSON.stringify(G));
   G=JSON.parse(undoStack.pop());
-  renderGrid();updateUndoButtons();
+  renderGrid();document.getElementById('n-reps').value=G.nReps;document.getElementById('n-grps').value=G.groups.length;updateUndoButtons();
 }
 function redoAction(){
   if(!redoStack.length)return;
   undoStack.push(JSON.stringify(G));
   G=JSON.parse(redoStack.pop());
-  renderGrid();updateUndoButtons();
+  renderGrid();document.getElementById('n-reps').value=G.nReps;document.getElementById('n-grps').value=G.groups.length;updateUndoButtons();
 }
 function updateUndoButtons(){
   const ub=document.getElementById('btn-undo'),rb=document.getElementById('btn-redo');
@@ -388,29 +394,89 @@ const ANALYSIS_CATEGORIES=[
 const ANALYSIS_TYPES=ANALYSIS_CATEGORIES.flatMap(c=>c.tests);
 
 const HINTS={
-  desc:'One column per group, rows = replicates.',
-  ttest_ind:'2 groups: Col A vs Col B. Per-row mode runs a test for each row (each row = one replicate per group).',
-  ttest_rel:'Paired values: Col A vs Col B, equal rows. Per-row mode tests each row.',
-  mw:'Non-parametric rank-sum test. ≥ 2 groups: choose pair or run all pairs with FDR.',
-  wilcoxon:'Paired signed-rank test. Choose delta or ratio mode. All-pairs mode available.',
-  ranksum:'Paired rank-sum (delta or ratio). Like Wilcoxon but tests rank of transformation.',
-  rankprod:'Rank Product (Breitling 2004): consistently regulated rows across replicates.',
-  anova:'≥ 2 groups. Post-hoc correction selectable.',
-  kruskal:'≥ 2 groups, non-parametric ANOVA.',
-  pearson:'≥ 2 groups: computes all pairs or vs control.',
-  spearman:'≥ 2 groups: rank-based, all pairs or vs control.',
-  mtc:'Col 1 = p-values, Col 2 (optional) = labels.',
-  fisher:'2×2 table: 4 values in 2 cols × 2 rows.',
-  chisq:'Counts table: columns = groups, rows = categories.',
-  norm:'Each column tested separately for normality.',
-  km:'2 cols: Col1 = time, Col2 = event (1/0).',
-  pca:'Rows = features/genes, columns = samples.',
-  volcano:'Col1 = log2FC, Col2 = p-value, one gene per row.',
-  dose:'Col1 = concentration, Col2 = response.',
-  heatmap:'Rows = genes/features, columns = samples.',
-  anova2:'nA × nB balanced design. Columns ordered: A1B1, A1B2 … A1Bn, A2B1 … Set nA and nB in options.',
-  regress:'Col1 = X, Col2 = Y. Choose model; residual plot auto-generated.'
+  desc:'Mean, SD, SEM, median and range for each group. Data: one block of replicate columns per group; all values in a group are pooled.',
+  norm:'Shapiro–Wilk: tests whether each group could come from a normal distribution (p < 0.05 = evidence of non-normality). Use it to choose between parametric and non-parametric tests; with small n it has little power, so also check a Q-Q plot.',
+  ttest_ind:'Welch\'s unpaired t-test: compares the means of independent groups without assuming equal variances. Data: control group vs each other group. Use when samples are independent and roughly normal. Non-parametric alternative: Mann–Whitney. For matched values use the paired t-test.',
+  ttest_rel:'Paired t-test: compares matched measurements (same subject, animal or row measured twice). Data: control vs each other group, values matched by position. More powerful than the unpaired test when pairing is real. Non-parametric alternative: Wilcoxon signed-rank.',
+  anova:'One-way ANOVA: tests whether 3 or more group means differ, then post-hoc tests show which pairs differ. Assumes roughly normal data and similar spread. Non-parametric alternative: Kruskal–Wallis. For two factors use two-way ANOVA.',
+  anova2:'Two-way ANOVA: effects of two factors (e.g. genotype × treatment) and their interaction. Data: balanced design, columns ordered A1B1, A1B2 … A2B1 …; set nA and nB below.',
+  mw:'Mann–Whitney U (Wilcoxon rank-sum): compares independent groups using ranks, so it is robust to skew and outliers. Use instead of the unpaired t-test for non-normal data. For matched values use Wilcoxon signed-rank.',
+  wilcoxon:'Wilcoxon signed-rank: compares matched pairs using the ranks of their differences. Non-parametric alternative to the paired t-test. For independent groups use Mann–Whitney.',
+  kruskal:'Kruskal–Wallis H: rank-based test across 3 or more independent groups, followed by Dunn\'s pairwise tests. Non-parametric alternative to one-way ANOVA.',
+  ranksum:'Paired rank test on transformed values: ranks the per-pair difference (A−B) or ratio (A/B). Like Wilcoxon signed-rank, but lets you test ratios, e.g. fold changes.',
+  rankprod:'Rank Product (Breitling 2004): finds rows (genes) that rank consistently high or low across replicates. Designed for screens with few replicates. Data: rows = genes, Group A vs Group B replicates.',
+  pearson:'Pearson r: strength of a straight-line relationship between two columns. Sensitive to outliers; assumes roughly normal data. Use Spearman for curved-but-monotonic relationships, ranks or outliers.',
+  spearman:'Spearman ρ: correlation of ranks, so it detects any monotonic relationship and resists outliers. Use Pearson when the relationship is linear and the data roughly normal.',
+  regress:'Regression / curve fitting: fits Y as a function of X and reports the equation, parameters and R². Data: Col 1 = X, Col 2 = Y. Use it for an equation or prediction; use correlation when you only need the strength of association.',
+  pca:'PCA: summarises many features into a few components to show how samples cluster. Data: rows = features/genes, columns = samples or groups.',
+  heatmap:'Hierarchical heatmap: rows are scaled and clustered to show patterns across samples. Data: rows = features/genes, columns = groups (replicates averaged).',
+  fisher:'Fisher\'s exact test: association in a 2×2 table of counts. Exact, so best for small counts (any expected count < 5). Data: 2 columns × 2 rows of counts. For larger tables use Chi-square.',
+  chisq:'Chi-square test of independence for a table of counts. Data: columns = groups, rows = categories. Approximate: needs expected counts ≥ 5; for small 2×2 tables use Fisher\'s exact.',
+  mtc:'Adjusts p-values you already have for multiple comparisons. Data: Col 1 = p-values, one per row; row names label the tests.',
+  km:'Kaplan–Meier survival estimate. Data: Col 1 = time, Col 2 = event (1 = event, 0 = censored).',
+  dose:'5-parameter logistic (5PL) dose–response fit: bottom, top, EC50/IC50, Hill slope and asymmetry. Data: Col 1 = concentration, Col 2 = response. For a symmetric 4PL fit use Regression → 4-Parameter Logistic.',
+  volcano:'Volcano summary: classifies genes by log2 fold change and p-value cutoffs. Data: Col 1 = log2FC, Col 2 = p-value, one gene per row.'
 };
+
+// ── Multiple-comparison correction ──────────────────────────────────────
+const CORR_LABEL={tukey:'Tukey HSD (all pairs)',holm_sidak:'Holm–Šídák (step-down, FWER)',holm:'Holm–Bonferroni (step-down, FWER)',bonferroni:'Bonferroni (single-step, FWER)',fdr:'Benjamini–Hochberg (FDR)',none:'None (uncorrected)'};
+const CORR_SHORT={tukey:'Tukey',holm_sidak:'Holm–Šídák',holm:'Holm',bonferroni:'Bonferroni',fdr:'FDR (BH)',none:'uncorrected'};
+const CORR_HINT={
+  tukey:'Compares every pair of means with the studentised range (Tukey–Kramer for unequal n). The standard choice after one-way ANOVA when you want all pairs.',
+  holm_sidak:'Controls the chance of any false positive (family-wise error, FWER). Step-down Šídák: a little more power than Holm–Bonferroni; assumes tests are independent or positively correlated. GraphPad Prism\'s default.',
+  holm:'Controls family-wise error like Bonferroni but step-down, so it is always at least as powerful. Makes no assumption about how the tests relate.',
+  bonferroni:'Multiplies each p by the number of comparisons. Simplest and most conservative; fine for a handful of comparisons.',
+  fdr:'Controls the expected proportion of false discoveries among significant results, not the chance of any. Much more power with many tests (per-row, genes); expect a few false positives.',
+  none:'No adjustment: each p-value is judged on its own. With several comparisons some will look significant by chance.'
+};
+// Adjust p-values. NaNs are left as NaN and not counted.
+function adjustP(pv,method){
+  const out=pv.map(p=>isFinite(p)?p:NaN);
+  const idx=out.map((p,i)=>({p,i})).filter(x=>isFinite(x.p)).sort((a,b)=>a.p-b.p);
+  const m=idx.length;if(!m||method==='none'||!method)return out;
+  if(method==='bonferroni'){idx.forEach(x=>out[x.i]=Math.min(1,x.p*m));return out;}
+  if(method==='holm'||method==='holm_sidak'){
+    let run=0;
+    idx.forEach((x,k)=>{const a=method==='holm'?x.p*(m-k):1-Math.pow(1-x.p,m-k);run=Math.max(run,Math.min(1,a));out[x.i]=run;});
+    return out;
+  }
+  if(method==='fdr'){
+    let run=1;
+    for(let k=m-1;k>=0;k--){run=Math.min(run,idx[k].p*m/(k+1));out[idx[k].i]=Math.min(1,run);}
+    return out;
+  }
+  return out;
+}
+function corrSelect(id,{def='holm_sidak',tukey=false,none=true}={}){
+  const keys=[...(tukey?['tukey']:[]),'holm_sidak','holm','bonferroni','fdr',...(none?['none']:[])];
+  return `<select id="${id}" data-hint="corr">${keys.map(k=>`<option value="${k}"${k===def?' selected':''}>${CORR_LABEL[k]}</option>`).join('')}</select>`;
+}
+// Short explanations shown under option menus, updated as the choice changes
+const OPT_HINTS={
+  corr:CORR_HINT,
+  norm:{none:'Raw values.',log2:'log2: makes fold changes symmetric (×2 and ÷2 are equally far from 0). Common for expression data.',log10:'log10: for values spanning several orders of magnitude.',zscore:'Z-score: (x − mean) / SD across all values. Puts data on a common scale; absolute units are lost.',minmax:'Min–Max: rescales values to 0–1.'},
+  comp:{delta:'Difference (A − B): use when effects add, e.g. a 2-unit increase.',ratio:'Ratio (A / B): use when effects multiply, e.g. a 2-fold increase.'},
+  npmode:{pair:'One chosen pair; no correction needed.',allpairs:'Every pair of groups, corrected for multiple comparisons.',vsctrl:'Control vs each other group only. Fewer comparisons than all pairs, so more power after correction.'},
+  cmode:{allpairs:'Every pair of columns, corrected for multiple comparisons.',ctrl:'Control column vs each other column only (fewer comparisons, more power).'},
+  actrl:{'':'Post-hoc tests on every pair of groups.','*':'Post-hoc tests only for the control vs each other group (fewer comparisons, more power).'},
+  rmodel:{linear:'Straight line, Y = a + bX.',poly2:'Quadratic curve (one bend).',poly3:'Cubic curve (two bends).',poly4:'Quartic curve; risk of over-fitting with few points.',log:'Y = a + b·ln(X): fast rise that levels off; X must be > 0.',exp:'Y = a·e^(bX): growth or decay at a constant rate.',power:'Y = a·X^b: scaling relationships; X, Y > 0.','4pl':'Symmetric sigmoidal dose–response (bottom, top, EC50, Hill slope).','5pl':'Sigmoidal dose–response with an extra asymmetry parameter; needs more points than 4PL.'},
+  dispmode:{both:'Bars/boxes with the individual points on top (recommended for small n).',mean:'Summary only.',reps:'Individual points only.'},
+  dottype:{raw:'Every replicate value as a dot.',groupmean:'One dot per sample row (mean of its replicates).'},
+  groupby:{group:'One bar/box per group, all rows pooled.',sample:'Bars/boxes grouped by sample row, one per group.'},
+  pcmode:{mean:'One point per group (replicates averaged).',reps:'One point per replicate column, to see within-group spread.'},
+  hnorm:{zscore:'Each row scaled to mean 0, SD 1: compares patterns, not magnitudes.',minmax:'Each row rescaled to 0–1.',none:'Raw values; rows with large values dominate the colours.'}
+};
+function wireOptHints(root){
+  if(!root)return;
+  root.querySelectorAll('select[data-hint]').forEach(sel=>{
+    const map=OPT_HINTS[sel.dataset.hint];if(!map)return;
+    let h=sel.parentElement.querySelector(':scope > .opt-hint');
+    if(!h){h=document.createElement('div');h.className='opt-hint';sel.insertAdjacentElement('afterend',h);}
+    const upd=()=>{h.textContent=map[sel.value]??map['*']??'';h.style.display=h.textContent?'block':'none';};
+    sel.addEventListener('change',upd);upd();
+  });
+}
+
 
 // ═══════════════════════════════════════════════════════════
 // UTILITIES
@@ -586,7 +652,7 @@ function rankProductTest(aRows, bRows, mode='ratio'){
 }
 function binomCoeff(n,k){if(k<0||k>n)return 0;let r=1;for(let i=0;i<k;i++){r=r*(n-i)/(i+1);}return Math.round(r);}
 
-function onewayANOVA(groups, posthocMethod='bonferroni'){
+function onewayANOVA(groups, posthocMethod='tukey', ctrlI=-1){
   const k=groups.length,N=sum(groups.map(g=>g.length));
   if(k<2||N<k+1)return{error:'Need ≥ 2 groups with ≥ 2 total observations'};
   const grand=sum(groups.flat())/N;
@@ -596,35 +662,23 @@ function onewayANOVA(groups, posthocMethod='bonferroni'){
   if(dfW<=0||SSW===0)return{F:Infinity,dfB,dfW,p:0,posthoc:[]};
   const MSB=SSB/dfB,MSW=SSW/dfW,F=MSB/MSW;
   const p=1-jStat.centralF.cdf(F,dfB,dfW);
+  // Family of comparisons: all pairs, or control vs each other group
   const posthoc=[];
-  const npairs=k*(k-1)/2;
   for(let i=0;i<k-1;i++)for(let j=i+1;j<k;j++){
+    if(ctrlI>=0&&i!==ctrlI&&j!==ctrlI)continue;
     const ni=groups[i].length,nj=groups[j].length;
     const se=Math.sqrt(MSW*(1/ni+1/nj));
-    if(se===0){posthoc.push({i,j,t:NaN,p_raw:NaN,p_adj:NaN});continue}
+    if(se===0){posthoc.push({i,j,t:NaN,p_raw:NaN,p_adj:NaN,df:dfW});continue}
     const t=(mean(groups[i])-mean(groups[j]))/se;
     const p_raw=2*(1-jStat.studentt.cdf(Math.abs(t),dfW));
-    let p_adj;
-    if(posthocMethod==='none') p_adj=p_raw;
-    else if(posthocMethod==='bonferroni') p_adj=Math.min(p_raw*npairs,1);
-    else if(posthocMethod==='tukey'){
-      // Tukey HSD approximation via Studentized Range
-      const q=Math.abs(t)*Math.sqrt(2);
-      p_adj=Math.max(0,Math.min(1,1-jStat.centralF.cdf(t*t,1,dfW)));
-      p_adj=Math.min(p_raw*npairs,1); // fallback to Bonferroni approximation
-    } else if(posthocMethod==='holm'){
-      p_adj=p_raw; // will be adjusted after all pairs computed
-    } else p_adj=Math.min(p_raw*npairs,1);
-    posthoc.push({i,j,t,p_raw,p_adj,df:dfW});
+    const q=Math.abs(t)*Math.SQRT2; // Tukey–Kramer studentised range statistic
+    posthoc.push({i,j,t,q,p_raw,df:dfW});
   }
-  if(posthocMethod==='holm'){
-    posthoc.sort((a,b)=>a.p_raw-b.p_raw);
-    for(let i=0;i<posthoc.length;i++) posthoc[i].p_adj=Math.min(posthoc[i].p_raw*(npairs-i),1);
-    posthoc.sort((a,b)=>a.i-b.i||a.j-b.j);
-  }
-  if(posthocMethod==='fdr'){
-    const sorted=[...posthoc].sort((a,b)=>a.p_raw-b.p_raw);
-    for(let i=0;i<sorted.length;i++) sorted[i].p_adj=Math.min(sorted[i].p_raw*npairs/(i+1),1);
+  if(posthocMethod==='tukey'){
+    posthoc.forEach(ph=>{ph.p_adj=isFinite(ph.q)?Math.min(1,Math.max(0,1-jStat.tukey.cdf(ph.q,k,dfW))):NaN;});
+  } else {
+    const adj=adjustP(posthoc.map(ph=>ph.p_raw),posthocMethod);
+    posthoc.forEach((ph,n)=>ph.p_adj=adj[n]);
   }
   return{F,dfB,dfW,p,SSB,SSW,MSB,MSW,grand,posthoc,posthocMethod};
 }
@@ -651,7 +705,7 @@ function kruskalWallis(groups){
     if(se===0){posthoc.push({a,b,z:NaN,p:NaN});continue}
     const z=(Ra-Rb)/se;
     const p_raw=2*jStat.normal.cdf(-Math.abs(z),0,1);
-    posthoc.push({a,b,z,p:Math.min(p_raw*(k*(k-1)/2),1)});
+    posthoc.push({a,b,z,p_raw,p:Math.min(p_raw*(k*(k-1)/2),1)});
   }
   return{H:Hc,df:k-1,p,posthoc};
 }
@@ -675,6 +729,13 @@ function spearmanR(x,y){
   return pearsonR(rx,ry);
 }
 
+// Pair list for non-parametric multi-group modes: all pairs, or the chosen control vs every other group
+function _npPairs(mode){
+  const n=G.groups.length,out=[];
+  if(mode==='vsctrl'){const c=parseInt(document.getElementById('opt-np-ctrl')?.value||0);for(let k=0;k<n;k++)if(k!==c)out.push(c<k?[c,k]:[k,c]);}
+  else for(let i=0;i<n-1;i++)for(let j=i+1;j<n;j++)out.push([i,j]);
+  return out;
+}
 function bonferroni(pvals){return pvals.map(p=>Math.min(p*pvals.length,1))}
 function holmBonferroni(pvals){
   const n=pvals.length;
@@ -735,26 +796,18 @@ function normalityJB(arr){
   return{JB,skewness:sk,kurtosis:ku,p,n};
 }
 
+// Kaplan–Meier product-limit estimate. Subjects censored at time t stay in the risk set for events at t.
 function kaplanMeier(times,events){
-  const unique=[...new Set(times.filter((_,i)=>events[i]===1))].sort((a,b)=>a-b);
-  let survivors=times.length,surv=1;
-  const result=[{t:0,s:1,n:survivors}];
-  for(const t of unique){
-    const at_risk=survivors;
-    const died=times.filter((ti,i)=>ti===t&&events[i]===1).length;
-    const censored=times.filter((ti,i)=>ti===t&&events[i]===0).length;
-    surv*=(at_risk-died)/at_risk;
-    result.push({t,s:surv,n:at_risk,d:died,c:censored});
-    survivors-=died+censored;
+  const obs=times.map((t,i)=>({t:+t,e:Number(events[i])===1?1:0})).filter(o=>isFinite(o.t)).sort((a,b)=>a.t-b.t);
+  let n=obs.length,surv=1;
+  const out=[{t:0,s:1,n,d:0,c:0}];
+  for(const t of [...new Set(obs.map(o=>o.t))]){
+    const d=obs.filter(o=>o.t===t&&o.e).length,c=obs.filter(o=>o.t===t&&!o.e).length,at=n;
+    if(d)surv*=(at-d)/at;
+    out.push({t,s:surv,n:at,d,c});
+    n-=d+c;
   }
-  const remaining=times.filter((ti,i)=>!unique.includes(ti)||events[i]===0);
-  for(const t of times){
-    if(!unique.includes(t)){
-      survivors--;
-      result.push({t,s:surv,n:survivors+1,d:0,c:1});
-    }
-  }
-  return result.sort((a,b)=>a.t-b.t);
+  return out;
 }
 
 function logRankTest(grps_t, grps_e){
@@ -823,15 +876,21 @@ function nelderMead(f,x0,opts={}){
   return{x:simplex[0],fval:vals[0]};
 }
 
+// 5PL: Y = Bottom + (Top − Bottom) / (1 + (EC50/X)^Hill)^Asym. EC50 fitted on a log scale, Asym kept > 0; several starts.
 function fit5PL(x,y){
-  const model=(p,xi)=>p[0]+(p[1]-p[0])/(1+(xi/p[2])**p[3])**p[4];
-  const ym=mean(y),yn=Math.min(...y),yx=Math.max(...y),xm=mean(x);
-  const p0=[yn,yx,xm,1,1];
-  const res=nelderMead(p=>sum(x.map((xi,i)=>(model(p,xi)-y[i])**2)),p0);
-  const ec50=res.x[2],hill=res.x[3];
-  return{params:res.x,ec50,hill,
-    predict:xi=>model(res.x,xi),
-    r2:1-sum(x.map((xi,i)=>(model(res.x,xi)-y[i])**2))/sum(y.map(yi=>(yi-ym)**2))};
+  const ok=x.map((xi,i)=>[xi,y[i]]).filter(([a,b])=>isFinite(a)&&isFinite(b));
+  const X=ok.map(d=>d[0]),Y=ok.map(d=>d[1]);
+  const model=(p,xi)=>{const c=Math.pow(10,p[2]),s=Math.exp(p[4]);if(xi<=0)return p[3]>0?p[0]:p[1];return p[0]+(p[1]-p[0])/Math.pow(1+Math.pow(c/xi,p[3]),s);};
+  const sse=p=>sum(X.map((xi,i)=>(model(p,xi)-Y[i])**2));
+  const ym=mean(Y),yn=Math.min(...Y),yx=Math.max(...Y);
+  const pos=X.filter(v=>v>0);const lmid=pos.length?(Math.log10(Math.min(...pos))+Math.log10(Math.max(...pos)))/2:0;
+  let best=null;
+  for(const h of [1,-1,2,-2])for(const dl of [0,-1,1]){
+    const r=nelderMead(sse,[yn,yx,lmid+dl,h,0],{maxIter:3000});
+    if(!best||r.fval<best.fval)best=r;
+  }
+  const P=best.x,ec50=Math.pow(10,P[2]),hill=P[3],asym=Math.exp(P[4]);
+  return{params:[P[0],P[1],ec50,hill,asym],ec50,hill,predict:xi=>model(P,xi),r2:1-sse(P)/sum(Y.map(v=>(v-ym)**2))};
 }
 
 // ── Regression helpers ─────────────────────────────────────────
@@ -905,7 +964,7 @@ function fit4PL(x,y){
 }
 function runRegression(x,y,model,degree){
   const fns={linear:()=>fitLinear(x,y),log:()=>fitLogarithmic(x,y),exp:()=>fitExponential(x,y),
-    power:()=>fitPower(x,y),'4pl':()=>fit4PL(x,y),'5pl':()=>fit5PL(x,y),
+    power:()=>fitPower(x,y),'4pl':()=>fit4PL(x,y),'5pl':()=>{const r=fit5PL(x,y);if(r.error)return r;const [bot,top,ec50,hill,asym]=r.params;return{type:'5pl',params:{bot,top,ec50,hill,asym},predict:r.predict,r2:r.r2,pred:x.map(xi=>r.predict(xi)),equation:'Y = Bottom + (Top − Bottom) / (1 + (X/EC50)^Hill)^Asym'};},
     poly2:()=>fitPolynomial(x,y,2),poly3:()=>fitPolynomial(x,y,3),poly4:()=>fitPolynomial(x,y,4)};
   return(fns[model]||(()=>({error:'Unknown model'})))();
 }
@@ -973,7 +1032,7 @@ function addDataset(){
   datasets[activeDS].activePT=activePT;
   datasets[activeDS].activeST=activeST;
   const idx=datasets.length;
-  const newG={nReps:3,groups:[{name:'Control',reps:['Rep1','Rep2','Rep3'],data:[]},{name:'Treatment',reps:['Rep1','Rep2','Rep3'],data:[]}],rowNames:[],nRows:6};
+  const newG=defaultG();
   datasets.push({id:'ds'+idx,name:'Dataset '+(idx+1),G:newG,activePT:-1,activeST:-1});
   switchDataset(idx);
 }
@@ -1004,14 +1063,13 @@ function restoreDataset(idx){
     G=JSON.parse(JSON.stringify(ds.G));
   } else {
     // Fresh dataset
-    G={nReps:3,groups:[{name:'Control',reps:['Rep1','Rep2','Rep3'],data:[]},{name:'Treatment',reps:['Rep1','Rep2','Rep3'],data:[]}],rowNames:[],nRows:6};
-    for(const g of G.groups){while(g.data.length<G.nRows)g.data.push(Array(G.nReps).fill(''));}
-    G.rowNames=Array.from({length:G.nRows},(_,i)=>`Row ${i+1}`);
+    G=defaultG();
     ds.G=JSON.parse(JSON.stringify(G));
   }
   renderGrid();
   document.getElementById('n-reps').value=G.nReps;
   document.getElementById('n-grps').value=G.groups.length;
+  onTypeChange();onPlotTypeChange();
   // Show only this dataset's tabs
   renderPlotStrip();
   renderStatStrip();
@@ -1280,9 +1338,10 @@ function npModeChange(){
   if(ctrlWrap){
     ctrlWrap.style.display=(mode==='vsctrl')?'block':'none';
   }
+  const cw=document.getElementById('np-corr-wrap');if(cw)cw.style.display=(mode==='pair')?'none':'block';
 }
 
-const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'bar_sd',mw:'bar_sd',wilcoxon:'bar_sd',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',ranksum:'bar_sd',rankprod:'bar_sd',heatmap:'heatmap'};
+const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'bar_sd',mw:'bar_sd',wilcoxon:'bar_sd',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',ranksum:'bar_sd',rankprod:'bar_sd',heatmap:'heatmap',mtc:'mtc',km:'km',volcano:'volcano'};
 
 function renderAnalysisOpts(t){
   const el=document.getElementById('aopts');
@@ -1293,7 +1352,7 @@ function renderAnalysisOpts(t){
     el.innerHTML=`<div class="opts-grid">
       <div>
         <div class="opt-lbl">Normalization</div>
-        <select id="opt-norm"><option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option></select>
+        <select id="opt-norm" data-hint="norm"><option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option></select>
       </div>
       <div>
         <div class="opt-lbl">Control group</div>
@@ -1301,42 +1360,48 @@ function renderAnalysisOpts(t){
       </div>
       ${t==='ttest_rel'?`<div>
         <div class="opt-lbl">Comparison</div>
-        <select id="opt-ptype"><option value="delta">Delta (A−B)</option><option value="ratio">Ratio (A/B)</option></select>
+        <select id="opt-ptype" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select>
+      </div>`:''}
+      ${G.groups.length>2?`<div class="full-col" id="tcorr-wrap">
+        <div class="opt-lbl">Multiple-comparison correction (control vs ${G.groups.length-1} groups)</div>
+        ${corrSelect('opt-tcorr')}
       </div>`:''}
       <div class="full-col">
-        <label class="check-row"><input type="checkbox" id="opt-perrow"> Run per row (each row = one test)</label>
+        <label class="check-row"><input type="checkbox" id="opt-perrow"> Run per row (one test per row, e.g. per gene or per sample)</label>
       </div>
       <div id="perrow-opts" style="display:none" class="full-col">
-        <div class="opt-lbl">Per-row correction</div>
-        <select id="opt-corr"><option value="none">None</option><option value="bonferroni">Bonferroni</option><option value="holm">Holm-Bonferroni</option><option value="fdr">FDR (BH)</option></select>
+        <div class="opt-lbl">Per-row correction (all rows × comparisons)</div>
+        ${corrSelect('opt-corr',{def:'fdr'})}
       </div>
       ${autoPlotHint}
     </div>`;
-    document.getElementById('opt-perrow').onchange=function(){document.getElementById('perrow-opts').style.display=this.checked?'block':'none'};
+    document.getElementById('opt-perrow').onchange=function(){document.getElementById('perrow-opts').style.display=this.checked?'block':'none';const tw=document.getElementById('tcorr-wrap');if(tw)tw.style.display=this.checked?'none':'block';};
   } else if(t==='anova'){
     el.innerHTML=`<div class="opts-grid">
       <div>
-        <div class="opt-lbl">Post-hoc</div>
-        <select id="opt-ph"><option value="bonferroni">Bonferroni</option><option value="holm">Holm</option><option value="fdr">FDR (BH)</option><option value="tukey">Tukey (approx)</option><option value="none">None</option></select>
+        <div class="opt-lbl">Comparisons</div>
+        <select id="opt-ctrl" data-hint="actrl"><option value="">All pairs</option>${G.groups.map((g,i)=>`<option value="${i}">vs control: ${g.name}</option>`).join('')}</select>
       </div>
       <div>
         <div class="opt-lbl">Normalization</div>
-        <select id="opt-norm"><option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option></select>
+        <select id="opt-norm" data-hint="norm"><option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option></select>
       </div>
-      <div>
-        <div class="opt-lbl">Control group</div>
-        <select id="opt-ctrl"><option value="">All pairs</option>${G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('')}</select>
+      <div class="full-col">
+        <div class="opt-lbl">Post-hoc correction</div>
+        ${corrSelect('opt-ph',{def:'tukey',tukey:true})}
       </div>
       ${autoPlotHint}
     </div>`;
   } else if(t==='kruskal'){
-    el.innerHTML=`<div class="opts-grid"><div><div class="opt-lbl">Post-hoc correction</div><select id="opt-ph"><option value="bonferroni">Bonferroni</option><option value="none">None</option></select></div>${autoPlotHint}</div>`;
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Dunn's post-hoc correction (all pairs)</div>${corrSelect('opt-ph')}</div>${autoPlotHint}</div>`;
   } else if(t==='pearson'||t==='spearman'){
     const nG=G.groups.length;
+    const grpOpts=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
     if(nG>2){
       el.innerHTML=`<div class="opts-grid">
-        <div><div class="opt-lbl">Mode</div><select id="opt-corr-mode"><option value="allpairs">All Pairs</option><option value="ctrl">vs Control</option></select></div>
-        <div id="corr-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-corr-ctrl">${grpOpts}</select></div>
+        <div><div class="opt-lbl">Mode</div><select id="opt-corr-mode" data-hint="cmode"><option value="allpairs">All pairs</option><option value="ctrl">vs Control</option></select></div>
+        <div id="corr-ctrl-wrap" style="display:none"><div class="opt-lbl">Control column</div><select id="opt-corr-ctrl">${grpOpts}</select></div>
+        <div class="full-col"><div class="opt-lbl">Multiple-comparison correction</div>${corrSelect('opt-ccorr')}</div>
         ${autoPlotHint}
       </div>`;
       setTimeout(()=>{document.getElementById('opt-corr-mode')?.addEventListener('change',function(){document.getElementById('corr-ctrl-wrap').style.display=this.value==='ctrl'?'block':'none'})},10);
@@ -1354,7 +1419,7 @@ function renderAnalysisOpts(t){
     el.innerHTML=`<div class="opts-grid">
       <div><div class="opt-lbl">X column</div><select id="opt-rx">${colOpts}</select></div>
       <div><div class="opt-lbl">Y column</div><select id="opt-ry">${G.groups.map((g,i)=>`<option value="${i}" ${i===1?'selected':''}>${g.name}</option>`).join('')}</select></div>
-      <div class="full-col"><div class="opt-lbl">Model</div><select id="opt-rmodel"><option value="linear">Linear</option><option value="poly2">Polynomial deg 2</option><option value="poly3">Polynomial deg 3</option><option value="poly4">Polynomial deg 4</option><option value="log">Logarithmic</option><option value="exp">Exponential</option><option value="power">Power</option><option value="4pl">4-Parameter Logistic</option><option value="5pl" selected>5-Parameter Logistic</option></select></div>
+      <div class="full-col"><div class="opt-lbl">Model</div><select id="opt-rmodel" data-hint="rmodel"><option value="linear">Linear</option><option value="poly2">Polynomial deg 2</option><option value="poly3">Polynomial deg 3</option><option value="poly4">Polynomial deg 4</option><option value="log">Logarithmic</option><option value="exp">Exponential</option><option value="power">Power</option><option value="4pl">4-Parameter Logistic</option><option value="5pl">5-Parameter Logistic</option></select></div>
       ${autoPlotHint}
     </div>`;
   } else if(t==='mw'||t==='wilcoxon'||t==='ranksum'||t==='rankprod'){
@@ -1362,24 +1427,26 @@ function renderAnalysisOpts(t){
     const grpOpts2=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
     const grpOpts2b=G.groups.map((g,i)=>`<option value="${i}" ${i===1?'selected':''}>${g.name}</option>`).join('');
     const ctrlOpts=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
-    const modeOpts=nG>2?`<div class="full-col"><div class="opt-lbl">Mode</div><select id="opt-np-mode" onchange="npModeChange()"><option value="pair">Single pair</option><option value="allpairs">All pairs (with FDR)</option><option value="vsctrl">vs Control</option></select></div>`:'';
-    const ctrlWrap=nG>2?`<div id="np-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-np-ctrl">${ctrlOpts}</select></div>`:'';
+    const modeOpts=(nG>2&&t!=='rankprod')?`<div class="full-col"><div class="opt-lbl">Mode</div><select id="opt-np-mode" data-hint="npmode" onchange="npModeChange()"><option value="pair">Single pair</option><option value="allpairs">All pairs</option><option value="vsctrl">vs Control</option></select></div><div class="full-col" id="np-corr-wrap" style="display:none"><div class="opt-lbl">Multiple-comparison correction</div>${corrSelect('opt-npcorr')}</div>`:'';
+    const ctrlWrap=(nG>2&&t!=='rankprod')?`<div id="np-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-np-ctrl">${ctrlOpts}</select></div>`:'';
     const pairOpts=`<div id="np-pair-wrap" style="display:flex;gap:7px;grid-column:1/-1"><div style="flex:1"><div class="opt-lbl">Group A</div><select id="opt-np-g1">${grpOpts2}</select></div><div style="flex:1"><div class="opt-lbl">Group B</div><select id="opt-np-g2">${grpOpts2b}</select></div></div>`;
-    const compOpts=(t==='wilcoxon'||t==='ranksum')?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp"><option value="delta">Delta (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
+    const compOpts=(t==='wilcoxon'||t==='ranksum')?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
     el.innerHTML=`<div class="opts-grid">${modeOpts}${ctrlWrap}${pairOpts}${compOpts}${autoPlotHint}</div>`;
     if(nG>2)setTimeout(npModeChange,10);
   } else if(t==='mtc'){
-    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Correction method</div><select id="opt-mtc-method"><option value="bonferroni">Bonferroni</option><option value="holm">Holm-Bonferroni</option><option value="fdr">FDR (BH)</option></select></div></div>`;
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Correction method</div>${corrSelect('opt-mtc-method',{none:false})}</div>${autoPlotHint}</div>`;
   } else if(t==='volcano'){
     el.innerHTML=`<div class="opts-grid">
       <div><div class="opt-lbl">|log2FC| threshold</div><input type="number" id="opt-fc" value="1" step="0.1" min="0"></div>
       <div><div class="opt-lbl">p-value threshold</div><input type="number" id="opt-pt" value="0.05" step="0.01" min="0" max="1"></div>
+      ${autoPlotHint}
     </div>`;
   } else if(autoPlotHint){
     el.innerHTML=`<div class="opts-grid">${autoPlotHint}</div>`;
   } else {
     el.innerHTML='';
   }
+  wireOptHints(document.getElementById('aopts'));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1398,10 +1465,10 @@ function renderPlotOpts(t){
   if(['bar_sd','boxplot','violin'].includes(t)){
     const isBV=t==='bar_sd'||t==='boxplot';
     el.innerHTML=`<div class="opts-grid">
-      <div><div class="opt-lbl">Normalization</div><select id="popt-norm">${normOpts}</select></div>
-      <div><div class="opt-lbl">Show data</div><select id="popt-dispmode"><option value="both" selected>Mean + dots</option><option value="mean">Mean/box only</option><option value="reps">Dots/raw only</option></select></div>
-      <div><div class="opt-lbl">Dots show</div><select id="popt-dottype"><option value="raw">Raw replicates</option><option value="groupmean">Group mean</option></select></div>
-      ${isBV?`<div><div class="opt-lbl">Group by</div><select id="popt-groupby"><option value="group">By group</option><option value="sample">By sample</option></select></div>`:''}
+      <div><div class="opt-lbl">Normalization</div><select id="popt-norm" data-hint="norm">${normOpts}</select></div>
+      <div><div class="opt-lbl">Show data</div><select id="popt-dispmode" data-hint="dispmode"><option value="both" selected>Mean + dots</option><option value="mean">Mean/box only</option><option value="reps">Dots/raw only</option></select></div>
+      <div><div class="opt-lbl">Dots show</div><select id="popt-dottype" data-hint="dottype"><option value="raw">Raw replicates</option><option value="groupmean">Group mean</option></select></div>
+      ${isBV?`<div><div class="opt-lbl">Group by</div><select id="popt-groupby" data-hint="groupby"><option value="group">By group</option><option value="sample">By sample</option></select></div>`:''}
       <div class="full-col"><div class="opt-lbl">Y-axis title</div><input type="text" id="popt-ylab" placeholder="Value"></div>
     </div>`;
   } else if(t==='scatter'){
@@ -1412,12 +1479,12 @@ function renderPlotOpts(t){
     </div>`;
   } else if(t==='line'){
     el.innerHTML=`<div class="opts-grid">
-      <div><div class="opt-lbl">Normalization</div><select id="popt-norm">${normOpts}</select></div>
+      <div><div class="opt-lbl">Normalization</div><select id="popt-norm" data-hint="norm">${normOpts}</select></div>
       <div class="full-col"><div class="opt-lbl">Y-axis title</div><input type="text" id="popt-ylab" placeholder="Value"></div>
       <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-pts"> Show individual data points</label></div>
     </div>`;
   } else if(t==='heatmap'){
-    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Row normalisation</div><select id="popt-hnorm"><option value="zscore">Z-score (default)</option><option value="minmax">Min-Max</option><option value="none">None (raw values)</option></select></div></div>`;
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Row normalisation</div><select id="popt-hnorm" data-hint="hnorm"><option value="zscore">Z-score (default)</option><option value="minmax">Min-Max</option><option value="none">None (raw values)</option></select></div></div>`;
   } else if(t==='volcano'){
     el.innerHTML=`<div class="opts-grid">
       <div><div class="opt-lbl">|log2FC| cutoff</div><input type="number" id="popt-fc" value="1" step="0.1" min="0"></div>
@@ -1427,7 +1494,7 @@ function renderPlotOpts(t){
     </div>`;
   } else if(t==='pca'){
     el.innerHTML=`<div class="opts-grid">
-      <div><div class="opt-lbl">Points show</div><select id="popt-pcmode"><option value="mean">Group means</option><option value="reps">All replicates</option></select></div>
+      <div><div class="opt-lbl">Points show</div><select id="popt-pcmode" data-hint="pcmode"><option value="mean">Group means</option><option value="reps">All replicates</option></select></div>
       <div><div class="opt-lbl">Color by</div><select id="popt-pccol"><option value="group">Group</option><option value="rep">Replicate</option></select></div>
       <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-pcnorm"> Normalise per feature (Z-score)</label></div>
     </div>`;
@@ -1449,8 +1516,9 @@ function renderPlotOpts(t){
       <div><div class="opt-lbl">Number of bins (0=auto)</div><input type="number" id="popt-bins" value="0" min="0" max="200"></div>
     </div>`;
   } else if(t==='mtc'){
-    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">p-values column</div><select id="popt-mtcg">${grpOpts}</select></div></div>`;
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">p-values column</div><select id="popt-mtcg">${grpOpts}</select></div><div class="full-col"><div class="opt-lbl">Correction shown</div>${corrSelect('popt-mtcm',{none:false})}</div></div>`;
   } else { el.innerHTML=''; }
+  wireOptHints(document.getElementById('popts'));
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1511,10 +1579,30 @@ function addPlotTab(title, renderFn){
   return id;
 }
 
+// Human-readable summary of the test and options used for this run
+function runOptionsSummary(){
+  const parts=[];
+  const asel=document.getElementById('asel');
+  if(asel)parts.push(`<b>${asel.options[asel.selectedIndex]?.text||asel.value}</b>`);
+  document.querySelectorAll('#aopts select,#aopts input').forEach(el=>{
+    if(!el.id||el.id==='opt-autoplot'||el.disabled)return;
+    if(el.closest('[style*="display:none"]')||el.closest('[style*="display: none"]'))return;
+    let lbl='';
+    if(el.type==='checkbox'){lbl=(el.closest('label')?.textContent||el.id).replace(/\s*\(.*\)\s*$/,'').trim();parts.push(`${lbl}: ${el.checked?'yes':'no'}`);return;}
+    const box=el.closest('div');lbl=(box?.querySelector(':scope > .opt-lbl')?.textContent||el.id).trim();
+    const val=el.tagName==='SELECT'?(el.options[el.selectedIndex]?.text||el.value):el.value;
+    parts.push(`${lbl}: ${val}`);
+  });
+  const ds=(typeof datasets!=='undefined'&&datasets[activeDS])?datasets[activeDS].name:'';
+  const nVals=G.groups.reduce((n,g)=>n+g.data.flat().filter(v=>v!==''&&isFinite(v)).length,0);
+  const when=new Date();const ts=when.toLocaleDateString()+' '+when.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  return `<div class="run-opts">${parts.join(' · ')}<br>Data: ${ds?ds+', ':''}${G.groups.length} groups × ${G.nReps} replicates × ${G.nRows} rows (${nVals} values) · Run ${ts}</div>`;
+}
 function addStatTab(title, html){
   const id='st'+(stCount++);
   const optState=captureOptState();
-  statTabs.push({id,title,html,linkedPlotId:null,optState,ds:activeDS});
+  if(!html.includes('class="ebox"')||html.includes('scard'))html=runOptionsSummary()+html;
+  statTabs.push({id,title,html,linkedPlotId:null,optState,ds:activeDS,sigPairs:null,rowPairs:null});
   lastStatTabId=id;
   renderStatStrip();
   activateStatTab(id);
@@ -1524,8 +1612,8 @@ function addStatTab(title, html){
 function linkTabs(statId, plotId){
   const st=statTabs.find(t=>t.id===statId);
   const pt=plotTabs.find(t=>t.id===plotId);
-  if(st)st.linkedPlotId=plotId;
-  if(pt)pt.linkedStatId=statId;
+  if(st){st.linkedPlotId=plotId;if(pt)st.plotState=pt.optState;}
+  if(pt){pt.linkedStatId=statId;if(st){pt.statState=st.optState;pt.sigPairs=st.sigPairs;pt.rowPairs=st.rowPairs;}}
   renderStatStrip();
   renderPlotStrip();
 }
@@ -1554,7 +1642,7 @@ function tabDrop(e,listType,idx){
 function renderPlotStrip(){
   const strip=document.getElementById('plot-strip');
   const dsTabs=plotTabs.filter(t=>t.ds===activeDS||t.ds===undefined);
-  strip.innerHTML=dsTabs.map((t,idx)=>`<button class="tab-item${activePT===t.id?' active':''}" onclick="activatePlotTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'plot',${idx})" ondragover="tabDragOver(event,'plot',${idx})" ondrop="tabDrop(event,'plot',${idx})">${t.title}${t.linkedStatId?` <button class="tab-link" onclick="activateStatTab('${t.linkedStatId}');event.stopPropagation()" title="Go to linked stat">🔗</button>`:''}  <button class="tab-close" onclick="closePlotTab('${t.id}');event.stopPropagation()">×</button></button>`).join('');
+  strip.innerHTML=dsTabs.map((t,idx)=>`<button class="tab-item${activePT===t.id?' active':''}" onclick="activatePlotTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'plot',${idx})" ondragover="tabDragOver(event,'plot',${idx})" ondrop="tabDrop(event,'plot',${idx})">${t.title}${t.linkedStatId?` <button class="tab-link" onclick="goLinkedStat('${t.id}');event.stopPropagation()" title="Go to linked result (re-runs it if closed)">🔗</button>`:''}  <button class="tab-close" onclick="closePlotTab('${t.id}');event.stopPropagation()">×</button></button>`).join('');
   const content=document.getElementById('plot-content');
   if(!dsTabs.length){
     content.innerHTML='<div class="ph">No plots yet — configure a plot type and click 📈 Plot</div>';
@@ -1582,7 +1670,7 @@ function renderPlotStrip(){
 function renderStatStrip(){
   const strip=document.getElementById('stats-strip');
   const dsStatTabs=statTabs.filter(t=>t.ds===activeDS||t.ds===undefined);
-  strip.innerHTML=dsStatTabs.map((t,idx)=>`<button class="tab-item${activeST===t.id?' active':''}" onclick="activateStatTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'stat',${idx})" ondragover="tabDragOver(event,'stat',${idx})" ondrop="tabDrop(event,'stat',${idx})">${t.title}${t.linkedPlotId?` <button class="tab-link" onclick="activatePlotTab('${t.linkedPlotId}');event.stopPropagation()" title="Go to linked plot">🔗</button>`:''}  <button class="tab-close" onclick="closeStatTab('${t.id}');event.stopPropagation()">×</button></button>`).join('');
+  strip.innerHTML=dsStatTabs.map((t,idx)=>`<button class="tab-item${activeST===t.id?' active':''}" onclick="activateStatTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'stat',${idx})" ondragover="tabDragOver(event,'stat',${idx})" ondrop="tabDrop(event,'stat',${idx})">${t.title}${t.linkedPlotId?` <button class="tab-link" onclick="goLinkedPlot('${t.id}');event.stopPropagation()" title="Go to linked plot (re-draws it if closed)">🔗</button>`:''}  <button class="tab-close" onclick="closeStatTab('${t.id}');event.stopPropagation()">×</button></button>`).join('');
   const content=document.getElementById('stats-content');
   if(!dsStatTabs.length){
     content.innerHTML='<div class="ph">No results yet — select a test and click ▶ Run Analysis</div>';
@@ -1621,6 +1709,39 @@ function activateStatTab(id){
   if(tab?.optState)restoreOptState(tab.optState);
 }
 
+// 🔗 on a result: show its plot, or re-draw it with the same settings if it was closed
+function goLinkedPlot(statId){
+  const st=statTabs.find(t=>t.id===statId);if(!st)return;
+  if(plotTabs.some(t=>t.id===st.linkedPlotId)){activatePlotTab(st.linkedPlotId);return;}
+  if(st.regress){ // regression draws its own fit + residual plots
+    window._lastRegress=st.regress;
+    plotRegressionFit();const f=lastPlotTabId;if(f)linkTabs(st.id,f);
+    setTimeout(()=>{plotResiduals();const r=lastPlotTabId;if(r&&r!==f)linkTabs(st.id,r);activatePlotTab(f);},60);
+    return;
+  }
+  if(!st.plotState)return;
+  restoreOptState(st.plotState);
+  setTimeout(()=>{
+    lastStatPairs=st.sigPairs?JSON.parse(JSON.stringify(st.sigPairs)):null;
+    lastStatRowPairs=st.rowPairs?JSON.parse(JSON.stringify(st.rowPairs)):null;
+    runPlot();
+    if(lastPlotTabId)linkTabs(st.id,lastPlotTabId);
+  },90);
+}
+// 🔗 on a plot: show its result, or re-run the test with the same settings if it was closed
+function goLinkedStat(plotId){
+  const pt=plotTabs.find(t=>t.id===plotId);if(!pt)return;
+  if(statTabs.some(t=>t.id===pt.linkedStatId)){activateStatTab(pt.linkedStatId);return;}
+  if(!pt.statState)return;
+  restoreOptState(pt.statState);
+  setTimeout(()=>{
+    _suppressAutoPlot=true;
+    const before=lastStatTabId;
+    runAnalysis();
+    _suppressAutoPlot=false;
+    if(lastStatTabId&&lastStatTabId!==before){linkTabs(lastStatTabId,pt.id);activatePlotTab(pt.id);}
+  },90);
+}
 function closePlotTab(id){
   if(chartInst[id]){try{chartInst[id].destroy()}catch(e){}delete chartInst[id]}
   document.getElementById(id)?.remove();
@@ -1797,21 +1918,23 @@ const PRISM_DASH=[[],[6,4],[2,3],[10,4,2,4]];
 // Rewrites font strings drawn on custom canvases to bold Arial, slightly larger
 function _prismFontStr(v){
   return String(v).replace(/(?:bold\s+|normal\s+|[1-9]00\s+)?(\d+(?:\.\d+)?)px\s+.*$/,
-    (m,sz)=>`bold ${Math.round(parseFloat(sz)*1.2)}px ${PRISM_FONT}`);
+    (m,sz)=>`bold ${Math.round(parseFloat(sz)*_prismFontK)}px ${PRISM_FONT}`);
 }
 
 // Canvas-based plots: re-run the draw function at logical size W×H, rendered at PRISM_SCALE
-function _prismCanvasPlot(drawFn,W,H){
-  const S=PRISM_SCALE;
+function _scaledCanvasPlot(drawFn,W,H,S,prism){
   const cv=document.createElement('canvas');
   const realGet=cv.getContext.bind(cv);
+  let done=false;
   cv.getContext=function(type,opts){
     // draw fn sets cv.width/height (logical) just before asking for the context
-    if(cv.width<W*S){cv.width=cv.width*S;cv.height=cv.height*S;}
+    if(!done){cv.width=cv.width*S;cv.height=cv.height*S;done=true;}
     const ctx=realGet(type,opts);
     ctx.setTransform(S,0,0,S,0,0);
-    const d=Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype,'font');
-    try{Object.defineProperty(ctx,'font',{configurable:true,get(){return d.get.call(ctx)},set(v){d.set.call(ctx,_prismFontStr(v))}});}catch(e){}
+    if(prism){
+      const d=Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype,'font');
+      try{Object.defineProperty(ctx,'font',{configurable:true,get(){return d.get.call(ctx)},set(v){d.set.call(ctx,_prismFontStr(v))}});}catch(e){}
+    }
     return ctx;
   };
   const fakeParent={clientWidth:W,clientHeight:H,getBoundingClientRect:()=>({width:W,height:H})};
@@ -1824,6 +1947,7 @@ function _prismifyConfig(cfg){
   const type=cfg.type,ds=(cfg.data&&cfg.data.datasets)||[];
   const isBar=d=>(d.type||type)==='bar';
   const hasBar=ds.some(isBar),nBar=ds.filter(isBar).length;
+  const isCat=type==='bar'&&Array.isArray(cfg.data&&cfg.data.labels)&&!(cfg.options&&cfg.options.scales&&cfg.options.scales.x&&cfg.options.scales.x.type==='linear');
   let ptIdx=0,lineIdx=0;
   ds.forEach((d,i)=>{
     const t=d.type||type;
@@ -1834,7 +1958,7 @@ function _prismifyConfig(cfg){
     } else if(t==='line'||d.showLine===true||d.pointRadius===0){
       d.borderColor='#000000';d.borderWidth=2;d.tension=0;
       const isFit=d.pointRadius===0&&type!=='line';
-      if(isFit){d.borderDash=PRISM_DASH[lineIdx%PRISM_DASH.length];}
+      if(isFit){if(!d.borderDash)d.borderDash=PRISM_DASH[lineIdx%PRISM_DASH.length];d.pointStyle='line';}
       else{ // data series: solid line + distinct marker (filled, then open)
         const k=lineIdx%(PRISM_SHAPES.length*2);
         d.pointStyle=PRISM_SHAPES[k%PRISM_SHAPES.length];d.pointRadius=4.5;d.pointHoverRadius=4.5;
@@ -1843,12 +1967,14 @@ function _prismifyConfig(cfg){
       }
       d.backgroundColor='#000000';d.fill=false;
       lineIdx++;
+    } else if(d.pointStyle==='line'){ // tick marks (e.g. censored subjects)
+      d.backgroundColor='#000000';d.borderColor='#000000';d.borderWidth=1.5;
     } else {
       d.backgroundColor='#000000';d.borderColor='#000000';d.borderWidth=1;
-      d.pointRadius=hasBar?3.5:4.5;d.pointHoverRadius=d.pointRadius;
+      d.pointRadius=isCat?3.5:4.5;d.pointHoverRadius=d.pointRadius;
       // Bar + dots: drawn by _prismDotsPlugin as a beeswarm centred on each bar
-      if(hasBar){d._prismSwarm=true;d._swarmR=d.pointRadius;d.pointRadius=0;d.pointHoverRadius=0;}
-      if(!hasBar){d.pointStyle=PRISM_SHAPES[ptIdx%PRISM_SHAPES.length];
+      if(isCat){d._prismSwarm=true;d._swarmR=d.pointRadius;d.pointRadius=0;d.pointHoverRadius=0;}
+      if(!isCat){d.pointStyle=PRISM_SHAPES[ptIdx%PRISM_SHAPES.length];
         if(ptIdx>=PRISM_SHAPES.length)d.backgroundColor='#ffffff';}
       ptIdx++;
     }
@@ -1865,12 +1991,16 @@ function _prismifyConfig(cfg){
   });
   o.plugins=o.plugins||{};
   if(o.plugins.legend&&o.plugins.legend.display!==false){
-    const ptLegend=!hasBar&&(ptIdx>0||lineIdx>0);
+    const ptLegend=!hasBar&&!isCat&&(ptIdx>0||lineIdx>0);
     o.plugins.legend={...o.plugins.legend,labels:{...(o.plugins.legend.labels||{}),color:'#000000',usePointStyle:ptLegend,
       boxWidth:ptLegend?8:14,boxHeight:ptLegend?8:14,font:{family:PRISM_FONT,size:12,weight:'bold'}}};
   }
   o.plugins.tooltip={enabled:false};
-  Object.entries(o.scales||{}).forEach(([k,sc])=>{if(sc.type==='linear'&&sc.min===undefined&&sc.max===undefined&&type==='scatter')sc.grace='6%';});
+  Object.entries(o.scales||{}).forEach(([k,sc])=>{
+    if(typeof sc.max==='number'&&isFinite(sc.max)){const lo=typeof sc.min==='number'?sc.min:0;const st=_niceAxis(lo,sc.max)[2];sc.max=st[st.length-1];}
+    if(type==='line'&&(k==='x'||sc.axis==='x')&&sc.type!=='linear')sc.offset=true;
+  });
+  Object.entries(o.scales||{}).forEach(([k,sc])=>{if(sc.min===undefined&&sc.max===undefined&&((sc.type==='linear'&&type==='scatter')||(type==='line'&&k==='y')))sc.grace='6%';});
   if(ds.some(d=>d._prismSwarm)){cfg.plugins=[_prismDotsPlugin,...(cfg.plugins||[])];}
   return cfg;
 }
@@ -1910,6 +2040,13 @@ function _prismSize(ci){
   return{W:620,H:460};
 }
 
+let _jitN=0,_prismFontK=1.4;
+function _jit(){if(!_exportTheme)return Math.random()-.5;_jitN++;return ((_jitN*0.6180339887)%1)-.5;}
+function _legX(ctx,gi,x0){
+  const f=ctx.font;ctx.font=_exportTheme?'10px Arial,Helvetica,sans-serif':'10px system-ui';
+  let x=x0;for(let k=0;k<gi;k++)x+=15+ctx.measureText(G.groups[k].name).width+(_exportTheme?18:14);
+  ctx.font=f;return x;
+}
 function _niceAxis(mn,mx){
   if(!(mx>mn)){mx=mn+1;}
   const span=mx-mn,raw=span/5,mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag;
@@ -1919,7 +2056,6 @@ function _niceAxis(mn,mx){
   return[lo,hi,tk];
 }
 function _tickFmt(v,tk){
-  if(!_exportTheme)return v.toFixed(2);
   const step=tk.length>1?Math.abs(tk[1]-tk[0]):1;
   const dec=Math.max(0,Math.min(4,-Math.floor(Math.log10(step)+1e-9)));
   return v.toFixed(step%1===0?0:Math.max(dec,(String(step).split('.')[1]||'').length));
@@ -1929,31 +2065,39 @@ function _deepClone(v){
   if(v&&typeof v==='object'&&Object.getPrototypeOf(v)===Object.prototype){const o={};for(const k in v)o[k]=_deepClone(v[k]);return o;}
   return v;
 }
-function _prismCanvas(pageId){
+// Re-render a plot tab off-screen for export. mode: 'app' (on-screen look, 2x) or 'prism' (publication, PRISM_SCALE)
+function _renderExport(pageId,mode){
+  const prism=mode==='prism';
   const tab=plotTabs.find(t=>t.id===pageId);
-  const S=PRISM_SCALE;
+  const S=prism?PRISM_SCALE:2;
+  const pa=document.getElementById('pa_'+pageId);
+  const liveCv=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');
   let src=null;
-  _exportTheme=PRISM_THEME;
+  _jitN=0;
+  if(prism)_exportTheme=PRISM_THEME;
   try{
     if(tab&&tab._drawFn){
-      src=_prismCanvasPlot(tab._drawFn,720,480);
+      const isHm=/heatmap/i.test(tab.title||'');_prismFontK=isHm?1.05:1.4;
+      const W=prism?(isHm?640:600):Math.max(300,pa?.clientWidth||600),H=prism?(isHm?600:420):Math.max(220,pa?.clientHeight||400);
+      src=_scaledCanvasPlot(tab._drawFn,W,H,S,prism);
     } else {
       const live=chartInst[pageId];
-      const {W,H}=_prismSize(live);
+      const {W,H}=prism?_prismSize(live):{W:liveCv?.clientWidth||700,H:liveCv?.clientHeight||450};
       const holder=document.createElement('div');
       holder.style.cssText=`position:fixed;left:-20000px;top:0;width:${W}px;height:${H}px;`;
       document.body.appendChild(holder);
       const cv=document.createElement('canvas');holder.appendChild(cv);
       const prevAnim=Chart.defaults.animation,prevDpr=Chart.defaults.devicePixelRatio,prevFam=Chart.defaults.font.family;
-      Chart.defaults.animation=false;Chart.defaults.devicePixelRatio=S;Chart.defaults.font.family=PRISM_FONT;
+      Chart.defaults.animation=false;Chart.defaults.devicePixelRatio=S;if(prism)Chart.defaults.font.family=PRISM_FONT;
       let ci=null;const OrigChart=window.Chart;
+      const prep=cfg=>{if(prism)_prismifyConfig(cfg);else{cfg.options=cfg.options||{};cfg.options.animation=false;cfg.options.devicePixelRatio=S;}return cfg;};
       try{
         if(tab&&tab._chartFn){
-          window.Chart=new Proxy(OrigChart,{construct(T,args){if(args[1])_prismifyConfig(args[1]);return new T(...args);}});
+          window.Chart=new Proxy(OrigChart,{construct(T,args){if(args[1])prep(args[1]);return new T(...args);}});
           try{ci=tab._chartFn(cv);}finally{window.Chart=OrigChart;}
         } else if(live){ // e.g. PCA (built outside chartTab): clone its config
-          const cfg=_prismifyConfig({type:live.config.type,data:_deepClone(live.data),options:{..._deepClone(live.config.options||{}),responsive:true,maintainAspectRatio:false}});
-          ci=new OrigChart(cv,{...cfg,plugins:live.config.plugins||[]});
+          const cfg=prep({type:live.config.type,data:_deepClone(live.data),options:{..._deepClone(live.config.options||{}),responsive:true,maintainAspectRatio:false}});
+          ci=new OrigChart(cv,{...cfg,plugins:[...(cfg.plugins||[]),...(live.config.plugins||[])]});
           if(live._sigPairs)ci._sigPairs=live._sigPairs;
         }
         if(ci){
@@ -1967,45 +2111,36 @@ function _prismCanvas(pageId){
         holder.remove();
       }
     }
-  } finally { _exportTheme=null; }
-  if(!src){ // last resort: plain copy of on-screen canvas (no stretching)
-    const c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');
-    if(!c)return null;src=c;
-  }
+  } catch(e){console.error('Export render failed',e);src=null;}
+  finally { _exportTheme=null; }
+  if(!src)src=liveCv; // fallback: on-screen canvas as is
+  if(!src)return null;
+  // Flatten onto an opaque background (Chart.js canvases are transparent)
   const out=document.createElement('canvas');out.width=src.width;out.height=src.height;
-  const octx=out.getContext('2d');octx.fillStyle='#ffffff';octx.fillRect(0,0,out.width,out.height);
+  const octx=out.getContext('2d');octx.fillStyle=prism?'#ffffff':bgCol();octx.fillRect(0,0,out.width,out.height);
   octx.drawImage(src,0,0);
   return out;
 }
+function _exportName(ext){return (getExportStyle()==='prism'?'plot_publication.':'plot.')+ext;}
 
 function downloadTabPlot(pageId){
-  if(getExportStyle()==='prism'){
-    const off=_prismCanvas(pageId);if(!off)return;
-    const a=document.createElement('a');a.href=off.toDataURL('image/png');a.download='plot_publication.png';a.click();
-    return;
-  }
-  const c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');
-  if(!c)return;
-  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='plot.png';a.click();
+  const c=_renderExport(pageId,getExportStyle());if(!c)return;
+  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download=_exportName('png');a.click();
 }
 
 function downloadTabSVG(pageId){
-  let c;
-  if(getExportStyle()==='prism'){c=_prismCanvas(pageId);}else{c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');}
-  if(!c)return;
+  const c=_renderExport(pageId,getExportStyle());if(!c)return;
   const W=c.width,H=c.height;
   const imgData=c.toDataURL('image/png',1.0);
   const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n  <image href="${imgData}" x="0" y="0" width="${W}" height="${H}"/>\n</svg>`;
   const blob=new Blob([svg],{type:'image/svg+xml'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=getExportStyle()==='prism'?'plot_publication.svg':'plot.svg';a.click();
+  const a=document.createElement('a');a.href=url;a.download=_exportName('svg');a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 function downloadTabPDF(pageId){
-  let c;
-  if(getExportStyle()==='prism'){c=_prismCanvas(pageId);}else{c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');}
-  if(!c)return;
+  const c=_renderExport(pageId,getExportStyle());if(!c)return;
   const imgData=c.toDataURL('image/png',1.0);
   const bg=getExportStyle()==='prism'?'#ffffff':bgCol();
   const w=window.open('','_blank','width=1050,height=780');
@@ -2014,7 +2149,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.6.0';
+const APP_VERSION='0.7.0';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -2065,6 +2200,7 @@ function plotBarSD(normMethod, title){
   const dotType=document.getElementById('popt-dottype')?.value||'raw';
   const groupBy=document.getElementById('popt-groupby')?.value||'group';
   const sigPairs=lastStatPairs?[...lastStatPairs]:null;
+  const rowPairs=lastStatRowPairs&&lastStatRowPairs.length?lastStatRowPairs.map(p=>({...p})):null;
 
   if(groupBy==='sample'){
     // ── By-sample mode: X axis = samples, clustered bars per group ──
@@ -2082,25 +2218,34 @@ function plotBarSD(normMethod, title){
           return{mean:raw.length?mean(raw):0,sd:raw.length>1?stddev(raw):0,raw};
         })
       );
-      const allMeans=rowData.flat().map(d=>d.mean);
-      const mn=Math.min(0,...allMeans),mx=Math.max(...allMeans);
-      const pad={l:yLab?75:65,r:20,t:20,b:55};
-      const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+      // Axis range covers bars + SD and the dots that are shown, plus headroom for per-row significance brackets
+      const showBar=dispMode!=='reps',showDot=dispMode!=='mean';
+      const cellTop=d=>Math.max(showBar?d.mean+(d.sd||0):-Infinity,...(showDot?(dotType==='groupmean'?[d.mean]:d.raw):[d.mean]));
+      const cellBot=d=>Math.min(showBar?d.mean-(d.sd||0):Infinity,...(showDot?(dotType==='groupmean'?[d.mean]:d.raw):[d.mean]));
+      const flat=rowData.flat().filter(d=>isFinite(d.mean));
+      const mn0=Math.min(0,...flat.map(cellBot)),mx0=Math.max(...flat.map(cellTop));
+      const lvlByRow={};
+      if(rowPairs){rowPairs.sort((a,b)=>(a.row-b.row)||(Math.abs(a.j-a.i)-Math.abs(b.j-b.i)));
+        rowPairs.forEach(p=>{p._lvl=lvlByRow[p.row]=(lvlByRow[p.row]===undefined?0:lvlByRow[p.row]+1);});}
+      const nLv=Math.max(0,...Object.values(lvlByRow).map(v=>v+1));
+      const mn=mn0,mx=mx0+(mx0-mn0||1)*(nLv?0.06+(_exportTheme?0.12:0.09)*nLv:0);
+      const pad={l:yLab?75:65,r:20,t:20,b:_exportTheme?78:55};
+      const [_n0,_n1,_tk]=_niceAxis(mn,mx);const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
       // Y axis + grid
-      ctx.strokeStyle=bdc;ctx.lineWidth=1;
+      ctx.strokeStyle=bdc;ctx.lineWidth=_exportTheme?1.5:1;
       ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
-      if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
-      for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
-        ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 9px Arial,Helvetica,sans-serif':'9px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-5,y+3);
+      if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+      for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);if(_exportTheme){ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l-6,y);ctx.lineTo(pad.l,y);ctx.stroke();}
+        ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 9px Arial,Helvetica,sans-serif':'9px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-(_exportTheme?9:5),y+(_exportTheme?4:3));
         ctx.strokeStyle=gc;ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();}
       if(yLab){ctx.save();ctx.translate(13,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore();}
-      const plotW=W-pad.l-pad.r;
+      const _in=_exportTheme?14:0;const plotW=W-pad.l-pad.r-2*_in;
       const groupGap=plotW*0.08; // gap between sample clusters
       const clusterW=(plotW-groupGap*(nR-1))/nR;
       const barW=Math.min(28,clusterW/nG-2);
       const y0=toY(0);
       rowData.forEach((grps,row)=>{
-        const clusterX=pad.l+row*(clusterW+groupGap);
+        const clusterX=pad.l+_in+row*(clusterW+groupGap);
         const cx=clusterX+clusterW/2;
         grps.forEach((d,gi)=>{
           const col=plotColor(gi);
@@ -2121,18 +2266,34 @@ function plotBarSD(normMethod, title){
             const pts=dotType==='groupmean'?[d.mean]:d.raw;
             pts.forEach(v=>{
               ctx.fillStyle=_exportTheme?plotDot(gi):col+'dd';ctx.beginPath();
-              ctx.arc(bx+(Math.random()-.5)*barW*.5,toY(v),3,0,Math.PI*2);ctx.fill();
+              ctx.arc(bx+_jit()*barW*.5,toY(v),3,0,Math.PI*2);ctx.fill();
             });
           }
         });
         // Sample label
         ctx.fillStyle=txc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='center';
-        ctx.fillText(G.rowNames[row]||`Row ${row+1}`,cx,H-pad.b+13);
+        ctx.fillText(G.rowNames[row]||`Row ${row+1}`,cx,H-pad.b+(_exportTheme?22:13));
       });
+      // Per-row significance brackets (from a per-row test)
+      if(rowPairs){
+        const ink=_exportTheme?'#000000':(isLightTheme()?'#1e293b':'#e2e8f0');
+        rowPairs.forEach(p=>{
+          const grps=rowData[p.row];if(!grps)return;
+          const clusterX=pad.l+_in+p.row*(clusterW+groupGap),cx=clusterX+clusterW/2;
+          const bxOf=gi=>cx+(gi-(nG-1)/2)*(barW+2);
+          const top=Math.max(cellTop(grps[p.i]),cellTop(grps[p.j]),...grps.slice(Math.min(p.i,p.j),Math.max(p.i,p.j)+1).map(cellTop));
+          const yb=toY(top)-8-p._lvl*(_exportTheme?20:14);
+          const x1=bxOf(p.i),x2=bxOf(p.j);
+          ctx.save();ctx.strokeStyle=ink;ctx.fillStyle=ink;ctx.lineWidth=1.2;
+          ctx.beginPath();ctx.moveTo(x1,yb+4);ctx.lineTo(x1,yb);ctx.lineTo(x2,yb);ctx.lineTo(x2,yb+4);ctx.stroke();
+          ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.fillText(p.stars,(x1+x2)/2,yb-2);
+          ctx.restore();
+        });
+      }
       // Legend
       G.groups.forEach((g,gi)=>{
         const col=plotColor(gi);
-        const lx=pad.l+gi*90;const ly=H-pad.b+30;
+        const lx=_legX(ctx,gi,pad.l),ly=H-pad.b+(_exportTheme?48:30);
         ctx.fillStyle=_exportTheme?col:col+'aa';ctx.fillRect(lx,ly,12,10);
         ctx.fillStyle=txc;ctx.font=_exportTheme?'10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='left';ctx.fillText(g.name,lx+15,ly+9);
       });
@@ -2241,22 +2402,22 @@ function plotBoxplot(normMethod, title){
       const allV=rowData.flat(2).filter(isFinite);
       if(!allV.length)return;
       const mn=Math.min(...allV),mx=Math.max(...allV);
-      const pad={l:yLab?75:65,r:20,t:20,b:55};
-      const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+      const pad={l:yLab?75:65,r:20,t:20,b:_exportTheme?78:55};
+      const [_n0,_n1,_tk]=_niceAxis(mn,mx);const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
       // Y axis
-      ctx.strokeStyle=bdc;ctx.lineWidth=1;
+      ctx.strokeStyle=bdc;ctx.lineWidth=_exportTheme?1.5:1;
       ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
-      if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
-      for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
-        ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 9px Arial,Helvetica,sans-serif':'9px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-5,y+3);
+      if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+      for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);if(_exportTheme){ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l-6,y);ctx.lineTo(pad.l,y);ctx.stroke();}
+        ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 9px Arial,Helvetica,sans-serif':'9px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-(_exportTheme?9:5),y+(_exportTheme?4:3));
         ctx.strokeStyle=gc;ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();}
       if(yLab){ctx.save();ctx.translate(13,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore();}
-      const plotW=W-pad.l-pad.r;
+      const _in=_exportTheme?14:0;const plotW=W-pad.l-pad.r-2*_in;
       const groupGap=plotW*0.08;
       const clusterW=(plotW-groupGap*(nR-1))/nR;
       const bw=Math.min(24,clusterW/nG-2);
       rowData.forEach((grps,row)=>{
-        const clusterX=pad.l+row*(clusterW+groupGap);
+        const clusterX=pad.l+_in+row*(clusterW+groupGap);
         const cx=clusterX+clusterW/2;
         grps.forEach((vals,gi)=>{
           const col=plotColor(gi);
@@ -2265,18 +2426,20 @@ function plotBoxplot(normMethod, title){
           if(!sv.length)return;
           const q1=percentile(sv,25),q3=percentile(sv,75),med=median(sv);
           const iqr=q3-q1,lo=Math.max(sv[0],q1-1.5*iqr),hi=Math.min(sv[sv.length-1],q3+1.5*iqr);
-          // Whiskers
+          // Whiskers (hidden in dots-only mode)
+          if(dispMode!=='reps'){
           ctx.strokeStyle=plotStroke(gi);ctx.lineWidth=1.5;
           ctx.beginPath();ctx.moveTo(bx,toY(lo));ctx.lineTo(bx,toY(q1));
           ctx.moveTo(bx,toY(q3));ctx.lineTo(bx,toY(hi));
           ctx.moveTo(bx-bw/4,toY(lo));ctx.lineTo(bx+bw/4,toY(lo));
           ctx.moveTo(bx-bw/4,toY(hi));ctx.lineTo(bx+bw/4,toY(hi));ctx.stroke();
+          }
           // Box
           if(dispMode!=='reps'){
             ctx.fillStyle=_exportTheme?col:col+'33';ctx.strokeStyle=plotStroke(gi);ctx.lineWidth=1.5;
             ctx.fillRect(bx-bw/2,toY(q3),bw,toY(q1)-toY(q3));
             ctx.strokeRect(bx-bw/2,toY(q3),bw,toY(q1)-toY(q3));
-            ctx.strokeStyle=axc;ctx.lineWidth=1.5;
+            ctx.strokeStyle=plotMed();ctx.lineWidth=1.5;
             ctx.beginPath();ctx.moveTo(bx-bw/2,toY(med));ctx.lineTo(bx+bw/2,toY(med));ctx.stroke();
           }
           // Dots
@@ -2284,17 +2447,17 @@ function plotBoxplot(normMethod, title){
             const pts=dotType==='groupmean'?[mean(sv)]:sv;
             pts.forEach(v=>{
               ctx.fillStyle=_exportTheme?plotDot(gi):col+'cc';ctx.beginPath();
-              ctx.arc(bx+(Math.random()-.5)*bw*.4,toY(v),2.5,0,Math.PI*2);ctx.fill();
+              ctx.arc(bx+_jit()*bw*.4,toY(v),2.5,0,Math.PI*2);ctx.fill();
             });
           }
         });
         ctx.fillStyle=txc;ctx.font='10px system-ui';ctx.textAlign='center';
-        ctx.fillText(G.rowNames[row]||`Row ${row+1}`,cx,H-pad.b+13);
+        ctx.fillText(G.rowNames[row]||`Row ${row+1}`,cx,H-pad.b+(_exportTheme?22:13));
       });
       // Legend
       G.groups.forEach((g,gi)=>{
         const col=plotColor(gi);
-        const lx=pad.l+gi*90,ly=H-pad.b+30;
+        const lx=_legX(ctx,gi,pad.l),ly=H-pad.b+(_exportTheme?48:30);
         ctx.fillStyle=_exportTheme?col:col+'aa';ctx.fillRect(lx,ly,12,10);
         ctx.fillStyle=txc;ctx.font='10px system-ui';ctx.textAlign='left';ctx.fillText(g.name,lx+15,ly+9);
       });
@@ -2306,16 +2469,16 @@ function plotBoxplot(normMethod, title){
     const allVals=groups.flatMap(g=>g.vals).filter(isFinite);
     if(!allVals.length)return;
     const mn=Math.min(...allVals),mx=Math.max(...allVals);
-    const pad={l:yLab?65:55,r:20,t:20,b:40};
+    const pad={l:yLab?75:62,r:20,t:20,b:_exportTheme?46:40};
     const bw=Math.min(60,(W-pad.l-pad.r)/groups.length-20);
-    const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+    const [_n0,_n1,_tk]=_niceAxis(mn,mx);const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
     // Y axis line
-    ctx.strokeStyle=bdc;ctx.lineWidth=1;
+    ctx.strokeStyle=bdc;ctx.lineWidth=_exportTheme?1.5:1;
     ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
-    if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+    if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
     // Grid + Y tick labels
-    for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
-      ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-4,y+3);
+    for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);if(_exportTheme){ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l-6,y);ctx.lineTo(pad.l,y);ctx.stroke();}
+      ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-(_exportTheme?9:5),y+(_exportTheme?4:3));
       ctx.strokeStyle=gc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke()}
     // Y-axis title
     if(yLab){ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore()}
@@ -2326,12 +2489,14 @@ function plotBoxplot(normMethod, title){
       const q1=percentile(vals,25),q3=percentile(vals,75),med=median(vals);
       const iqr=q3-q1,lo=Math.max(vals[0],q1-1.5*iqr),hi=Math.min(vals[vals.length-1],q3+1.5*iqr);
       const col=plotColor(i);
-      // Whiskers
+      // Whiskers (hidden in dots-only mode)
+      if(dispMode!=='reps'){
       ctx.strokeStyle=plotStroke(i);ctx.lineWidth=1.5;
       ctx.beginPath();ctx.moveTo(cx,toY(lo));ctx.lineTo(cx,toY(q1));ctx.stroke();
       ctx.beginPath();ctx.moveTo(cx,toY(q3));ctx.lineTo(cx,toY(hi));ctx.stroke();
       ctx.beginPath();ctx.moveTo(cx-bw/4,toY(lo));ctx.lineTo(cx+bw/4,toY(lo));ctx.stroke();
       ctx.beginPath();ctx.moveTo(cx-bw/4,toY(hi));ctx.lineTo(cx+bw/4,toY(hi));ctx.stroke();
+      }
       // Box
       if(dispMode!=='reps'){
         ctx.fillStyle=_exportTheme?col:col+'33';ctx.strokeStyle=plotStroke(i);ctx.lineWidth=2;
@@ -2349,11 +2514,11 @@ function plotBoxplot(normMethod, title){
         pts.forEach(v=>{
           const isOut=v<lo||v>hi;
           ctx.fillStyle=_exportTheme?(isOut?'#ef4444':plotDot(i)):(isOut?'#ef4444':col+'aa');
-          ctx.beginPath();ctx.arc(cx+(Math.random()-.5)*bw*.4,toY(v),isOut?4:3,0,Math.PI*2);ctx.fill();
+          ctx.beginPath();ctx.arc(cx+_jit()*bw*.4,toY(v),isOut?4:3,0,Math.PI*2);ctx.fill();
         });
       }
       // X label
-      ctx.fillStyle=txc;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+16);
+      ctx.fillStyle=txc;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+(_exportTheme?24:16));
     });
   });
 }
@@ -2371,8 +2536,8 @@ function plotViolin(normMethod, title){
     const allVals=groups.flatMap(g=>g.vals);
     if(!allVals.length)return;
     const mn=Math.min(...allVals),mx=Math.max(...allVals);
-    const pad={l:yLab?65:55,r:20,t:20,b:40};
-    const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+    const pad={l:yLab?75:62,r:20,t:20,b:_exportTheme?46:40};
+    const [_n0,_n1,_tk]=_niceAxis(mn,mx);const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
     const nSteps=50;
     function kde(vals,bw){
       return Array.from({length:nSteps},(_,i)=>{
@@ -2382,11 +2547,11 @@ function plotViolin(normMethod, title){
       });
     }
     // Y axis + grid
-    ctx.strokeStyle=bdc;ctx.lineWidth=1;
+    ctx.strokeStyle=bdc;ctx.lineWidth=_exportTheme?1.5:1;
     ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
-    if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
-    for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
-      ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-4,y+3);
+    if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+    for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);if(_exportTheme){ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l-6,y);ctx.lineTo(pad.l,y);ctx.stroke();}
+      ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-(_exportTheme?9:5),y+(_exportTheme?4:3));
       ctx.strokeStyle=gc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke()}
     if(yLab){ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'11px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore()}
     groups.forEach((g,i)=>{
@@ -2414,10 +2579,10 @@ function plotViolin(normMethod, title){
         const halfWd=Math.min(50,(W-pad.l-pad.r)/groups.length/2-5);
         g.vals.forEach(v=>{
           ctx.fillStyle=_exportTheme?plotDot(i):col+'bb';
-          ctx.beginPath();ctx.arc(cx+(Math.random()-.5)*halfWd*.5,toY(v),3,0,Math.PI*2);ctx.fill();
+          ctx.beginPath();ctx.arc(cx+_jit()*halfWd*.5,toY(v),3,0,Math.PI*2);ctx.fill();
         });
       }
-      ctx.fillStyle=txc;ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+16);
+      ctx.fillStyle=txc;ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+(_exportTheme?24:16));
     });
   });
 }
@@ -2826,14 +2991,18 @@ function plotKMCustom(title){
     const ei=parseInt(document.getElementById('popt-eg')?.value||Math.min(1,G.groups.length-1));
     const times=getGroupPooled(ti),events=getGroupPooled(ei);
     const km=kaplanMeier(times,events);
-    const pts=[{x:0,y:1},...km.map(p=>({x:p.t,y:p.s}))];
+    const pts=km.map(p=>({x:p.t,y:p.s}));
+    const cens=km.filter(p=>p.c>0).map(p=>({x:p.t,y:p.s}));
     const cfg={...chartCfgDefaults()};
     const ac=axCol();
-    cfg.scales.x.title={display:true,text:'Time',color:ac};
-    cfg.scales.y.title={display:true,text:'Survival Probability',color:ac};
+    cfg.scales.x={...cfg.scales.x,type:'linear',min:0,title:{display:true,text:G.groups[ti]?.name||'Time',color:ac}};
+    cfg.scales.y.title={display:true,text:'Survival probability',color:ac};
     cfg.scales.y.min=0;cfg.scales.y.max=1;
-    return new Chart(canvas,{type:'line',
-      data:{datasets:[{label:'KM Curve',data:pts,borderColor:'#3b82f6',backgroundColor:'#3b82f622',stepped:true,fill:true,pointRadius:3}]},
+    return new Chart(canvas,{type:'scatter',
+      data:{datasets:[
+        {type:'line',label:'Survival',data:pts,borderColor:COLORS[0],backgroundColor:COLORS[0]+'22',stepped:'after',fill:true,pointRadius:0,borderWidth:2},
+        {label:'Censored',data:cens,pointStyle:'line',rotation:90,pointRadius:6,borderColor:COLORS[0],backgroundColor:COLORS[0],borderWidth:2}
+      ]},
       options:cfg});
   });
 }
@@ -2847,11 +3016,12 @@ function plotDoseResponse(title){
     if(n<4)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
     const res=fit5PL(xv.slice(0,n),yv.slice(0,n));
     const mn=Math.min(...xv),mx=Math.max(...xv);
-    const curveX=Array.from({length:100},(_,i)=>mn+(mx-mn)*i/99);
+    const logX=mn>0;
+    const curveX=Array.from({length:150},(_,i)=>logX?Math.pow(10,Math.log10(mn)+(Math.log10(mx)-Math.log10(mn))*i/149):mn+(mx-mn)*i/149);
     const curveData=curveX.map(x=>({x,y:res.predict(x)}));
     const cfg={...chartCfgDefaults()};
     const ac=axCol();
-    cfg.scales.x.title={display:true,text:G.groups[dxi]?.name||'Concentration',color:ac};
+    cfg.scales.x={...cfg.scales.x,type:logX?'logarithmic':'linear',ticks:{...(cfg.scales.x.ticks||{}),callback:v=>{if(!logX)return v;const l=Math.log10(v);return Math.abs(l-Math.round(l))<1e-9?String(+v.toPrecision(1)):'';}},title:{display:true,text:(G.groups[dxi]?.name||'Concentration')+(logX?' (log scale)':''),color:ac}};
     cfg.scales.y.title={display:true,text:G.groups[dyi]?.name||'Response',color:ac};
     return new Chart(canvas,{type:'scatter',data:{datasets:[
       {label:'Data',data:xv.slice(0,n).map((x,i)=>({x,y:yv[i]})),backgroundColor:'#ef4444cc',pointRadius:5},
@@ -2911,19 +3081,23 @@ function plotHistogram(title){
 function plotMTCCustom(title){
   chartTab(title, canvas=>{
     const mtci=parseInt(document.getElementById('popt-mtcg')?.value||0);
-    const pvals=getGroupPooled(mtci).filter(v=>isFinite(v)&&v>0);const n=pvals.length;
-    if(!n)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
-    const names=G.rowNames.slice(0,n);
-    const bonf=bonferroni(pvals);const fdr=fdrBH(pvals);
+    const method=document.getElementById('popt-mtcm')?.value||'holm_sidak';
+    const raw=getGroupPooled(mtci);
+    const idx=raw.map((p,i)=>i).filter(i=>isFinite(raw[i])&&raw[i]>0);
+    if(!idx.length)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
+    const pvals=idx.map(i=>raw[i]),names=idx.map(i=>G.rowNames[i]||`Row ${i+1}`);
+    const adj=adjustP(pvals,method);
     const ac=axCol();
     const cfg={...chartCfgDefaults()};
-    cfg.scales.x.title={display:true,text:'Feature index',color:ac};
-    cfg.scales.y.title={display:true,text:'-log10(p)',color:ac};
-    cfg.plugins.tooltip={...cfg.plugins.tooltip,callbacks:{label:c=>`${names[c.raw.x]||c.raw.x}: ${c.raw.y.toFixed(3)}`}};
+    cfg.scales.x={...cfg.scales.x,type:'linear',min:-0.5,max:names.length-0.5,afterBuildTicks:axis=>{axis.ticks=names.map((_,i)=>({value:i}));},ticks:{...(cfg.scales.x.ticks||{}),autoSkip:false,maxRotation:60,callback:v=>names[Math.round(v)]||''},title:{display:true,text:'Test',color:ac}};
+    cfg.scales.y.title={display:true,text:'−log10(p)',color:ac};
+    cfg.scales.y.min=0;
+    cfg.plugins.tooltip={...cfg.plugins.tooltip,callbacks:{label:c=>`${names[c.raw.x]||c.raw.x}: p = ${Math.pow(10,-c.raw.y).toPrecision(3)}`}};
+    const thr=-Math.log10(0.05);
     return new Chart(canvas,{type:'scatter',data:{datasets:[
-      {label:'Raw p',data:names.map((n,i)=>({x:i,y:-Math.log10(pvals[i])})),backgroundColor:'#94a3b8cc',pointRadius:5},
-      {label:'Bonferroni',data:names.map((n,i)=>({x:i,y:-Math.log10(bonf[i])})),backgroundColor:'#ef4444cc',pointRadius:5},
-      {label:'FDR (BH)',data:names.map((n,i)=>({x:i,y:-Math.log10(fdr[i])})),backgroundColor:'#22c55ecc',pointRadius:5}
+      {label:'Raw p',data:pvals.map((p,i)=>({x:i,y:-Math.log10(p)})),backgroundColor:COLORS[0]+'cc',pointRadius:5},
+      {label:`Adjusted (${CORR_SHORT[method]})`,data:adj.map((p,i)=>({x:i,y:-Math.log10(p)})),backgroundColor:COLORS[1]+'cc',pointRadius:5},
+      {type:'line',label:'p = 0.05',data:[{x:-0.5,y:thr},{x:names.length-0.5,y:thr}],borderColor:axCol(),borderDash:[5,4],borderWidth:1,pointRadius:0}
     ]},options:cfg});
   });
 }
@@ -2934,7 +3108,7 @@ function plotMTCCustom(title){
 function runAnalysis(){
   const atype=document.getElementById('asel').value;
   const normMethod=document.getElementById('opt-norm')?.value||'none';
-  lastStatPairs=null; // reset significance pairs
+  lastStatPairs=null;lastStatRowPairs=null;_autoPlotGroupBy=null; // reset significance pairs
 
   function getG(i){ return normalize(getGroupPooled(i),normMethod) }
   function grpNames(){ return G.groups.map(g=>g.name) }
@@ -2954,7 +3128,7 @@ function runAnalysis(){
       const ctrl=parseInt(document.getElementById('opt-ctrl')?.value||0);
       const ptype=document.getElementById('opt-ptype')?.value||'delta';
       const perRow=document.getElementById('opt-perrow')?.checked;
-      const corr=document.getElementById('opt-corr')?.value||'none';
+      const corr=document.getElementById('opt-corr')?.value||'fdr';
       const a=getG(ctrl);
 
       if(perRow){
@@ -2978,70 +3152,71 @@ function runAnalysis(){
         }
         // Apply correction
         const allP=rowResults.flatMap(r=>r.pvals);
-        let adjP;
-        if(corr==='bonferroni') adjP=bonferroni(allP);
-        else if(corr==='holm') adjP=holmBonferroni(allP);
-        else if(corr==='fdr') adjP=fdrBH(allP);
-        else adjP=[...allP];
+        const adjP=adjustP(allP,corr);
         let idx=0;rowResults.forEach(r=>{r.adjPvals=r.pvals.map(()=>adjP[idx++])});
 
         const cols=rowResults[0].labels;
-        let html=`<div class="scard"><h3>Per-Row ${atype==='ttest_ind'?'Unpaired':'Paired'} t-test (correction: ${corr})</h3>
+        let html=`<div class="scard"><h3>Per-Row ${atype==='ttest_ind'?'Unpaired':'Paired'} t-test (correction: ${CORR_SHORT[corr]||corr}, ${allP.filter(isFinite).length} tests)</h3>
           <table class="rtbl"><thead><tr><th>Row</th>${cols.map(c=>`<th>${c} p-raw</th><th>${c} p-adj</th>`).join('')}</tr></thead><tbody>`;
         rowResults.forEach(r=>{
           html+=`<tr><td>${r.name}</td>${r.labels.map((_,i)=>`<td>${pRow(r.pvals[i])}</td><td>${pRow(r.adjPvals[i])}</td>`).join('')}</tr>`;
         });
         html+='</tbody></table></div>';
         addStatTab(`Per-Row ${atype==='ttest_ind'?'t-ind':'t-rel'}`,html);
-        return;
-      }
-
+        const others=G.groups.map((_,i)=>i).filter(i=>i!==ctrl);
+        lastStatRowPairs=[];
+        rowResults.forEach(r=>r.adjPvals.forEach((pa,k)=>{const st=sigStars(pa);if(st!=='ns'&&isFinite(pa))lastStatRowPairs.push({row:r.row,i:ctrl,j:others[k],stars:st});}));
+        _autoPlotGroupBy='sample';
+      } else {
       // Standard: ctrl vs each other group
       const other=G.groups.map((_,i)=>i).filter(i=>i!==ctrl);
       let html='';
       const tSigPairs=[];
-      other.forEach(i=>{
-        const b=getG(i);
-        const res=atype==='ttest_ind'?ttestInd(a,b):ttestRel(a,b,ptype);
+      const tcorr=other.length>1?(document.getElementById('opt-tcorr')?.value||'holm_sidak'):'none';
+      const tRes=other.map(i=>atype==='ttest_ind'?ttestInd(a,getG(i)):ttestRel(a,getG(i),ptype));
+      const tAdj=adjustP(tRes.map(r=>r.error?NaN:r.p),tcorr);
+      other.forEach((i,k)=>{
+        const res=tRes[k],pa=tAdj[k];
         if(res.error){html+=`<div class="ebox">${res.error}</div>`;return}
-        const stars=sigStars(res.p);
+        const stars=sigStars(pa);
         if(stars!=='ns')tSigPairs.push({i:ctrl,j:i,stars});
         html+=`<div class="scard">
           <h3>${atype==='ttest_ind'?'Unpaired (Welch)':'Paired'} t-test: ${G.groups[ctrl].name} vs ${G.groups[i].name}</h3>
-          <div class="rh"><span class="rt">${atype==='ttest_ind'?'Welch':'Paired'} t-test</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${stars}</span></div>
+          <div class="rh"><span class="rt">${atype==='ttest_ind'?'Welch':'Paired'} t-test</span><span class="rp ${pCls(pa)}">p${tcorr!=='none'?' adj':''} = ${fmtP(pa)}</span><span class="stars">${stars}</span></div>
           <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
           <tr><td>t statistic</td><td>${fmtF(res.t)}</td></tr>
           <tr><td>df</td><td>${fmtF(res.df,1)}</td></tr>
-          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+          <tr><td>p-value${tcorr!=='none'?' (raw)':''}</td><td>${pRow(res.p)}</td></tr>
+          ${tcorr!=='none'?`<tr><td>p-value (${CORR_SHORT[tcorr]}, ${other.length} comparisons)</td><td>${pRow(pa)}</td></tr>`:''}
           ${atype==='ttest_ind'?`<tr><td>Mean (${G.groups[ctrl].name})</td><td>${fmtF(res.m1)}</td></tr><tr><td>Mean (${G.groups[i].name})</td><td>${fmtF(res.m2)}</td></tr><tr><td>Cohen's d</td><td>${fmtF(res.d)} (${eff(res.d||0)})</td></tr>`:
           `<tr><td>Mean ${ptype==='ratio'?'ratio':'diff'}</td><td>${fmtF(res.mean_diff)}</td></tr><tr><td>SD diff</td><td>${fmtF(res.sd_diff)}</td></tr>`}
           </tbody></table></div>`;
       });
       lastStatPairs=tSigPairs;
       addStatTab(atype==='ttest_ind'?'t-ind':'t-rel',html||'<div class="ebox">No groups to compare</div>');
+      }
 
     } else if(atype==='mw'){
-      const npMode=document.getElementById('opt-np-mode')?.value||'pair';
+      const npMode=document.getElementById('opt-np-mode')?.value||'pair';const npCorr=document.getElementById('opt-npcorr')?.value||'holm_sidak';
       const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
       const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
       const names=grpNames();
-      if(npMode==='allpairs'&&G.groups.length>2){
+      if((npMode==='allpairs'||npMode==='vsctrl')&&G.groups.length>2){
         // All-pairs with FDR correction
         const pairs=[];
-        for(let i=0;i<G.groups.length-1;i++)for(let j=i+1;j<G.groups.length;j++){
+        for(const [i,j] of _npPairs(npMode)){
           const res=mannWhitneyU(getG(i),getG(j));
           pairs.push({i,j,na:names[i],nb:names[j],...res});
         }
         // BH FDR
-        const m=pairs.length;pairs.sort((a,b)=>a.p-b.p);
-        pairs.forEach((p,k)=>{p.p_adj=Math.min(p.p*(m/(k+1)),1);});
+        {const adj=adjustP(pairs.map(p=>p.p),npCorr);pairs.forEach((p,k)=>{p.p_adj=adj[k];});}
         pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
         lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
-        const html=`<div class="scard"><h3>Mann-Whitney U — All Pairs (FDR)</h3>
-          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (FDR)</th><th>Sig</th></tr></thead><tbody>
+        const html=`<div class="scard"><h3>Mann-Whitney U — ${npMode==='vsctrl'?'vs Control':'All Pairs'} (${CORR_SHORT[npCorr]})</h3>
+          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
           ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
-        addStatTab('MW All-Pairs',html);
+        addStatTab(npMode==='vsctrl'?'MW vs Control':'MW All-Pairs',html);
       } else {
         const a=getG(g1i),b=getG(g2i);
         const res=mannWhitneyU(a,b);
@@ -3059,28 +3234,27 @@ function runAnalysis(){
       }
 
     } else if(atype==='wilcoxon'){
-      const npMode=document.getElementById('opt-np-mode')?.value||'pair';
+      const npMode=document.getElementById('opt-np-mode')?.value||'pair';const npCorr=document.getElementById('opt-npcorr')?.value||'holm_sidak';
       const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
       const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
       const npComp=document.getElementById('opt-np-comp')?.value||'delta';
       const names=grpNames();
-      if(npMode==='allpairs'&&G.groups.length>2){
+      if((npMode==='allpairs'||npMode==='vsctrl')&&G.groups.length>2){
         const pairs=[];
-        for(let i=0;i<G.groups.length-1;i++)for(let j=i+1;j<G.groups.length;j++){
+        for(const [i,j] of _npPairs(npMode)){
           let a=getG(i),b=getG(j);
           if(npComp==='ratio'){const mn=Math.min(a.length,b.length);a=a.slice(0,mn).map((v,k)=>b[k]!==0?v/b[k]:NaN).filter(isFinite);b=Array(a.length).fill(1);}
           const res=wilcoxonSR(a,b);
           pairs.push({i,j,na:names[i],nb:names[j],...res});
         }
-        const m=pairs.length;pairs.sort((a,b)=>a.p-b.p);
-        pairs.forEach((p,k)=>{p.p_adj=Math.min(p.p*(m/(k+1)),1);});
+        {const adj=adjustP(pairs.map(p=>p.p),npCorr);pairs.forEach((p,k)=>{p.p_adj=adj[k];});}
         pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
         lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
-        const html=`<div class="scard"><h3>Wilcoxon Signed-Rank — All Pairs (FDR, ${npComp})</h3>
-          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>W</th><th>z</th><th>p</th><th>p adj</th><th>Sig</th></tr></thead><tbody>
+        const html=`<div class="scard"><h3>Wilcoxon Signed-Rank — ${npMode==='vsctrl'?'vs Control':'All Pairs'} (${CORR_SHORT[npCorr]}, ${npComp})</h3>
+          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>W</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
           ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.W,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
-        addStatTab('Wilcoxon All-Pairs',html);
+        addStatTab(npMode==='vsctrl'?'Wilcoxon vs Control':'Wilcoxon All-Pairs',html);
       } else {
         let a=getG(g1i),b=getG(g2i);
         if(npComp==='ratio'){const mn=Math.min(a.length,b.length);a=a.slice(0,mn).map((v,k)=>b[k]!==0?v/b[k]:NaN).filter(isFinite);b=Array(a.length).fill(1);}
@@ -3098,26 +3272,25 @@ function runAnalysis(){
       }
 
     } else if(atype==='ranksum'){
-      const npMode=document.getElementById('opt-np-mode')?.value||'pair';
+      const npMode=document.getElementById('opt-np-mode')?.value||'pair';const npCorr=document.getElementById('opt-npcorr')?.value||'holm_sidak';
       const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
       const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
       const npComp=document.getElementById('opt-np-comp')?.value||'delta';
       const names=grpNames();
-      if(npMode==='allpairs'&&G.groups.length>2){
+      if((npMode==='allpairs'||npMode==='vsctrl')&&G.groups.length>2){
         const pairs=[];
-        for(let i=0;i<G.groups.length-1;i++)for(let j=i+1;j<G.groups.length;j++){
+        for(const [i,j] of _npPairs(npMode)){
           const res=rankSumTest(getG(i),getG(j),npComp);
           pairs.push({i,j,na:names[i],nb:names[j],...res});
         }
-        const m=pairs.length;pairs.sort((a,b)=>a.p-b.p);
-        pairs.forEach((p,k)=>{p.p_adj=Math.min(p.p*(m/(k+1)),1);});
+        {const adj=adjustP(pairs.map(p=>p.p),npCorr);pairs.forEach((p,k)=>{p.p_adj=adj[k];});}
         pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
         lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
-        const html=`<div class="scard"><h3>Rank Sum — All Pairs (FDR, ${npComp})</h3>
-          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj</th><th>Sig</th></tr></thead><tbody>
+        const html=`<div class="scard"><h3>Rank Sum — ${npMode==='vsctrl'?'vs Control':'All Pairs'} (${CORR_SHORT[npCorr]}, ${npComp})</h3>
+          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
           ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
-        addStatTab('Rank Sum All',html);
+        addStatTab(npMode==='vsctrl'?'Rank Sum vs Control':'Rank Sum All',html);
       } else {
         const res=rankSumTest(getG(g1i),getG(g2i),npComp);
         if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
@@ -3142,8 +3315,7 @@ function runAnalysis(){
       const results=rankProductTest(aRows,bRows,npComp);
       // BH FDR on p values
       const sorted=[...results.map((r,i)=>({...r,row:i}))].sort((a,b)=>a.p-b.p);
-      const nRP=sorted.length;
-      sorted.forEach((r,k)=>{r.p_adj=Math.min(r.p*(nRP/(k+1)),1);});
+      {const adj=adjustP(sorted.map(r=>r.p),'fdr');sorted.forEach((r,k)=>{r.p_adj=adj[k];});}
       sorted.sort((a,b)=>a.rp-b.rp); // sort by rank product
       const topN=Math.min(sorted.length,30);
       const html=`<div class="scard"><h3>Rank Product (${npComp})</h3>
@@ -3154,13 +3326,13 @@ function runAnalysis(){
       addStatTab('Rank Product',html);
 
     } else if(atype==='anova'){
-      const ph=document.getElementById('opt-ph')?.value||'bonferroni';
+      const ph=document.getElementById('opt-ph')?.value||'tukey';
       const ctrl=document.getElementById('opt-ctrl')?.value;
       let groups=G.groups.map((_,i)=>getG(i));
       const names=grpNames();
-      const res=onewayANOVA(groups,ph);
-      if(res.error){addStatTab('ANOVA',`<div class="ebox">${res.error}</div>`);return}
       const ctrlI=ctrl?parseInt(ctrl):-1;
+      const res=onewayANOVA(groups,ph,ctrlI);
+      if(res.error){addStatTab('ANOVA',`<div class="ebox">${res.error}</div>`);return}
       lastStatPairs=res.posthoc.filter(p=>(ctrlI<0||p.i===ctrlI||p.j===ctrlI)).map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
       let html=`<div class="scard"><h3>One-Way ANOVA</h3>
         <div class="rh"><span class="rt">F(${res.dfB},${res.dfW}) = ${fmtF(res.F)}</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${sigStars(res.p)}</span></div>
@@ -3168,9 +3340,9 @@ function runAnalysis(){
         <tr><td>Between</td><td>${fmtF(res.SSB)}</td><td>${res.dfB}</td><td>${fmtF(res.MSB)}</td><td>${fmtF(res.F)}</td><td>${pRow(res.p)}</td></tr>
         <tr><td>Within</td><td>${fmtF(res.SSW)}</td><td>${res.dfW}</td><td>${fmtF(res.MSW)}</td><td></td><td></td></tr>
         </tbody></table>
-        <div class="sdiv"><h4>Post-hoc (${ph})</h4>
-        <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>t</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
-        ${res.posthoc.map(ph=>(ctrlI<0||ph.i===ctrlI||ph.j===ctrlI)?`<tr><td>${names[ph.i]}</td><td>${names[ph.j]}</td><td>${fmtF(ph.t)}</td><td>${pRow(ph.p_raw)}</td><td>${pRow(ph.p_adj)}</td></tr>`:'').join('')}
+        <div class="sdiv"><h4>Post-hoc: ${CORR_SHORT[ph]||ph}, ${ctrlI>=0?'vs '+names[ctrlI]:'all pairs'} (${res.posthoc.length} comparisons)</h4>
+        <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>Mean diff</th><th>${ph==='tukey'?'q':'t'}</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
+        ${res.posthoc.map(ph=>(ctrlI<0||ph.i===ctrlI||ph.j===ctrlI)?`<tr><td>${names[ph.i]}</td><td>${names[ph.j]}</td><td>${fmtF(mean(groups[ph.i])-mean(groups[ph.j]))}</td><td>${fmtF(ph===null?NaN:(res.posthocMethod==='tukey'?ph.q:ph.t))}</td><td>${pRow(ph.p_raw)}</td><td>${pRow(ph.p_adj)}</td></tr>`:'').join('')}
         </tbody></table></div></div>`;
       addStatTab('ANOVA',html);
 
@@ -3179,12 +3351,14 @@ function runAnalysis(){
       const names=grpNames();
       const res=kruskalWallis(groups);
       if(res.error){addStatTab('Kruskal',`<div class="ebox">${res.error}</div>`);return}
+      const kph=document.getElementById('opt-ph')?.value||'holm_sidak';
+      {const adj=adjustP(res.posthoc.map(x=>x.p_raw),kph);res.posthoc.forEach((x,n)=>x.p=adj[n]);}
       lastStatPairs=res.posthoc.map(ph=>({i:ph.a,j:ph.b,stars:sigStars(ph.p)})).filter(p=>p.stars!=='ns');
       let html=`<div class="scard"><h3>Kruskal-Wallis H Test</h3>
         <div class="rh"><span class="rt">H(${res.df}) = ${fmtF(res.H)}</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${sigStars(res.p)}</span></div>
-        <div class="sdiv"><h4>Dunn's Post-hoc (Bonferroni)</h4>
-        <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>z</th><th>p-adj</th></tr></thead><tbody>
-        ${res.posthoc.map(ph=>`<tr><td>${names[ph.a]}</td><td>${names[ph.b]}</td><td>${fmtF(ph.z)}</td><td>${pRow(ph.p)}</td></tr>`).join('')}
+        <div class="sdiv"><h4>Dunn's post-hoc: ${CORR_SHORT[kph]} (${res.posthoc.length} comparisons)</h4>
+        <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>z</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
+        ${res.posthoc.map(ph=>`<tr><td>${names[ph.a]}</td><td>${names[ph.b]}</td><td>${fmtF(ph.z)}</td><td>${pRow(ph.p_raw)}</td><td>${pRow(ph.p)}</td></tr>`).join('')}
         </tbody></table></div></div>`;
       addStatTab('Kruskal',html);
 
@@ -3202,37 +3376,38 @@ function runAnalysis(){
       } else {
         for(let i=0;i<nG-1;i++)for(let j=i+1;j<nG;j++)pairs.push([i,j]);
       }
-      let html=`<div class="scard"><h3>${label} Correlation — ${pairs.length} pair(s)</h3>
-        <table class="rtbl"><thead><tr><th>Pair</th><th>r</th><th>p</th>${atype==='pearson'?'<th>95% CI</th>':''}<th>n</th></tr></thead><tbody>`;
-      pairs.forEach(([i,j])=>{
-        const res=corrFn(getG(i),getG(j));
-        if(res.error){html+=`<tr><td colspan="5">${G.groups[i].name} vs ${G.groups[j].name}: ${res.error}</td></tr>`;return;}
-        html+=`<tr><td>${G.groups[i].name} vs ${G.groups[j].name}</td><td>${fmtF(res.r,4)}</td><td>${pRow(res.p)}</td>${atype==='pearson'?`<td>[${fmtF(res.ci95lo,4)}, ${fmtF(res.ci95hi,4)}]</td>`:''}<td>${res.n}</td></tr>`;
+      const ccorr=pairs.length>1?(document.getElementById('opt-ccorr')?.value||'holm_sidak'):'none';
+      const cRes=pairs.map(([i,j])=>corrFn(getG(i),getG(j)));
+      const cAdj=adjustP(cRes.map(r=>r.error?NaN:r.p),ccorr);
+      let html=`<div class="scard"><h3>${label} Correlation — ${pairs.length} pair(s)${ccorr!=='none'?`, ${CORR_SHORT[ccorr]}`:''}</h3>
+        <table class="rtbl"><thead><tr><th>Pair</th><th>${atype==='pearson'?'r':'ρ'}</th><th>p</th>${ccorr!=='none'?`<th>p adj (${CORR_SHORT[ccorr]})</th>`:''}${atype==='pearson'?'<th>95% CI</th>':''}<th>n</th></tr></thead><tbody>`;
+      pairs.forEach(([i,j],k)=>{
+        const res=cRes[k];
+        if(res.error){html+=`<tr><td colspan="6">${G.groups[i].name} vs ${G.groups[j].name}: ${res.error}</td></tr>`;return;}
+        html+=`<tr><td>${G.groups[i].name} vs ${G.groups[j].name}</td><td>${fmtF(res.r,4)}</td><td>${pRow(res.p)}</td>${ccorr!=='none'?`<td>${pRow(cAdj[k])}</td>`:''}${atype==='pearson'?`<td>[${fmtF(res.ci95lo,4)}, ${fmtF(res.ci95hi,4)}]</td>`:''}<td>${res.n}</td></tr>`;
       });
       html+='</tbody></table></div>';
       addStatTab(label,html);
 
     } else if(atype==='mtc'){
       const pvals=getGroupPooled(0);
-      const method=document.getElementById('opt-mtc-method')?.value||'bonferroni';
-      let adj;
-      if(method==='bonferroni') adj=bonferroni(pvals);
-      else if(method==='holm') adj=holmBonferroni(pvals);
-      else adj=fdrBH(pvals);
+      const method=document.getElementById('opt-mtc-method')?.value||'holm_sidak';
+      const adj=adjustP(pvals,method);
       const names=G.rowNames.slice(0,pvals.length);
-      let html=`<div class="scard"><h3>Multiple Testing Correction (${method})</h3>
+      let html=`<div class="scard"><h3>Multiple Testing Correction (${CORR_LABEL[method]||method}, ${pvals.length} tests)</h3>
         <table class="rtbl"><thead><tr><th>Test</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
         ${pvals.map((p,i)=>`<tr><td>${names[i]||i+1}</td><td>${pRow(p)}</td><td>${pRow(adj[i])}</td></tr>`).join('')}
         </tbody></table></div>`;
       addStatTab('MTC',html);
 
     } else if(atype==='fisher'){
-      const rows=G.groups[0].data.slice(0,2).map(r=>r.slice(0,2).map(Number));
+      const useGroups=G.groups.length>=2;
+      const rows=[0,1].map(r=>useGroups?[0,1].map(c=>Number(G.groups[c].data[r]?.[0])||0):(G.groups[0].data[r]||[]).slice(0,2).map(Number));
       const a=rows[0]?.[0]??0,b=rows[0]?.[1]??0,c=rows[1]?.[0]??0,d=rows[1]?.[1]??0;
       const res=fishersExact(a,b,c,d);
       let html=`<div class="scard"><h3>Fisher's Exact Test</h3>
-        <table class="rtbl" style="margin-bottom:8px"><thead><tr><th></th><th>Col 1</th><th>Col 2</th></tr></thead><tbody>
-        <tr><td>Row 1</td><td>${a}</td><td>${b}</td></tr><tr><td>Row 2</td><td>${c}</td><td>${d}</td></tr></tbody></table>
+        <table class="rtbl" style="margin-bottom:8px"><thead><tr><th></th><th>${useGroups?G.groups[0].name:'Col 1'}</th><th>${useGroups?G.groups[1].name:'Col 2'}</th></tr></thead><tbody>
+        <tr><td>${G.rowNames[0]||'Row 1'}</td><td>${a}</td><td>${b}</td></tr><tr><td>${G.rowNames[1]||'Row 2'}</td><td>${c}</td><td>${d}</td></tr></tbody></table>
         <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
         <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
         <tr><td>Odds Ratio</td><td>${fmtF(res.or)}</td></tr>
@@ -3330,11 +3505,7 @@ function runAnalysis(){
         <table class="rtbl"><thead><tr><th>Group</th><th>Mean</th><th>SD</th></tr></thead><tbody>
         ${G.groups.map((g,i)=>{const v=getG(i);const d=describeGroup(v);return d?`<tr><td>${g.name}</td><td>${fmtF(d.mean)}</td><td>${fmtF(d.sd)}</td></tr>`:''}).join('')}
         </tbody></table></div>`;
-      const hmStId=addStatTab('Heatmap',html);
-      if(document.getElementById('opt-autoplot')?.checked!==false){
-        plotHeatmapCustom('Heatmap');
-        if(lastPlotTabId&&hmStId)linkTabs(hmStId,lastPlotTabId);
-      }
+      addStatTab('Heatmap',html);
 
     } else if(atype==='anova2'){
       const nA=parseInt(document.getElementById('opt-nA')?.value||2);
@@ -3385,6 +3556,8 @@ function runAnalysis(){
       // Store regression data for plots
       window._lastRegress={xs,ys,res,residuals,r2,xName:G.groups[xi]?.name||'X',yName:G.groups[yi]?.name||'Y'};
       addStatTab('Regression',html);
+      {const st=statTabs.find(t=>t.id===lastStatTabId);if(st)st.regress=window._lastRegress;}
+      if(_suppressAutoPlot){_suppressAutoPlot=false;return;}
       // Auto-generate fit plot + residuals plot after stat tab created
       const rStatId=lastStatTabId;
       setTimeout(()=>{
@@ -3402,17 +3575,28 @@ function runAnalysis(){
   } catch(e){
     addStatTab('Error',`<div class="ebox">Error: ${e.message}</div>`);
   }
+  {const st=statTabs.find(t=>t.id===lastStatTabId);if(st&&st.ds===activeDS){st.sigPairs=lastStatPairs?JSON.parse(JSON.stringify(lastStatPairs)):null;st.rowPairs=lastStatRowPairs?JSON.parse(JSON.stringify(lastStatRowPairs)):null;}}
+  if(_suppressAutoPlot){_suppressAutoPlot=false;return;}
   // Auto-plot: if the checkbox is ticked and this test has a natural plot, run it
   const autoPlotType=AUTO_PLOT_FOR_TYPE[atype];
+  const gby=_autoPlotGroupBy;_autoPlotGroupBy=null;
   if(autoPlotType&&document.getElementById('opt-autoplot')?.checked){
     const psel=document.getElementById('psel');
     if(psel){psel.value=autoPlotType;renderPlotOpts(autoPlotType);}
+    const fc=document.getElementById('opt-fc')?.value,pt=document.getElementById('opt-pt')?.value;
     const statIdToLink=lastStatTabId;
+    // Runs after the stat tab's own option-restore (50 ms), so these settings win
     setTimeout(()=>{
+      if(psel&&psel.value!==autoPlotType){psel.value=autoPlotType;renderPlotOpts(autoPlotType);}
+      {const g=document.getElementById('popt-groupby');if(g)g.value=gby||'group';}
+      if(atype==='mtc'){const m=document.getElementById('popt-mtcm'),am=document.getElementById('opt-mtc-method');if(m&&am)m.value=am.value;}
+      if(atype==='volcano'){ // carry the test's thresholds over to the plot
+        const pf=document.getElementById('popt-fc'),pp=document.getElementById('popt-pt');if(pf&&fc)pf.value=fc;if(pp&&pt)pp.value=pt;
+      }
       runPlot();
       // Link stat tab to the auto-generated plot tab
       if(lastPlotTabId&&statIdToLink) linkTabs(statIdToLink,lastPlotTabId);
-    },50);
+    },80);
   }
 }
 
@@ -3471,25 +3655,42 @@ function loadProject(event){
 // ═══════════════════════════════════════════════════════════
 // EXAMPLE DATA + INIT
 // ═══════════════════════════════════════════════════════════
-function loadExample(){
-  G.nReps=3;G.nRows=6;
-  G.rowNames=['Sample 1','Sample 2','Sample 3','Sample 4','Sample 5','Sample 6'];
-  G.groups=[
-    {name:'Control',reps:['Rep1','Rep2','Rep3'],data:[[2.1,2.3,1.9],[3.2,2.8,3.1],[1.8,2.0,2.2],[4.1,3.9,4.3],[2.5,2.7,2.3],[3.8,3.6,4.0]]},
-    {name:'Treatment A',reps:['Rep1','Rep2','Rep3'],data:[[4.5,4.8,4.2],[5.1,5.4,4.9],[3.9,4.1,4.3],[6.2,5.8,6.1],[4.7,5.0,4.6],[5.5,5.3,5.8]]},
-    {name:'Treatment B',reps:['Rep1','Rep2','Rep3'],data:[[3.0,3.2,2.8],[4.1,3.8,4.0],[2.7,2.9,3.1],[5.0,4.7,5.2],[3.5,3.8,3.3],[4.4,4.2,4.6]]}
-  ];
-  document.getElementById('n-reps').value=3;
-  document.getElementById('n-grps').value=3;
+const EXAMPLES={"groups": {"nReps": 3, "nRows": 6, "rowNames": ["Sample 1", "Sample 2", "Sample 3", "Sample 4", "Sample 5", "Sample 6"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[2.1, 2.3, 1.9], [3.2, 2.8, 3.1], [1.8, 2.0, 2.2], [4.1, 3.9, 4.3], [2.5, 2.7, 2.3], [3.8, 3.6, 4.0]]}, {"name": "Treatment A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[4.5, 4.8, 4.2], [5.1, 5.4, 4.9], [3.9, 4.1, 4.3], [6.2, 5.8, 6.1], [4.7, 5.0, 4.6], [5.5, 5.3, 5.8]]}, {"name": "Treatment B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[3.0, 3.2, 2.8], [4.1, 3.8, 4.0], [2.7, 2.9, 3.1], [5.0, 4.7, 5.2], [3.5, 3.8, 3.3], [4.4, 4.2, 4.6]]}], "note": "3 groups × 3 replicates × 6 samples"}, "paired": {"nReps": 1, "nRows": 10, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10"], "groups": [{"name": "Before", "reps": ["Value"], "data": [[46.9], [56.1], [47.3], [46.2], [38.8], [47.4], [63.3], [55.1], [62.4], [53.0]]}, {"name": "After", "reps": ["Value"], "data": [[54.1], [62.7], [48.3], [54.8], [46.4], [54.9], [64.3], [55.9], [65.8], [57.6]]}], "note": "Paired: each row is one animal measured before and after treatment"}, "normality": {"nReps": 1, "nRows": 30, "rowNames": ["Obs 1", "Obs 2", "Obs 3", "Obs 4", "Obs 5", "Obs 6", "Obs 7", "Obs 8", "Obs 9", "Obs 10", "Obs 11", "Obs 12", "Obs 13", "Obs 14", "Obs 15", "Obs 16", "Obs 17", "Obs 18", "Obs 19", "Obs 20", "Obs 21", "Obs 22", "Obs 23", "Obs 24", "Obs 25", "Obs 26", "Obs 27", "Obs 28", "Obs 29", "Obs 30"], "groups": [{"name": "Normal-like", "reps": ["Value"], "data": [[10.61], [9.91], [11.04], [8.72], [10.62], [10.79], [8.68], [13.44], [11.11], [12.39], [8.76], [8.52], [9.31], [9.79], [11.26], [10.5], [9.11], [8.09], [8.96], [12.44], [8.38], [10.49], [10.85], [7.02], [10.1], [12.61], [5.97], [9.36], [9.79], [8.37]]}, {"name": "Right-skewed", "reps": ["Value"], "data": [[2.99], [1.98], [9.43], [8.65], [7.99], [5.35], [4.09], [7.69], [2.96], [1.54], [2.85], [2.48], [1.62], [1.8], [7.46], [2.84], [1.04], [2.7], [2.41], [5.18], [1.61], [3.12], [4.71], [5.61], [3.61], [1.22], [2.95], [3.66], [2.11], [5.26]]}], "note": "One roughly normal and one skewed sample (n = 30 each)"}, "anova2": {"nReps": 3, "nRows": 2, "rowNames": ["Litter 1", "Litter 2"], "groups": [{"name": "WT · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[20.0, 22.3, 19.2], [21.0, 24.6, 13.6]]}, {"name": "WT · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[29.2, 32.6, 33.0], [32.6, 30.9, 33.6]]}, {"name": "KO · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[21.7, 19.7, 27.1], [21.9, 19.6, 20.8]]}, {"name": "KO · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[22.4, 22.8, 16.2], [21.8, 25.5, 20.1]]}], "note": "2 × 2 design: genotype (WT, KO) × treatment (Vehicle, Drug), 6 animals per cell; nA = 2, nB = 2"}, "genes": {"nReps": 3, "nRows": 16, "rowNames": ["MYC", "FOS", "JUN", "EGR1", "IL6", "CXCL8", "TNF", "CCL2", "HMOX1", "NQO1", "GAPDH", "ACTB", "CDK1", "CCNB1", "MKI67", "TOP2A"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[7.27, 7.35, 7.5], [7.87, 7.81, 8.22], [7.1, 6.76, 7.52], [9.57, 10.09, 9.79], [8.7, 8.84, 8.72], [10.05, 9.51, 9.52], [7.8, 7.41, 7.39], [6.75, 7.43, 7.3], [10.43, 9.82, 10.06], [10.64, 11.12, 11.32], [10.04, 10.65, 10.51], [9.99, 9.54, 10.38], [10.07, 9.94, 10.19], [9.8, 10.07, 9.44], [7.42, 7.51, 7.5], [8.54, 8.4, 8.84]]}, {"name": "Drug 6 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.83, 8.84, 9.16], [10.27, 9.76, 10.24], [8.37, 9.04, 8.91], [12.51, 12.66, 12.87], [9.48, 9.79, 9.45], [11.16, 11.27, 11.3], [8.08, 8.47, 7.78], [7.54, 7.32, 8.08], [10.95, 11.25, 11.21], [11.82, 11.68, 11.88], [10.71, 10.27, 10.4], [10.38, 10.08, 9.82], [9.45, 9.86, 9.18], [9.15, 9.55, 9.5], [6.54, 6.74, 6.58], [7.79, 7.7, 7.93]]}, {"name": "Drug 24 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.04, 7.66, 7.58], [7.94, 7.75, 8.1], [7.14, 7.53, 6.85], [10.14, 9.9, 9.57], [11.44, 11.19, 10.71], [12.68, 12.97, 12.78], [10.04, 10.04, 10.01], [9.6, 9.85, 9.68], [11.97, 11.34, 12.08], [12.85, 12.45, 12.41], [10.75, 9.82, 10.38], [10.64, 9.8, 10.2], [8.56, 8.06, 8.23], [8.13, 7.67, 7.88], [5.01, 5.14, 4.93], [6.64, 6.43, 6.6]]}], "note": "16 genes (log2 expression) × 3 conditions × 3 replicates"}, "timecourse": {"nReps": 3, "nRows": 6, "rowNames": ["0 h", "2 h", "4 h", "8 h", "12 h", "24 h"], "groups": [{"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.07, 1.01, 0.93], [0.93, 1.21, 1.09], [1.05, 0.79, 1.05], [1.04, 1.13, 1.03], [0.99, 1.04, 0.84], [1.08, 1.03, 0.94]]}, {"name": "Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.27, 1.36, 0.72], [1.67, 1.86, 1.84], [2.82, 2.71, 3.32], [3.81, 3.36, 3.33], [3.44, 3.3, 3.46], [2.16, 1.83, 2.05]]}], "note": "Time course: rows = time points, 3 replicates (fold change vs 0 h)"}, "xy": {"nReps": 1, "nRows": 15, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15"], "groups": [{"name": "Body weight (g)", "reps": ["Value"], "data": [[18.7], [19.5], [19.8], [20.3], [20.8], [21.3], [21.8], [22.1], [22.3], [22.4], [25.0], [25.4], [25.7], [28.6], [31.0]]}, {"name": "Liver weight (g)", "reps": ["Value"], "data": [[0.98], [1.08], [1.08], [1.02], [1.24], [1.09], [1.01], [1.08], [0.84], [1.16], [1.42], [1.41], [1.16], [1.49], [1.61]]}], "note": "Two measurements on 15 mice: Col 1 = X, Col 2 = Y"}, "dose": {"nReps": 1, "nRows": 11, "rowNames": ["Dose 1", "Dose 2", "Dose 3", "Dose 4", "Dose 5", "Dose 6", "Dose 7", "Dose 8", "Dose 9", "Dose 10", "Dose 11"], "groups": [{"name": "Concentration (µM)", "reps": ["Value"], "data": [[0.001], [0.003], [0.01], [0.03], [0.1], [0.3], [1], [3], [10], [30], [100]]}, {"name": "Response (%)", "reps": ["Value"], "data": [[2.9], [1.3], [5.3], [9.1], [11.8], [28.8], [54.3], [80.5], [91.8], [96.3], [98.4]]}], "note": "Dose–response: Col 1 = concentration, Col 2 = % response (EC50 ≈ 0.8 µM)"}, "km": {"nReps": 1, "nRows": 20, "rowNames": ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5", "Subject 6", "Subject 7", "Subject 8", "Subject 9", "Subject 10", "Subject 11", "Subject 12", "Subject 13", "Subject 14", "Subject 15", "Subject 16", "Subject 17", "Subject 18", "Subject 19", "Subject 20"], "groups": [{"name": "Time (days)", "reps": ["Value"], "data": [[4.2], [40.5], [5.3], [55.2], [33.3], [8.3], [18.5], [17.7], [60.0], [23.8], [60.0], [13.2], [14.4], [21.0], [21.1], [9.2], [15.3], [0.7], [8.0], [22.6]]}, {"name": "Event (1 = death, 0 = censored)", "reps": ["Value"], "data": [[0], [1], [0], [1], [1], [1], [0], [1], [0], [0], [0], [0], [1], [0], [0], [0], [0], [1], [1], [1]]}], "note": "Survival: Col 1 = time, Col 2 = event (1) or censored (0)"}, "volcano": {"nReps": 1, "nRows": 40, "rowNames": ["Gene1", "Gene2", "Gene3", "Gene4", "Gene5", "Gene6", "Gene7", "Gene8", "Gene9", "Gene10", "Gene11", "Gene12", "Gene13", "Gene14", "Gene15", "Gene16", "Gene17", "Gene18", "Gene19", "Gene20", "Gene21", "Gene22", "Gene23", "Gene24", "Gene25", "Gene26", "Gene27", "Gene28", "Gene29", "Gene30", "Gene31", "Gene32", "Gene33", "Gene34", "Gene35", "Gene36", "Gene37", "Gene38", "Gene39", "Gene40"], "groups": [{"name": "log2 fold change", "reps": ["Value"], "data": [[2.55], [2.97], [1.92], [1.58], [2.52], [2.89], [-2.2], [-2.5], [-2.04], [-2.54], [-2.52], [0.63], [0.31], [-0.75], [-0.22], [0.54], [-0.44], [-0.45], [0.8], [0.02], [-0.64], [-0.14], [-0.0], [0.18], [0.21], [0.71], [-0.38], [0.35], [-0.48], [-0.43], [-0.02], [0.74], [0.16], [0.01], [-0.24], [-0.63], [-0.49], [0.11], [0.39], [1.18]]}, {"name": "p-value", "reps": ["Value"], "data": [[0.000526], [3.02e-05], [0.00552], [0.000565], [1.47e-06], [0.00245], [0.00113], [2.46e-05], [0.000258], [0.00179], [0.000432], [0.0051], [0.000376], [0.000215], [0.000183], [0.00249], [0.384], [0.217], [0.471], [0.226], [0.0611], [0.455], [0.111], [0.445], [0.93], [0.22], [0.388], [0.498], [0.0632], [0.0779], [0.125], [0.274], [0.112], [0.375], [0.12], [0.235], [0.0715], [0.727], [0.826], [0.0528]]}], "note": "40 genes: Col 1 = log2 fold change, Col 2 = p-value"}, "mtc": {"nReps": 1, "nRows": 12, "rowNames": ["Test A", "Test B", "Test C", "Test D", "Test E", "Test F", "Test G", "Test H", "Test I", "Test J", "Test K", "Test L"], "groups": [{"name": "p-value", "reps": ["Value"], "data": [[0.0004], [0.0021], [0.0089], [0.012], [0.019], [0.031], [0.044], [0.06], [0.17], [0.29], [0.48], [0.83]]}], "note": "12 p-values from separate tests (row names = test labels)"}, "fisher": {"nReps": 1, "nRows": 2, "rowNames": ["Responded", "Did not respond"], "groups": [{"name": "Treated", "reps": ["Value"], "data": [[12], [5]]}, {"name": "Untreated", "reps": ["Value"], "data": [[3], [10]]}], "note": "2 × 2 counts: columns = groups, rows = outcome"}, "chisq": {"nReps": 1, "nRows": 3, "rowNames": ["No symptoms", "Mild", "Severe"], "groups": [{"name": "Genotype AA", "reps": ["Value"], "data": [[42], [11], [3]]}, {"name": "Genotype Aa", "reps": ["Value"], "data": [[30], [18], [8]]}, {"name": "Genotype aa", "reps": ["Value"], "data": [[12], [17], [14]]}], "note": "Counts: columns = genotype, rows = severity"}};
+
+// Which example suits each plot type / test
+const EXAMPLE_FOR_PLOT={bar_sd:'groups',boxplot:'groups',violin:'groups',scatter:'xy',line:'timecourse',heatmap:'genes',volcano:'volcano',pca:'genes',km:'km',dose:'dose',qq:'normality',histogram:'normality',mtc:'mtc'};
+const EXAMPLE_FOR_TEST={desc:'groups',norm:'normality',ttest_ind:'groups',ttest_rel:'paired',anova:'groups',anova2:'anova2',mw:'groups',wilcoxon:'paired',kruskal:'groups',ranksum:'paired',rankprod:'genes',pearson:'xy',spearman:'xy',regress:'xy',pca:'genes',heatmap:'genes',fisher:'fisher',chisq:'chisq',mtc:'mtc',km:'km',dose:'dose',volcano:'volcano'};
+function applyG(newG){
+  pushUndo();
+  G=JSON.parse(JSON.stringify(newG));delete G.note;
+  document.getElementById('n-reps').value=G.nReps;
+  document.getElementById('n-grps').value=G.groups.length;
   renderGrid();
+  // option menus list group names, so rebuild them (keeping the chosen test / plot)
+  onTypeChange();onPlotTypeChange();
+}
+function loadExampleKey(key){
+  const ex=EXAMPLES[key];if(!ex)return;
+  applyG(ex);
+  showDataNote(ex.note?`Example loaded: ${ex.note}`:'Example loaded');
+}
+function loadExampleFor(kind){
+  const key=kind==='plot'?EXAMPLE_FOR_PLOT[document.getElementById('psel').value]:EXAMPLE_FOR_TEST[document.getElementById('asel').value];
+  loadExampleKey(key||'groups');
+}
+function loadExample(){loadExampleKey('groups');}
+function showDataNote(msg){
+  const el=document.getElementById('data-note');if(!el)return;
+  el.textContent=msg;el.style.display='block';
+  clearTimeout(showDataNote._t);showDataNote._t=setTimeout(()=>{el.style.display='none';},6000);
 }
 
-function clearData(){
-  G.nRows=6;G.nReps=3;
-  G.rowNames=Array.from({length:6},(_,i)=>`Row ${i+1}`);
-  G.groups=G.groups.map(g=>({...g,data:Array.from({length:6},()=>Array(G.nReps).fill(''))}));
-  renderGrid();
+function defaultG(){
+  const nG=2,nR=3,nRows=6;
+  return{nReps:nR,nRows,rowNames:Array.from({length:nRows},(_,i)=>`Row ${i+1}`),
+    groups:Array.from({length:nG},(_,g)=>({name:`Group${g+1}`,reps:Array.from({length:nR},(_,k)=>`Rep${k+1}`),data:Array.from({length:nRows},()=>Array(nR).fill(''))}))};
 }
+function clearData(){applyG(defaultG());showDataNote('Cleared: back to an empty 2-group table (undo with Ctrl/Cmd+Z)');}
 
 function onCSV(event){
   const file=event.target.files[0];if(!file)return;
@@ -3558,16 +3759,16 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (pure JavaScript, no Python, no server) and never uploads your data anywhere.</p>
-<p>TP is a <strong>beta (v0.6.0)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
-<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.6.0.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<p>TP is a <strong>beta (v0.7.0)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.7.0.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
 <ol>
-<li><strong>Open TP</strong> and click <strong>📋 Example</strong> once to see how data is laid out. Click <strong>🗑 Clear</strong> when you are ready for your own data.</li>
+<li><strong>Open TP</strong>, pick a test or plot, and click the <strong>📋 Example</strong> button beside its menu to load data laid out for it. Click <strong>🗑 Clear</strong> when you are ready for your own data (it resets to an empty 2-group table).</li>
 <li><strong>Set the shape of your table.</strong> In the Data panel, set <strong>Reps/group</strong> (replicates per group) and <strong>Groups</strong> (conditions). Use <strong>+Row / −Row</strong> for samples.</li>
 <li><strong>Enter data.</strong> Paste a block straight from Excel or Google Sheets with Ctrl/Cmd+V, or click <strong>⬆ CSV</strong> to import a file. Double-click a group header or row name to rename it.</li>
-<li><strong>Pick a test</strong> under <strong>Statistical Test</strong>, for example <em>One-Way ANOVA</em> or <em>Unpaired t-test (Welch)</em>. Read the grey hint under the menu: it tells you how that test expects the columns.</li>
-<li><strong>Click ▶ Run Analysis.</strong> Results appear in a new tab on the right. With <em>Auto-plot after run</em> ticked, a matching plot opens too.</li>
+<li><strong>Pick a test</strong> under <strong>Statistical Test</strong>, for example <em>One-Way ANOVA</em> or <em>Unpaired t-test (Welch)</em>. Read the blue box under the menu: it says what the test does, how it expects the columns, and which similar test to use instead. Each option also shows a one-line explanation.</li>
+<li><strong>Click ▶ Run Analysis.</strong> Results appear in a new tab on the right, headed by the options and data used. With <em>Auto-plot after run</em> ticked, a linked plot opens too; 🔗 jumps between them, and re-creates either one if you closed it.</li>
 <li><strong>Pick a plot</strong> under <strong>Visualisation</strong>, for example <em>Bar + SD + Dots</em>, set its options (normalisation, dots shown, Y-axis label) and click <strong>📈 Plot</strong>.</li>
 <li><strong>Check the figure.</strong> Significance brackets (*, **, ***, ****) from your last test are drawn automatically on bar charts.</li>
 <li><strong>Choose an export style</strong> in the header: <strong>App</strong> (what you see on screen) or <strong>Publication (Prism-like)</strong> (white background, black axes, bold Arial, greyscale, about 300 dpi).</li>
@@ -3587,7 +3788,7 @@ window.addEventListener('load',checkLibs);
 <tbody>
 <tr>
 <td>Header</td>
-<td>Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 📋 Example, 🗑 Clear, 🌙/☀️ theme toggle, Export style menu, ❓ Help</td>
+<td>Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu</td>
 </tr>
 <tr>
 <td>Left panel, top</td>
@@ -3595,21 +3796,21 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Left panel, Visualisation</td>
-<td>Plot type, plot options, 📈 Plot</td>
+<td>Plot type, 📋 Example (data suited to that plot), plot options, 📈 Plot</td>
 </tr>
 <tr>
 <td>Left panel, Statistical Test</td>
-<td>Test type, test options, ▶ Run Analysis</td>
+<td>Test type, 📋 Example (data suited to that test), description, test options, ▶ Run Analysis</td>
 </tr>
 <tr>
 <td>Right panel</td>
-<td>One tab per result or plot; × closes a tab, 🔗 jumps between a test and its linked plot</td>
+<td>One tab per result or plot; × closes a tab, 🔗 jumps between a test and its linked plot (and re-creates it if closed)</td>
 </tr>
 </tbody>
 </table>
 <h3>2. How data is organised</h3>
 <p>Every dataset is one table: <strong>groups</strong> (conditions, such as Control or Treatment A) across the top, each split into <strong>replicates</strong> (Rep1, Rep2…), and <strong>rows</strong> (samples, genes, time points) down the side.</p>
-<p>Most tests pool all values in a group's columns. Some tests read columns positionally instead (Col 1 = X, Col 2 = Y); the grey hint under each test says which. The layouts for those tests are:</p>
+<p>Most tests pool all values in a group's columns. Some tests read columns positionally instead (Col 1 = X, Col 2 = Y); the blue box under each test says which. The layouts for those tests are:</p>
 <table>
 <thead>
 <tr>
@@ -3640,7 +3841,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Fisher's Exact</td>
-<td>2×2 table: 2 columns × 2 rows of counts</td>
+<td>2×2 counts: 2 groups (columns) × 2 rows, one value per cell</td>
 </tr>
 <tr>
 <td>Chi-Square</td>
@@ -3665,7 +3866,9 @@ window.addEventListener('load',checkLibs);
 <li><strong>Rename</strong> a group, row or dataset by double-clicking its name; Enter confirms, Esc cancels.</li>
 <li><strong>Undo / Redo</strong> with the ↩/↪ buttons or Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Ctrl/Cmd+Z).</li>
 <li><strong>Import CSV</strong> with ⬆ CSV. A first row of text becomes group names; a first column of text becomes row names. Each column becomes a group with one replicate.</li>
-<li><strong>Multiple datasets:</strong> click <strong>+</strong> beside the dataset tabs to add another table; each keeps its own data.</li>
+<li><strong>Multiple datasets:</strong> click <strong>+</strong> beside the dataset tabs to add another table; it starts empty (Group1, Group2) and keeps its own data.</li>
+<li><strong>Clear</strong> resets the current table to the empty default (2 groups × 3 replicates × 6 rows, names reset). Undo with Ctrl/Cmd+Z.</li>
+<li><strong>📋 Example</strong> (beside the Visualisation and Statistical Test menus) loads a dataset suited to the chosen plot or test, for example survival times for Kaplan–Meier, a concentration series for dose–response, paired before/after values for the paired tests, or a gene × condition matrix for PCA and heatmaps. A note under the table says what was loaded; undo with Ctrl/Cmd+Z.</li>
 </ul>
 <h3>4. Visualisation</h3>
 <p>Choose a plot type, set its options, then click <strong>📈 Plot</strong>. Each plot opens in its own tab, and you can keep as many open as you like.</p>
@@ -3720,12 +3923,12 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Kaplan-Meier</td>
-<td>Survival curves</td>
+<td>Survival curve (censored subjects shown as tick marks)</td>
 <td>Time column; event column (1 = event, 0 = censored)</td>
 </tr>
 <tr>
 <td>Dose-Response (5PL)</td>
-<td>IC50/EC50 curves</td>
+<td>IC50/EC50 curves (log concentration axis)</td>
 <td>Concentration column; response column</td>
 </tr>
 <tr>
@@ -3740,15 +3943,15 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Multiple Testing</td>
-<td>Raw vs adjusted p-values</td>
-<td>p-values column</td>
+<td>Raw vs adjusted p-values with a p = 0.05 line</td>
+<td>p-values column; correction shown</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Normalisation</strong> options for group plots are None, log2, log10, Z-score and Min-Max.</p>
-<p><strong>Significance brackets.</strong> After you run a test that compares pairs (t-test, ANOVA with post-hoc, Mann-Whitney and similar), the next Bar + SD + Dots plot by group shows brackets with stars: * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001, **** p &lt; 0.0001. Non-significant pairs get no bracket.</p>
 <h3>5. Statistical tests</h3>
-<p>Choose a test, set its options, then click <strong>▶ Run Analysis</strong>. Results open in a new tab with the statistic, p-value (shown as &lt;0.0001 when very small), stars and any post-hoc table. Tick <strong>Auto-plot after run</strong> to open a matching plot at the same time.</p>
+<p>Choose a test, set its options, then click <strong>▶ Run Analysis</strong>. The blue box under the test menu says what the test does, how it reads the columns and which similar test to consider; each option shows a one-line explanation of the current choice. Every result tab starts with a grey header listing the test, all options used, the dataset and its size, and the time of the run.</p>
+<p>Tick <strong>Auto-plot after run</strong> to open a linked plot. The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).</p>
 <table>
 <thead>
 <tr>
@@ -3771,17 +3974,17 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Parametric</td>
 <td>Unpaired t-test (Welch)</td>
-<td>Normalisation; control group; Run per row with Bonferroni, Holm-Bonferroni or FDR (BH) correction</td>
+<td>Normalisation; control group; correction when 3+ groups (default Holm–Šídák); Run per row with its own correction (default FDR)</td>
 </tr>
 <tr>
 <td>Parametric</td>
 <td>Paired t-test</td>
-<td>As above, plus Comparison: Delta (A−B) or Ratio (A/B)</td>
+<td>As above, plus Comparison: Difference (A−B) or Ratio (A/B)</td>
 </tr>
 <tr>
 <td>Parametric</td>
 <td>One-Way ANOVA</td>
-<td>Post-hoc: Bonferroni, Holm, FDR (BH), Tukey (approximate), None; normalisation; all pairs or vs a control group</td>
+<td>Comparisons: all pairs or vs a control; post-hoc: Tukey HSD (default), Holm–Šídák, Holm, Bonferroni, FDR, none</td>
 </tr>
 <tr>
 <td>Parametric</td>
@@ -3791,37 +3994,37 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Non-parametric</td>
 <td>Mann-Whitney U</td>
-<td>Single pair, All pairs (with FDR), or vs Control</td>
+<td>Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák)</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
 <td>Wilcoxon Signed-Rank</td>
-<td>Mode as above; Delta or Ratio</td>
+<td>Mode and correction as above; Difference or Ratio</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
 <td>Kruskal-Wallis H</td>
-<td>Post-hoc: Bonferroni or None</td>
+<td>Dunn's post-hoc with a choice of correction (default Holm–Šídák)</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
 <td>Rank Sum (paired)</td>
-<td>Mode; Delta or Ratio</td>
+<td>Mode and correction as above; Difference or Ratio</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
 <td>Rank Product</td>
-<td>Rows consistently up or down across replicates (Breitling 2004)</td>
+<td>Group A vs Group B per row; FDR across rows</td>
 </tr>
 <tr>
 <td>Correlation / XY</td>
 <td>Pearson, Spearman</td>
-<td>All pairs or vs Control</td>
+<td>All pairs or vs Control; correction when there are several pairs</td>
 </tr>
 <tr>
 <td>Correlation / XY</td>
 <td>Regression / Curve Fitting</td>
-<td>X and Y columns; Linear, Polynomial (degree 2–4), Logarithmic, Exponential, Power, 4-Parameter Logistic; fit and residual plots made automatically</td>
+<td>X and Y columns; Linear, Polynomial (degree 2–4), Logarithmic, Exponential, Power, 4PL, 5PL; fit and residual plots made automatically</td>
 </tr>
 <tr>
 <td>Multivariate</td>
@@ -3836,11 +4039,11 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Categorical</td>
 <td>Multiple Testing Correction</td>
-<td>Bonferroni, Holm-Bonferroni, FDR (BH)</td>
+<td>Holm–Šídák, Holm, Bonferroni, FDR (BH)</td>
 </tr>
 <tr>
 <td>Survival / XY</td>
-<td>Kaplan-Meier + Log-Rank</td>
+<td>Kaplan-Meier</td>
 <td>Time and event columns</td>
 </tr>
 <tr>
@@ -3855,8 +4058,111 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p><strong>Choosing a test.</strong> For two groups use the Welch t-test (unpaired) or paired t-test; for three or more, One-Way ANOVA with a post-hoc correction. If the data are clearly not normal (check with Shapiro-Wilk or a Q-Q plot), use the non-parametric equivalent: Mann-Whitney, Wilcoxon or Kruskal-Wallis.</p>
-<p><strong>Linking.</strong> A result tab and the plot it produced are linked; the 🔗 button on either one jumps to the other.</p>
+<p><strong>Choosing between similar tests</strong></p>
+<table>
+<thead>
+<tr>
+<th>If you are deciding between…</th>
+<th>Use the first when…</th>
+<th>Use the second when…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unpaired vs paired t-test</td>
+<td>Groups are independent (different animals or samples)</td>
+<td>Values are matched (same subject measured twice, or matched by row)</td>
+</tr>
+<tr>
+<td>t-test vs Mann–Whitney / Wilcoxon</td>
+<td>Data are roughly normal; you want to compare means</td>
+<td>Data are skewed or have outliers; you compare ranks (medians/distributions)</td>
+</tr>
+<tr>
+<td>Mann–Whitney vs Wilcoxon signed-rank</td>
+<td>Groups are independent</td>
+<td>Values are paired</td>
+</tr>
+<tr>
+<td>Wilcoxon signed-rank vs Rank Sum (paired)</td>
+<td>You test the paired difference</td>
+<td>You want to test ratios (fold changes) as well as differences</td>
+</tr>
+<tr>
+<td>One-way ANOVA vs Kruskal–Wallis</td>
+<td>3+ groups, roughly normal, similar spread</td>
+<td>3+ groups, skewed data or outliers</td>
+</tr>
+<tr>
+<td>One-way vs two-way ANOVA</td>
+<td>One factor (e.g. treatment)</td>
+<td>Two factors (e.g. genotype × treatment) and their interaction</td>
+</tr>
+<tr>
+<td>Pearson vs Spearman</td>
+<td>The relationship is a straight line and data are roughly normal</td>
+<td>The relationship is monotonic but curved, or there are outliers or ranks</td>
+</tr>
+<tr>
+<td>Correlation vs regression</td>
+<td>You only need the strength of association</td>
+<td>You want an equation, parameters or predictions</td>
+</tr>
+<tr>
+<td>Fisher's exact vs Chi-square</td>
+<td>2×2 table with small counts</td>
+<td>Larger tables, all expected counts ≥ 5</td>
+</tr>
+<tr>
+<td>4PL vs 5PL dose–response</td>
+<td>The curve is symmetric</td>
+<td>The curve is asymmetric (needs more points)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Multiple-comparison corrections</strong></p>
+<table>
+<thead>
+<tr>
+<th>Correction</th>
+<th>Controls</th>
+<th>When to use it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tukey HSD</td>
+<td>Family-wise error, all pairs</td>
+<td>After one-way ANOVA when you compare every pair of means (exact studentised range; Tukey–Kramer for unequal n)</td>
+</tr>
+<tr>
+<td>Holm–Šídák</td>
+<td>Family-wise error</td>
+<td>Default for a few planned comparisons (control vs groups, all pairs after Kruskal–Wallis). Slightly more power than Holm; assumes tests are independent or positively correlated. Prism's default</td>
+</tr>
+<tr>
+<td>Holm–Bonferroni</td>
+<td>Family-wise error</td>
+<td>Same goal as Holm–Šídák with no assumption about how tests relate</td>
+</tr>
+<tr>
+<td>Bonferroni</td>
+<td>Family-wise error</td>
+<td>Simplest and most conservative; fine for a handful of comparisons</td>
+</tr>
+<tr>
+<td>Benjamini–Hochberg (FDR)</td>
+<td>False discovery rate</td>
+<td>Many tests (per-row, genes, screens): more power, accepts a small fraction of false positives. Default for per-row t-tests</td>
+</tr>
+<tr>
+<td>None</td>
+<td>Nothing</td>
+<td>Single planned comparison, or exploratory use only</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Significance brackets.</strong> After you run a test that compares pairs, the linked Bar + SD + Dots plot shows brackets with stars using the corrected p-values: * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001, **** p &lt; 0.0001. Non-significant pairs get no bracket. A <strong>per-row</strong> t-test instead opens Bar + SD + Dots <em>By sample</em>, with brackets inside each sample.</p>
 <h3>6. Exporting figures</h3>
 <p>The <strong>Export</strong> menu in the header sets the style for every download button.</p>
 <table>
@@ -3924,18 +4230,19 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>No significance brackets</td>
-<td>Run a pairwise test first, then plot Bar + SD + Dots grouped by group; only p &lt; 0.05 gets a bracket.</td>
+<td>Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p &lt; 0.05 gets a bracket.</td>
 </tr>
 <tr>
 <td>Test gives an error or NaN</td>
-<td>Check the column layout in section 2 and that cells hold numbers, not text.</td>
+<td>Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout.</td>
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.6.0 (beta):</p>
+<p>Known limitations of v0.7.0 (beta):</p>
 <ul>
-<li>Tukey post-hoc is an approximation, not the exact studentised-range test.</li>
-<li>Two-Way ANOVA supports balanced designs only.</li>
+<li>Dunnett's test (control vs groups after ANOVA) is not available yet; use "vs control" with Holm–Šídák.</li>
+<li>Kaplan–Meier handles one group; there is no log-rank comparison between groups yet.</li>
+<li>Two-Way ANOVA supports balanced designs only and has no post-hoc tests yet.</li>
 <li>SVG export is an embedded image, not editable vectors.</li>
 <li>Publication style is greyscale only; there are no colour publication palettes yet.</li>
 <li>Project files store only the active dataset, and plots only as snapshot images.</li>
@@ -3951,6 +4258,21 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.7.0 (5 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Holm–Šídák correction added everywhere multiple comparisons are corrected, with a correction choice for t-tests vs control, Kruskal–Wallis (Dunn's), non-parametric multi-pair modes, correlations and Multiple Testing; ANOVA Tukey HSD is now exact (studentised range) and "vs control" corrects only those comparisons; descriptions of every test and option, with "Choosing between similar tests" and "Corrections" tables in Help; each result lists the options and data used; 🔗 re-creates a closed plot or result; 📋 Example moved beside the Visualisation and Statistical Test menus and loads data suited to the choice (13 datasets); Clear and new datasets reset to an empty 2-group table; Kaplan–Meier estimate corrected for censoring, plotted on a time axis with censor ticks; dose–response fitted and plotted on a log concentration axis; Multiple Testing plot shows the chosen correction and p = 0.05 line; 5PL regression model fixed; Fisher's exact reads groups as columns</td>
+</tr>
+<tr>
+<td>0.6.2 (5 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Per-row t-tests (unpaired and paired) now auto-plot a linked Bar + SD + Dots By sample figure with per-sample significance brackets; Mann-Whitney, Wilcoxon and Rank Sum "vs Control" mode now compares the control with every other group (previously ran a single pair); FDR (BH) for all-pairs non-parametric tests now uses the standard step-up adjustment; Multiple Testing, Kaplan-Meier and Volcano now auto-plot a linked figure; Heatmap no longer opens two plots; Pearson/Spearman options panel fixed for 3+ groups; By sample bar charts no longer clip SD bars or dots at the top; round-number y-axis ticks in App style too</td>
+</tr>
+<tr>
+<td>0.6.1 (5 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Export fixes: App-style PNG/SVG/PDF no longer come out blank (transparent background) and are now saved at 2× resolution; Publication style now applied to the "By sample" bar and box plots (thick L-shaped axes with tick marks, larger bold labels, gap before the first bar, legend spacing), to dots-only plots (dots spread instead of stacked) and to line plots (points no longer sit on the axes); round-number y-axis maximum when significance brackets are shown; box plot "Dots only" mode no longer draws whiskers; heatmap labels no longer overlap the colour key</td>
+</tr>
 <tr>
 <td>0.6.0 (5 Nov 2026)</td>
 <td>Thistle Plot</td>
