@@ -1,0 +1,3530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thistle Plot v0.6.0 (Beta)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root{--bg:#0f172a;--surf:#1e293b;--surf2:#263347;--bd:#334155;--tx:#e2e8f0;--mu:#94a3b8;
+  --ac:#3b82f6;--ach:#2563eb;--ok:#22c55e;--wa:#f59e0b;--er:#ef4444}
+:root[data-theme="light"]{--bg:#f8fafc;--surf:#ffffff;--surf2:#f1f5f9;--bd:#e2e8f0;--tx:#0f172a;--mu:#475569;--ac:#2563eb;--ach:#1d4ed8;--ok:#16a34a;--wa:#d97706;--er:#dc2626}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.spin{width:36px;height:36px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Header */
+#hdr{background:var(--surf);border-bottom:1px solid var(--bd);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+#hdr .title{font-size:17px;font-weight:700}
+#hdr .badge{font-size:10px;color:var(--ac);background:#1d3461;padding:2px 7px;border-radius:4px;font-weight:600}
+#hdr .spacer{flex:1}
+.btn{background:var(--surf2);border:1px solid var(--bd);color:var(--tx);padding:5px 11px;border-radius:5px;cursor:pointer;font-size:12px;white-space:nowrap}
+.btn:hover{background:var(--bd)}
+.btn-pri{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.btn-pri:hover{background:var(--ach)}
+.btn-sm{background:var(--surf2);border:1px solid var(--bd);color:var(--tx);padding:2px 7px;border-radius:4px;cursor:pointer;font-size:11px}
+.btn-sm:hover{background:var(--bd)}
+
+/* Main layout */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* Resize handle (vertical, left/right split) */
+.vsplit{width:5px;cursor:col-resize;background:var(--bd);flex-shrink:0;transition:background .15s}
+.vsplit:hover,.vsplit.dragging{background:var(--ac)}
+.hsplit{height:5px;cursor:row-resize;background:var(--bd);flex-shrink:0;transition:background .15s}
+.hsplit:hover,.hsplit.dragging{background:var(--ac)}
+
+/* Left panel */
+#lpanel{width:420px;min-width:200px;background:var(--surf);display:flex;flex-direction:column;overflow:hidden}
+/* Data sub-pane (top of left panel) */
+#data-pane{display:flex;flex-direction:column;overflow:hidden;flex:0 0 300px;min-height:120px}
+#data-pane .pane-hdr{padding:7px 10px 4px;flex-shrink:0}
+#data-pane .pane-scroll{flex:1;overflow:auto;padding:0 10px 6px}
+/* Options sub-pane (bottom of left panel) */
+#opts-pane{display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:80px}
+#opts-pane .pane-scroll{flex:1;overflow-y:auto;padding:8px 10px}
+.sec{margin-bottom:12px}
+.sec-lbl{font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.sec-stat{margin-bottom:12px;padding-top:10px;border-top:2px solid var(--ac);margin-top:4px}
+.sec-stat .sec-lbl{color:var(--ac)}
+select,input[type=text],input[type=number]{background:var(--surf2);border:1px solid var(--bd);color:var(--tx);padding:5px 9px;border-radius:5px;font-size:12px;width:100%}
+select:focus,input:focus{outline:1px solid var(--ac);border-color:var(--ac)}
+.hint{background:#1a2744;border:1px solid #2a4080;border-radius:5px;padding:7px 9px;font-size:11px;color:#93c5fd;margin-top:5px;line-height:1.5}
+.lpfoot{padding:10px;border-top:1px solid var(--bd);flex-shrink:0;display:flex;gap:6px}
+.lpfoot button{flex:1}
+
+/* Dataset strip */
+#data-strip{display:flex;background:var(--surf);border-bottom:1px solid var(--bd);flex-shrink:0;overflow-x:auto;overflow-y:hidden;min-height:30px}
+.ds-tab{display:flex;align-items:center;gap:4px;padding:5px 10px;cursor:pointer;border:none;background:transparent;color:var(--mu);font-size:11px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.ds-tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.ds-tab:hover:not(.active){color:var(--tx)}
+.ds-close{font-size:12px;line-height:1;color:var(--mu);padding:0 2px;border:none;background:transparent;cursor:pointer;border-radius:3px}
+.ds-close:hover{background:var(--bd);color:var(--er)}
+
+/* Grid section */
+.grid-toolbar{display:flex;gap:4px;margin-bottom:5px;align-items:center;flex-wrap:wrap}
+.grid-toolbar .lbl{font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;flex:1}
+#tbl-wrap{overflow:auto;flex:1;border:1px solid var(--bd);border-radius:5px;min-height:60px}
+#dtbl{border-collapse:collapse;width:max-content}
+#dtbl th,#dtbl td{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:0}
+#dtbl th:last-child,#dtbl td:last-child{border-right:none}
+#dtbl tr:last-child td{border-bottom:none}
+#dtbl input{border:none;background:transparent;color:var(--tx);padding:4px 7px;width:72px;font-size:12px;text-align:right}
+#dtbl input.grp{color:var(--ac);font-weight:700;text-align:center;width:100%}
+#dtbl input.rep{color:var(--mu);text-align:center}
+#dtbl input.rn{color:#a78bfa;text-align:left;width:80px}
+#dtbl input:focus{background:#1a2744;outline:none}
+#dtbl th.grp-hdr{background:var(--surf2);text-align:center;font-weight:700}
+#dtbl th.rep-hdr{background:var(--surf);text-align:center;font-size:11px}
+#dtbl td.rnum{background:var(--surf);color:var(--mu);font-size:11px;padding:4px 5px;text-align:center;user-select:none;min-width:24px}
+.rep-ctrl{display:flex;align-items:center;gap:5px;margin-top:4px;font-size:11px;color:var(--mu)}
+#dtbl input.sel-cell{background:#1a3a6a!important;outline:1px solid var(--ac)!important}
+:root[data-theme="light"] #dtbl input.sel-cell{background:#dbeafe!important;outline:1px solid var(--ac)!important}
+.rep-ctrl input[type=number]{width:48px;padding:3px 6px}
+
+/* Options */
+.opts-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.opt-lbl{font-size:11px;color:var(--mu);margin-bottom:3px}
+.full-col{grid-column:1/-1}
+input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
+.check-row{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx);cursor:pointer}
+
+/* Right panel */
+#rpanel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:300px}
+
+/* Plot pane */
+#plot-pane{display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:120px}
+#stats-pane{display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:80px}
+
+/* Tab strips */
+.tab-strip{display:flex;background:var(--surf);border-bottom:1px solid var(--bd);flex-shrink:0;overflow-x:auto;overflow-y:hidden}
+.tab-strip::-webkit-scrollbar{height:3px}.tab-strip::-webkit-scrollbar-thumb{background:var(--bd)}
+.tab-item{display:flex;align-items:center;gap:5px;padding:7px 13px 7px 13px;cursor:pointer;border:none;background:transparent;color:var(--mu);font-size:12px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s}
+.tab-item.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tab-item:hover:not(.active){color:var(--tx)}
+.tab-close{font-size:14px;line-height:1;color:var(--mu);margin-left:2px;padding:0 2px;border:none;background:transparent;cursor:pointer;border-radius:3px}
+.tab-close:hover{background:var(--bd);color:var(--er)}
+.tab-link{font-size:11px;line-height:1;color:var(--ac);opacity:0.7;margin-left:2px;padding:0 2px;border:none;background:transparent;cursor:pointer;border-radius:3px}
+.tab-link:hover{opacity:1;background:var(--bd)}
+.tab-add{padding:5px 10px;background:transparent;border:none;color:var(--mu);cursor:pointer;font-size:16px}
+.tab-add:hover{color:var(--tx)}
+
+/* Tab content areas */
+.tab-content{flex:1;overflow:auto;position:relative}
+.tab-page{display:none;width:100%;height:100%}
+.tab-page.active{display:flex;flex-direction:column}
+
+/* Plot pages */
+.plot-topbar{display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--surf);border-bottom:1px solid var(--bd);flex-shrink:0;flex-wrap:wrap}
+.plot-topbar label{font-size:11px;color:var(--mu);white-space:nowrap}
+.plot-topbar select{width:auto;padding:4px 8px}
+.plot-area{flex:1;position:relative;min-height:80px;padding:8px}
+.plot-area canvas{max-width:100%;max-height:100%}
+.ph{color:var(--mu);text-align:center;padding:40px 20px;font-size:13px}
+
+/* Stats pages */
+.stat-scroll{flex:1;overflow:auto;padding:12px}
+.rtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:7px}
+.rtbl th{background:var(--surf2);color:var(--mu);font-weight:600;text-transform:uppercase;font-size:10px;padding:6px 10px;text-align:left;border-bottom:1px solid var(--bd)}
+.rtbl td{padding:6px 10px;border-bottom:1px solid var(--bd)}
+.rtbl tr:last-child td{border-bottom:none}
+.rtbl tr:hover td{background:rgba(255,255,255,.03)}
+.p-sig{color:var(--ok);font-weight:700}
+.p-ns{color:var(--mu)}
+.stars{font-size:10px;font-weight:700;color:var(--wa)}
+.scard{background:var(--surf2);border:1px solid var(--bd);border-radius:7px;padding:11px 14px;margin-bottom:10px}
+.scard h3{font-size:12px;font-weight:700;color:var(--ac);margin-bottom:7px}
+.rh{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.rt{font-size:15px;font-weight:700}
+.rp{font-size:13px}
+.ebox{background:#3b1515;border:1px solid var(--er);border-radius:7px;padding:11px;color:#fca5a5;font-size:12px}
+.sdiv{border-top:1px solid var(--bd);margin:10px 0;padding-top:10px}
+.sdiv h4{font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;margin-bottom:7px}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spin"></div><div id="lmsg" style="color:var(--mu)">Loading…</div></div>
+
+<header id="hdr" style="display:none">
+  <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+  <span class="title">Thistle Plot</span>
+  <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
+  <span class="badge" id="app-version" title="Version">v0.6.0</span>
+  <span class="badge">Pure JS</span>
+  <span class="spacer"></span>
+  <button class="btn" onclick="saveProject()">💾 Save</button>
+  <button class="btn" onclick="document.getElementById('fi-load').click()">📂 Load</button>
+  <button class="btn" onclick="document.getElementById('fi-csv').click()">⬆ CSV</button>
+  <button class="btn" onclick="loadExample()">📋 Example</button>
+  <button class="btn" onclick="clearData()">🗑 Clear</button>
+  <button class="btn" id="theme-btn" onclick="toggleTheme()" title="Toggle dark/light mode" style="font-size:16px;padding:4px 9px">🌙</button>
+  <span style="font-size:11px;color:var(--mu)">Export:</span>
+  <select id="export-style" title="Export figure style" style="width:170px;flex:none;font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--bd);background:var(--surf2);color:var(--tx)">
+    <option value="app">App</option>
+    <option value="prism">Publication (Prism-like)</option>
+  </select>
+</header>
+<input type="file" id="fi-load" accept=".thistle,.pprism,.json" style="display:none" onchange="loadProject(event)">
+<input type="file" id="fi-csv" accept=".csv" style="display:none" onchange="onCSV(event)">
+
+<div id="main" style="display:none">
+  <!-- LEFT PANEL -->
+  <div id="lpanel">
+    <!-- DATASET STRIP -->
+    <div id="data-strip"></div>
+
+    <!-- DATA sub-pane -->
+    <div id="data-pane">
+      <div class="pane-hdr">
+        <div class="grid-toolbar">
+          <span class="lbl">Data</span>
+          <button class="btn-sm" onclick="gAddGroup()">+Grp</button>
+          <button class="btn-sm" onclick="gDelGroup()">−Grp</button>
+          <button class="btn-sm" onclick="gAddRow()">+Row</button>
+          <button class="btn-sm" onclick="gDelRow()">−Row</button>
+          <button class="btn-sm" id="btn-undo" onclick="undoAction()" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
+          <button class="btn-sm" id="btn-redo" onclick="redoAction()" disabled title="Redo (Ctrl+Y)">↪ Redo</button>
+
+        </div>
+        <div class="rep-ctrl">
+          <span>Reps/group:</span>
+          <input type="number" id="n-reps" value="3" min="1" max="20" style="width:48px" onchange="onRepsChange()">
+          <span style="margin-left:8px">Groups:</span>
+          <input type="number" id="n-grps" value="2" min="1" max="20" style="width:48px" onchange="onGrpsChange()">
+        </div>
+      </div>
+      <div class="pane-scroll" style="display:flex;flex-direction:column">
+        <div id="tbl-wrap" style="flex:1"><table id="dtbl"><tbody id="dtbody"></tbody></table></div>
+        <div style="padding:3px 0;font-size:11px;color:var(--mu)">💡 Paste from Excel/Sheets (Ctrl/Cmd+V in table)</div>
+      </div>
+    </div>
+
+    <!-- HORIZONTAL SPLIT (data/options) -->
+    <div class="hsplit" id="ls" onmousedown="startLHSplit(event)"></div>
+
+    <!-- OPTIONS sub-pane -->
+    <div id="opts-pane">
+      <div class="pane-scroll">
+        <!-- Plot (Visualisation first) -->
+        <div class="sec">
+          <div class="sec-lbl">Visualisation</div>
+          <select id="psel" onchange="onPlotTypeChange()"></select>
+          <div id="popts" style="margin-top:8px"></div>
+        </div>
+
+        <!-- Analysis -->
+        <div class="sec sec-stat">
+          <div class="sec-lbl">Statistical Test</div>
+          <select id="asel" onchange="onTypeChange()"></select>
+          <div class="hint" id="ahint"></div>
+          <div id="aopts" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="lpfoot">
+        <button class="btn btn-pri" onclick="runAnalysis()">▶ Run Analysis</button>
+        <button class="btn btn-pri" style="background:#0d9488;border-color:#0d9488" onclick="runPlot()">📈 Plot</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VERTICAL SPLIT -->
+  <div class="vsplit" id="vs" onmousedown="startVSplit(event)"></div>
+
+  <!-- RIGHT PANEL -->
+  <div id="rpanel">
+    <!-- PLOT PANE (top) -->
+    <div id="plot-pane">
+      <div class="tab-strip" id="plot-strip"></div>
+      <div class="tab-content" id="plot-content"></div>
+    </div>
+
+    <!-- HORIZONTAL SPLIT -->
+    <div class="hsplit" id="hs" onmousedown="startHSplit(event)"></div>
+
+    <!-- STATS PANE (bottom) -->
+    <div id="stats-pane">
+      <div class="tab-strip" id="stats-strip"></div>
+      <div class="tab-content" id="stats-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let G = {
+  nReps: 3,
+  groups: [
+    {name:'Control', reps:['Rep1','Rep2','Rep3'], data:[]},
+    {name:'Treatment', reps:['Rep1','Rep2','Rep3'], data:[]}
+  ],
+  rowNames: [],
+  nRows: 6
+};
+
+// Dataset tabs
+let datasets=[{id:'ds0',name:'Dataset 1',G:null,activePT:-1,activeST:-1}];
+let activeDS=0; // index into datasets[]
+
+// Tab state
+let plotTabs=[], statTabs=[], activePT=-1, activeST=-1, ptCount=0, stCount=0;
+let chartInst={}; // tabId -> Chart instance
+// Significance bracket data passed from runAnalysis to auto-plot
+let lastStatPairs=null; // [{i,j,stars}] group-index pairs with significance stars
+let lastStatTabId=null; // most recently created stat tab id
+let lastPlotTabId=null; // most recently created plot tab id
+
+// Undo / Redo stacks (each entry = JSON snapshot of G)
+let undoStack=[],redoStack=[];
+const MAX_UNDO=50;
+function pushUndo(){
+  undoStack.push(JSON.stringify(G));
+  if(undoStack.length>MAX_UNDO)undoStack.shift();
+  redoStack=[];
+  updateUndoButtons();
+}
+function undoAction(){
+  if(!undoStack.length)return;
+  redoStack.push(JSON.stringify(G));
+  G=JSON.parse(undoStack.pop());
+  renderGrid();updateUndoButtons();
+}
+function redoAction(){
+  if(!redoStack.length)return;
+  undoStack.push(JSON.stringify(G));
+  G=JSON.parse(redoStack.pop());
+  renderGrid();updateUndoButtons();
+}
+function updateUndoButtons(){
+  const ub=document.getElementById('btn-undo'),rb=document.getElementById('btn-redo');
+  if(ub)ub.disabled=!undoStack.length;
+  if(rb)rb.disabled=!redoStack.length;
+}
+
+// Grid selection state
+let gridSel={active:false,startG:-1,startRow:-1,startR:-1,endG:-1,endRow:-1,endR:-1};
+
+const COLORS=['#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6'];
+const PLOT_TYPES=[
+  {v:'bar_sd',l:'Bar + SD + Dots'},
+  {v:'boxplot',l:'Boxplot'},
+  {v:'violin',l:'Violin'},
+  {v:'scatter',l:'Scatter (X vs Y)'},
+  {v:'line',l:'Line'},
+  {v:'heatmap',l:'Heatmap (Z-scored)'},
+  {v:'volcano',l:'Volcano Plot'},
+  {v:'pca',l:'PCA Scores'},
+  {v:'km',l:'Kaplan-Meier'},
+  {v:'dose',l:'Dose-Response (5PL)'},
+  {v:'qq',l:'Q-Q Normal'},
+  {v:'histogram',l:'Histogram'},
+  {v:'mtc',l:'Multiple Testing'}
+];
+
+const ANALYSIS_CATEGORIES=[
+  {cat:'Descriptive',tests:[
+    {v:'desc',l:'Descriptive Statistics'},
+    {v:'norm',l:'Normality Test (Shapiro-Wilk)'}
+  ]},
+  {cat:'Parametric',tests:[
+    {v:'ttest_ind',l:'Unpaired t-test (Welch)'},
+    {v:'ttest_rel',l:'Paired t-test'},
+    {v:'anova',l:'One-Way ANOVA'},
+    {v:'anova2',l:'Two-Way ANOVA'}
+  ]},
+  {cat:'Non-Parametric',tests:[
+    {v:'mw',l:'Mann-Whitney U (Rank Sum)'},
+    {v:'wilcoxon',l:'Wilcoxon Signed-Rank'},
+    {v:'kruskal',l:'Kruskal-Wallis H'},
+    {v:'ranksum',l:'Rank Sum (paired, delta/ratio)'},
+    {v:'rankprod',l:'Rank Product'}
+  ]},
+  {cat:'Correlation / XY',tests:[
+    {v:'pearson',l:'Pearson Correlation'},
+    {v:'spearman',l:'Spearman Correlation'},
+    {v:'regress',l:'Regression / Curve Fitting'}
+  ]},
+  {cat:'Multivariate',tests:[
+    {v:'pca',l:'PCA'},
+    {v:'heatmap',l:'Hierarchical Heatmap'}
+  ]},
+  {cat:'Categorical',tests:[
+    {v:'fisher',l:"Fisher's Exact (2×2)"},
+    {v:'chisq',l:'Chi-Square Contingency'},
+    {v:'mtc',l:'Multiple Testing Correction'}
+  ]},
+  {cat:'Survival / XY',tests:[
+    {v:'km',l:'Kaplan-Meier + Log-Rank'},
+    {v:'dose',l:'Dose-Response (5PL)'},
+    {v:'volcano',l:'Volcano Plot'}
+  ]}
+];
+// Flat list for lookups
+const ANALYSIS_TYPES=ANALYSIS_CATEGORIES.flatMap(c=>c.tests);
+
+const HINTS={
+  desc:'One column per group, rows = replicates.',
+  ttest_ind:'2 groups: Col A vs Col B. Per-row mode runs a test for each row (each row = one replicate per group).',
+  ttest_rel:'Paired values: Col A vs Col B, equal rows. Per-row mode tests each row.',
+  mw:'Non-parametric rank-sum test. ≥ 2 groups: choose pair or run all pairs with FDR.',
+  wilcoxon:'Paired signed-rank test. Choose delta or ratio mode. All-pairs mode available.',
+  ranksum:'Paired rank-sum (delta or ratio). Like Wilcoxon but tests rank of transformation.',
+  rankprod:'Rank Product (Breitling 2004): consistently regulated rows across replicates.',
+  anova:'≥ 2 groups. Post-hoc correction selectable.',
+  kruskal:'≥ 2 groups, non-parametric ANOVA.',
+  pearson:'≥ 2 groups: computes all pairs or vs control.',
+  spearman:'≥ 2 groups: rank-based, all pairs or vs control.',
+  mtc:'Col 1 = p-values, Col 2 (optional) = labels.',
+  fisher:'2×2 table: 4 values in 2 cols × 2 rows.',
+  chisq:'Counts table: columns = groups, rows = categories.',
+  norm:'Each column tested separately for normality.',
+  km:'2 cols: Col1 = time, Col2 = event (1/0).',
+  pca:'Rows = features/genes, columns = samples.',
+  volcano:'Col1 = log2FC, Col2 = p-value, one gene per row.',
+  dose:'Col1 = concentration, Col2 = response.',
+  heatmap:'Rows = genes/features, columns = samples.',
+  anova2:'nA × nB balanced design. Columns ordered: A1B1, A1B2 … A1Bn, A2B1 … Set nA and nB in options.',
+  regress:'Col1 = X, Col2 = Y. Choose model; residual plot auto-generated.'
+};
+
+// ═══════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════
+const mean=a=>a.length?a.reduce((s,x)=>s+x,0)/a.length:NaN;
+const sum=a=>a.reduce((s,x)=>s+x,0);
+function variance(a,ddof=1){if(a.length<ddof+1)return NaN;const m=mean(a);return a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-ddof)}
+const stddev=(a,ddof=1)=>Math.sqrt(variance(a,ddof));
+function median(a){if(!a.length)return NaN;const s=[...a].sort((x,y)=>x-y);const n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2}
+function percentile(a,p){if(!a.length)return NaN;const s=[...a].sort((x,y)=>x-y);const idx=(p/100)*(s.length-1);const lo=Math.floor(idx),hi=Math.ceil(idx);return s[lo]+(idx-lo)*(s[hi]-s[lo])}
+function cohensD(a,b){if(a.length<2||b.length<2)return NaN;const v1=variance(a),v2=variance(b);const sp=Math.sqrt(((a.length-1)*v1+(b.length-1)*v2)/(a.length+b.length-2));return sp===0?NaN:(mean(a)-mean(b))/sp}
+function computeRanks(a){const idx=a.map((v,i)=>({v,i})).sort((x,y)=>x.v-y.v);const r=new Array(a.length);let i=0;while(i<idx.length){let j=i;while(j<idx.length&&idx[j].v===idx[i].v)j++;const avg=(i+j+1)/2;for(let k=i;k<j;k++)r[idx[k].i]=avg;i=j}return r}
+function logFact(n){if(n<=1)return 0;let s=0;for(let i=2;i<=n;i++)s+=Math.log(i);return s}
+const sigStars=p=>p<0.0001?'****':p<0.001?'***':p<0.01?'**':p<0.05?'*':'ns';
+function fmtP(p){if(isNaN(p)||p===null)return'N/A';if(p<0.0001)return'<0.0001';return p.toPrecision(4)}
+const fmtF=(v,d=3)=>(!isFinite(v)||v===null)?'—':Number(v).toFixed(d);
+const pCls=p=>p<0.05?'p-sig':'p-ns';
+const pRow=p=>`<span class="${pCls(p)}">${fmtP(p)}</span> <span class="stars">${sigStars(p)}</span>`;
+const eff=d=>{const a=Math.abs(d);return a<0.2?'negligible':a<0.5?'small':a<0.8?'medium':'large'};
+
+function normalize(vals, method){
+  if(method==='none'||!method) return vals;
+  if(method==='log2') return vals.map(v=>Math.log2(v));
+  if(method==='log10') return vals.map(v=>Math.log10(v));
+  if(method==='ln') return vals.map(v=>Math.log(v));
+  if(method==='zscore'){const m=mean(vals),s=stddev(vals);return s>0?vals.map(v=>(v-m)/s):vals}
+  if(method==='minmax'){const mn=Math.min(...vals),mx=Math.max(...vals);return mx>mn?vals.map(v=>(v-mn)/(mx-mn)):vals}
+  return vals;
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATISTICAL TESTS
+// ═══════════════════════════════════════════════════════════
+function describeGroup(vals){
+  const v=vals.filter(x=>isFinite(x));
+  if(!v.length)return null;
+  const n=v.length,m=mean(v),sd=n>1?stddev(v):0,sem=sd/Math.sqrt(n);
+  const tcrit=n>1?jStat.studentt.inv(0.975,n-1):0;
+  return{n,mean:m,sd,sem,ci95lo:m-tcrit*sem,ci95hi:m+tcrit*sem,
+    median:median(v),q1:percentile(v,25),q3:percentile(v,75),
+    iqr:percentile(v,75)-percentile(v,25),min:Math.min(...v),max:Math.max(...v)};
+}
+
+function ttestInd(a,b){
+  const n1=a.length,n2=b.length;
+  if(n1<2||n2<2)return{error:'Need ≥ 2 values per group'};
+  const m1=mean(a),m2=mean(b),v1=variance(a),v2=variance(b);
+  const se=Math.sqrt(v1/n1+v2/n2);
+  if(se===0)return{t:0,df:n1+n2-2,p:1,d:0,m1,m2,sd1:stddev(a),sd2:stddev(b),n1,n2};
+  const t=(m1-m2)/se;
+  const df=(v1/n1+v2/n2)**2/((v1/n1)**2/(n1-1)+(v2/n2)**2/(n2-1));
+  const p=2*(1-jStat.studentt.cdf(Math.abs(t),df));
+  return{t,df,p,d:cohensD(a,b),m1,m2,sd1:stddev(a),sd2:stddev(b),n1,n2};
+}
+
+function ttestRel(a,b,method='delta'){
+  if(a.length!==b.length)return{error:'Groups must have equal length for paired test'};
+  let vals;
+  if(method==='ratio') vals=a.map((x,i)=>b[i]!==0?x/b[i]:NaN).filter(isFinite);
+  else vals=a.map((x,i)=>x-b[i]); // delta
+  const diffs=vals;
+  const n=diffs.length;if(n<2)return{error:'Need ≥ 2 pairs'};
+  const m=mean(diffs),sd=stddev(diffs),se=sd/Math.sqrt(n);
+  if(se===0)return{t:0,df:n-1,p:1,mean_diff:m,sd_diff:sd,n,method};
+  const t=m/se,df=n-1;
+  const p=2*(1-jStat.studentt.cdf(Math.abs(t),df));
+  return{t,df,p,mean_diff:m,sd_diff:sd,n,method};
+}
+
+function mannWhitneyU(a,b){
+  const n1=a.length,n2=b.length;
+  if(n1<1||n2<1)return{error:'Need values in each group'};
+  const combined=[...a.map(x=>({v:x,g:0})),...b.map(x=>({v:x,g:1}))];
+  combined.sort((x,y)=>x.v-y.v);
+  let i=0;
+  while(i<combined.length){let j=i;while(j<combined.length&&combined[j].v===combined[i].v)j++;const r=(i+j+1)/2;for(let k=i;k<j;k++)combined[k].rank=r;i=j}
+  const R1=combined.filter(x=>x.g===0).reduce((s,x)=>s+x.rank,0);
+  const U1=R1-n1*(n1+1)/2,U2=n1*n2-U1,U=Math.min(U1,U2);
+  const mu=n1*n2/2;
+  const tcounts={};combined.forEach(x=>{tcounts[x.v]=(tcounts[x.v]||0)+1});
+  const T=Object.values(tcounts).reduce((s,t)=>s+(t**3-t),0);
+  const N=n1+n2;
+  const sigma=Math.sqrt((n1*n2/12)*((N+1)-T/(N*(N-1))));
+  if(sigma===0)return{U,z:0,p:1,n1,n2};
+  const z=(U-mu)/sigma;
+  const p=2*jStat.normal.cdf(-Math.abs(z),0,1);
+  return{U,z,p,n1,n2};
+}
+
+function wilcoxonSR(a,b){
+  const diffs=a.map((x,i)=>x-b[i]).filter(d=>d!==0);
+  const n=diffs.length;if(n<1)return{error:'No non-zero differences'};
+  const abs_d=diffs.map(d=>Math.abs(d));
+  const ranks=computeRanks(abs_d);
+  let Wp=0,Wm=0;
+  diffs.forEach((d,i)=>{if(d>0)Wp+=ranks[i];else Wm+=ranks[i]});
+  const W=Math.min(Wp,Wm),mu=n*(n+1)/4,sigma=Math.sqrt(n*(n+1)*(2*n+1)/24);
+  if(sigma===0)return{W,z:0,p:1,n};
+  const z=(W-mu)/sigma;
+  const p=2*jStat.normal.cdf(-Math.abs(z),0,1);
+  return{W,z,p,n};
+}
+
+// Rank Sum test: Mann-Whitney rank-sum for each row (per-row mode) or single comparison
+// Also supports ratio vs delta mode (applies transformation before ranking)
+function rankSumTest(a, b, mode='delta'){
+  // mode: 'delta' = use a-b, 'ratio' = use a/b
+  if(mode==='ratio'){
+    const mn=Math.min(a.length,b.length);
+    const ratios=a.slice(0,mn).map((v,i)=>b[i]!==0?v/b[i]:NaN).filter(isFinite);
+    const ones=Array(ratios.length).fill(1);
+    return mannWhitneyU(ratios,ones);
+  }
+  return mannWhitneyU(a,b);
+}
+
+// Rank Product test (Breitling 2004): identifies consistently regulated rows
+// Operates per-row; requires nRows >= 3
+// Groups: a[row] = array of replicate values, b[row] = array of replicate values
+// Returns per-row {rp, p, direction}
+function rankProductTest(aRows, bRows, mode='ratio'){
+  const nRows=aRows.length;
+  const nReps=aRows[0]?.length||1;
+  // For each row, compute fold-changes for each replicate pair
+  const fcs=aRows.map((aRep,r)=>{
+    const bRep=bRows[r]||[];
+    return aRep.map((av,ri)=>{
+      const bv=bRep[ri]??mean(bRep.filter(isFinite));
+      if(mode==='ratio') return bv!==0?av/bv:NaN;
+      return av-bv;
+    }).filter(isFinite);
+  });
+  // For each replicate, rank all rows by absolute fold-change
+  const nRP=fcs[0]?.length||1;
+  const perRepRanks=Array.from({length:nRP},(_,ri)=>{
+    const vals=fcs.map(r=>r[ri]??NaN);
+    const absVals=vals.map(Math.abs);
+    const sorted=[...absVals.map((v,i)=>({v,i}))].sort((a,b)=>b.v-a.v);
+    const rnk=Array(nRows).fill(0);
+    sorted.forEach((s,rank)=>{rnk[s.i]=rank+1;});
+    return rnk;
+  });
+  // Rank product = geometric mean of ranks
+  const rps=fcs.map((f,r)=>{
+    const ranks=perRepRanks.map(rr=>rr[r]);
+    const logSum=ranks.reduce((s,rk)=>s+Math.log(rk/nRows),0);
+    const rp=Math.exp(logSum/ranks.length);
+    const meanFC=f.length?mean(f):0;
+    return{rp,direction:meanFC>=0?'up':'down',meanFC};
+  });
+  // Approximate p-value: for n uniform[0,1] random variables, P(product ≤ x) ≈ x(-ln x)^(n-1)/(n-1)!
+  rps.forEach(r=>{
+    const x=r.rp;
+    const n=nRP;
+    // CDF of product of n uniform randoms at x (Irwin-Hall approximation)
+    let p=0;
+    if(x<=0||x>=1){p=x<=0?0:1;}
+    else{
+      let term=Math.pow(x,n);
+      let fact=1;for(let k=1;k<=n;k++)fact*=k;
+      // P(U1*U2*...*Un <= x) sum formula
+      for(let k=0;k<=n;k++){
+        const c=Math.pow(-1,k)*binomCoeff(n,k)*Math.pow(Math.max(0,Math.log(x)-Math.log(1)*k),n);
+        // Simpler: use the exact formula for product of uniforms
+      }
+      // Use simpler approximation: p = x * (-ln x)^(n-1) / (n-1)!
+      let lnx=-Math.log(x);let fn=1;for(let k=1;k<n;k++)fn*=k;
+      p=Math.min(1,x*Math.pow(lnx,n-1)/fn);
+    }
+    r.p=Math.max(0,Math.min(1,p*2)); // two-sided
+  });
+  return rps;
+}
+function binomCoeff(n,k){if(k<0||k>n)return 0;let r=1;for(let i=0;i<k;i++){r=r*(n-i)/(i+1);}return Math.round(r);}
+
+function onewayANOVA(groups, posthocMethod='bonferroni'){
+  const k=groups.length,N=sum(groups.map(g=>g.length));
+  if(k<2||N<k+1)return{error:'Need ≥ 2 groups with ≥ 2 total observations'};
+  const grand=sum(groups.flat())/N;
+  const SSB=sum(groups.map(g=>g.length*(mean(g)-grand)**2));
+  const SSW=sum(groups.map(g=>g.reduce((s,x)=>s+(x-mean(g))**2,0)));
+  const dfB=k-1,dfW=N-k;
+  if(dfW<=0||SSW===0)return{F:Infinity,dfB,dfW,p:0,posthoc:[]};
+  const MSB=SSB/dfB,MSW=SSW/dfW,F=MSB/MSW;
+  const p=1-jStat.centralF.cdf(F,dfB,dfW);
+  const posthoc=[];
+  const npairs=k*(k-1)/2;
+  for(let i=0;i<k-1;i++)for(let j=i+1;j<k;j++){
+    const ni=groups[i].length,nj=groups[j].length;
+    const se=Math.sqrt(MSW*(1/ni+1/nj));
+    if(se===0){posthoc.push({i,j,t:NaN,p_raw:NaN,p_adj:NaN});continue}
+    const t=(mean(groups[i])-mean(groups[j]))/se;
+    const p_raw=2*(1-jStat.studentt.cdf(Math.abs(t),dfW));
+    let p_adj;
+    if(posthocMethod==='none') p_adj=p_raw;
+    else if(posthocMethod==='bonferroni') p_adj=Math.min(p_raw*npairs,1);
+    else if(posthocMethod==='tukey'){
+      // Tukey HSD approximation via Studentized Range
+      const q=Math.abs(t)*Math.sqrt(2);
+      p_adj=Math.max(0,Math.min(1,1-jStat.centralF.cdf(t*t,1,dfW)));
+      p_adj=Math.min(p_raw*npairs,1); // fallback to Bonferroni approximation
+    } else if(posthocMethod==='holm'){
+      p_adj=p_raw; // will be adjusted after all pairs computed
+    } else p_adj=Math.min(p_raw*npairs,1);
+    posthoc.push({i,j,t,p_raw,p_adj,df:dfW});
+  }
+  if(posthocMethod==='holm'){
+    posthoc.sort((a,b)=>a.p_raw-b.p_raw);
+    for(let i=0;i<posthoc.length;i++) posthoc[i].p_adj=Math.min(posthoc[i].p_raw*(npairs-i),1);
+    posthoc.sort((a,b)=>a.i-b.i||a.j-b.j);
+  }
+  if(posthocMethod==='fdr'){
+    const sorted=[...posthoc].sort((a,b)=>a.p_raw-b.p_raw);
+    for(let i=0;i<sorted.length;i++) sorted[i].p_adj=Math.min(sorted[i].p_raw*npairs/(i+1),1);
+  }
+  return{F,dfB,dfW,p,SSB,SSW,MSB,MSW,grand,posthoc,posthocMethod};
+}
+
+function kruskalWallis(groups){
+  const k=groups.length;
+  if(k<2)return{error:'Need ≥ 2 groups'};
+  const N=sum(groups.map(g=>g.length));
+  const combined=groups.flatMap((g,i)=>g.map(v=>({v,g:i})));
+  combined.sort((a,b)=>a.v-b.v);
+  let i=0;while(i<combined.length){let j=i;while(j<combined.length&&combined[j].v===combined[i].v)j++;const r=(i+j+1)/2;for(let k=i;k<j;k++)combined[k].rank=r;i=j}
+  const H_groups=groups.map((g,gi)=>{const ranks=combined.filter(x=>x.g===gi).map(x=>x.rank);return{n:ranks.length,R:sum(ranks)}});
+  const tcounts={};combined.forEach(x=>{tcounts[x.v]=(tcounts[x.v]||0)+1});
+  const C=1-Object.values(tcounts).reduce((s,t)=>s+(t**3-t),0)/(N**3-N);
+  const H=(12/(N*(N+1)))*sum(H_groups.map(g=>g.R**2/g.n))-3*(N+1);
+  const Hc=C>0?H/C:H;
+  const p=1-jStat.chisquare.cdf(Hc,k-1);
+  // Dunn's post-hoc
+  const posthoc=[];
+  for(let a=0;a<k-1;a++)for(let b=a+1;b<k;b++){
+    const na=groups[a].length,nb=groups[b].length;
+    const Ra=H_groups[a].R/na,Rb=H_groups[b].R/nb;
+    const se=Math.sqrt((N*(N+1)/12-Object.values(tcounts).reduce((s,t)=>s+(t**3-t),0)/(12*(N-1)))*(1/na+1/nb));
+    if(se===0){posthoc.push({a,b,z:NaN,p:NaN});continue}
+    const z=(Ra-Rb)/se;
+    const p_raw=2*jStat.normal.cdf(-Math.abs(z),0,1);
+    posthoc.push({a,b,z,p:Math.min(p_raw*(k*(k-1)/2),1)});
+  }
+  return{H:Hc,df:k-1,p,posthoc};
+}
+
+function pearsonR(x,y){
+  if(x.length!==y.length||x.length<3)return{error:'Need ≥ 3 paired values'};
+  const n=x.length,mx=mean(x),my=mean(y);
+  const num=sum(x.map((xi,i)=>(xi-mx)*(y[i]-my)));
+  const den=Math.sqrt(sum(x.map(xi=>(xi-mx)**2))*sum(y.map(yi=>(yi-my)**2)));
+  if(den===0)return{r:0,t:0,df:n-2,p:1,n};
+  const r=num/den;
+  const t=r*Math.sqrt((n-2)/(1-r*r));
+  const p=2*(1-jStat.studentt.cdf(Math.abs(t),n-2));
+  const z=0.5*Math.log((1+r)/(1-r));
+  const se=1/Math.sqrt(n-3);
+  return{r,t,df:n-2,p,n,ci95lo:Math.tanh(z-1.96*se),ci95hi:Math.tanh(z+1.96*se)};
+}
+
+function spearmanR(x,y){
+  const rx=computeRanks(x),ry=computeRanks(y);
+  return pearsonR(rx,ry);
+}
+
+function bonferroni(pvals){return pvals.map(p=>Math.min(p*pvals.length,1))}
+function holmBonferroni(pvals){
+  const n=pvals.length;
+  const idx=pvals.map((p,i)=>({p,i})).sort((a,b)=>a.p-b.p);
+  const adj=new Array(n);
+  let maxSoFar=0;
+  idx.forEach((x,k)=>{const a=Math.min(x.p*(n-k),1);maxSoFar=Math.max(maxSoFar,a);adj[x.i]=maxSoFar});
+  return adj;
+}
+function fdrBH(pvals){
+  const n=pvals.length;
+  const idx=pvals.map((p,i)=>({p,i})).sort((a,b)=>a.p-b.p);
+  const adj=new Array(n);
+  let minSoFar=1;
+  for(let k=n-1;k>=0;k--){minSoFar=Math.min(idx[k].p*n/(k+1),minSoFar);adj[idx[k].i]=minSoFar}
+  return adj;
+}
+
+function fishersExact(a,b,c,d){
+  const n=a+b+c+d;
+  function prob(a,b,c,d){return Math.exp(logFact(a+b)+logFact(c+d)+logFact(a+c)+logFact(b+d)-logFact(n)-logFact(a)-logFact(b)-logFact(c)-logFact(d))}
+  const p0=prob(a,b,c,d);
+  let p=0;
+  const rmax=Math.min(a+b,a+c);
+  for(let k=0;k<=rmax;k++){
+    const b2=a+b-k,c2=a+c-k,d2=n-k-b2-c2;
+    if(b2<0||c2<0||d2<0)continue;
+    const pi=prob(k,b2,c2,d2);
+    if(pi<=p0+1e-10)p+=pi;
+  }
+  return{p:Math.min(p,1),or:(a*d)/(b*c||1)};
+}
+
+function chiSquare(obs){
+  const rows=obs.length,cols=obs[0].length;
+  const rowTotals=obs.map(r=>sum(r));
+  const colTotals=Array.from({length:cols},(_,j)=>sum(obs.map(r=>r[j])));
+  const N=sum(rowTotals);
+  if(N===0)return{error:'No data'};
+  let chi=0;
+  for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
+    const exp=rowTotals[i]*colTotals[j]/N;
+    if(exp>0)chi+=(obs[i][j]-exp)**2/exp;
+  }
+  const df=(rows-1)*(cols-1);
+  return{chi,df,p:1-jStat.chisquare.cdf(chi,df)};
+}
+
+function normalityJB(arr){
+  const n=arr.length;if(n<8)return{error:'Need ≥ 8 values'};
+  const m=mean(arr),s=stddev(arr);
+  if(s===0)return{error:'Zero variance'};
+  const z=arr.map(x=>(x-m)/s);
+  const sk=sum(z.map(x=>x**3))/n;
+  const ku=sum(z.map(x=>x**4))/n-3;
+  const JB=n*(sk**2/6+(ku**2)/24);
+  const p=1-jStat.chisquare.cdf(JB,2);
+  return{JB,skewness:sk,kurtosis:ku,p,n};
+}
+
+function kaplanMeier(times,events){
+  const unique=[...new Set(times.filter((_,i)=>events[i]===1))].sort((a,b)=>a-b);
+  let survivors=times.length,surv=1;
+  const result=[{t:0,s:1,n:survivors}];
+  for(const t of unique){
+    const at_risk=survivors;
+    const died=times.filter((ti,i)=>ti===t&&events[i]===1).length;
+    const censored=times.filter((ti,i)=>ti===t&&events[i]===0).length;
+    surv*=(at_risk-died)/at_risk;
+    result.push({t,s:surv,n:at_risk,d:died,c:censored});
+    survivors-=died+censored;
+  }
+  const remaining=times.filter((ti,i)=>!unique.includes(ti)||events[i]===0);
+  for(const t of times){
+    if(!unique.includes(t)){
+      survivors--;
+      result.push({t,s:surv,n:survivors+1,d:0,c:1});
+    }
+  }
+  return result.sort((a,b)=>a.t-b.t);
+}
+
+function logRankTest(grps_t, grps_e){
+  const all_times=[...new Set([...grps_t.flat()].filter((t,i,a)=>a.indexOf(t)===i))].sort((a,b)=>a-b);
+  let O=grps_t.map(()=>0),E=grps_t.map(()=>0);
+  for(const t of all_times){
+    const n=grps_t.map((g,k)=>g.filter((ti,i)=>ti>=t).length);
+    const d=grps_t.map((g,k)=>g.filter((ti,i)=>ti===t&&grps_e[k][i]===1).length);
+    const N=sum(n),D=sum(d);
+    if(N<2||D===0)continue;
+    for(let k=0;k<grps_t.length;k++){O[k]+=d[k];E[k]+=n[k]*D/N}
+  }
+  const chi=sum(O.map((o,k)=>E[k]>0?(o-E[k])**2/E[k]:0));
+  return{chi,df:grps_t.length-1,p:1-jStat.chisquare.cdf(chi,grps_t.length-1),O,E};
+}
+
+function pcaCompute(X){
+  const n=X.length,p=X[0].length;
+  const maxPC=Math.min(n-1,p);
+  const means=X[0].map((_,j)=>mean(X.map(r=>r[j])));
+  const Xc=X.map(r=>r.map((v,j)=>v-means[j]));
+  function matmul(A,B){const m=A.length,k=A[0].length,nb=B[0].length;return Array.from({length:m},(_,i)=>Array.from({length:nb},(_,j)=>sum(A[i].map((v,l)=>v*B[l][j]))))}
+  const Xt=X[0].map((_,j)=>Xc.map(r=>r[j]));
+  let C=matmul(Xt,Xc).map(r=>r.map(v=>v/(n-1)));
+  const totalVar=sum(Array.from({length:p},(_,i)=>C[i][i]));
+  function powerIter(M){
+    const dim=M.length;
+    let v=Array.from({length:dim},()=>Math.random()-0.5);
+    const norm=()=>{const l=Math.sqrt(sum(v.map(x=>x**2)));v=v.map(x=>x/l)};
+    norm();
+    for(let i=0;i<300;i++){const nv=M.map(r=>sum(r.map((c,j)=>c*v[j])));const l=Math.sqrt(sum(nv.map(x=>x**2)));if(l<1e-12)break;v=nv.map(x=>x/l)}
+    const eig=sum(M.map((r,i)=>sum(r.map((c,j)=>c*v[i]*v[j]))));
+    return{v,eig:Math.max(0,eig)};
+  }
+  const pcs=[];
+  for(let k=0;k<maxPC;k++){
+    const pc=powerIter(C);
+    if(pc.eig<1e-10)break;
+    pcs.push(pc);
+    C=C.map((r,i)=>r.map((c,j)=>c-pc.eig*pc.v[i]*pc.v[j]));
+  }
+  if(!pcs.length)pcs.push({v:Array(p).fill(0),eig:0});
+  if(pcs.length<2)pcs.push({v:Array(p).fill(0),eig:0});
+  const scores=Xc.map(r=>pcs.map(pc=>sum(r.map((v,j)=>v*pc.v[j]))));
+  const varExplained=pcs.map(pc=>totalVar>0?pc.eig/totalVar*100:0);
+  return{scores,varExplained,nPCs:pcs.length,loadings:pcs.map(pc=>pc.v),
+    pc1_var:varExplained[0]||0,pc2_var:varExplained[1]||0};
+}
+
+function nelderMead(f,x0,opts={}){
+  const{maxIter=1000,tol=1e-8}=opts;
+  const n=x0.length;
+  let simplex=[[...x0],...Array.from({length:n},(_,i)=>{const p=[...x0];p[i]+=Math.abs(p[i])*0.05+0.1;return p})];
+  let vals=simplex.map(f);
+  for(let iter=0;iter<maxIter;iter++){
+    const ord=vals.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v);
+    simplex=ord.map(o=>simplex[o.i]);vals=ord.map(o=>o.v);
+    if(Math.abs(vals[n]-vals[0])<tol)break;
+    const centroid=simplex[0].map((_,j)=>mean(simplex.slice(0,n).map(s=>s[j])));
+    const reflect=centroid.map((c,j)=>2*c-simplex[n][j]);
+    const fr=f(reflect);
+    if(fr<vals[0]){const expand=centroid.map((c,j)=>3*c-2*simplex[n][j]);const fe=f(expand);if(fe<fr){simplex[n]=expand;vals[n]=fe}else{simplex[n]=reflect;vals[n]=fr}}
+    else if(fr<vals[n-1]){simplex[n]=reflect;vals[n]=fr}
+    else{const contract=centroid.map((c,j)=>0.5*(c+simplex[n][j]));const fc=f(contract);if(fc<vals[n]){simplex[n]=contract;vals[n]=fc}else{for(let i=1;i<=n;i++)simplex[i]=simplex[i].map((s,j)=>(s+simplex[0][j])/2);vals=simplex.map(f)}}
+  }
+  return{x:simplex[0],fval:vals[0]};
+}
+
+function fit5PL(x,y){
+  const model=(p,xi)=>p[0]+(p[1]-p[0])/(1+(xi/p[2])**p[3])**p[4];
+  const ym=mean(y),yn=Math.min(...y),yx=Math.max(...y),xm=mean(x);
+  const p0=[yn,yx,xm,1,1];
+  const res=nelderMead(p=>sum(x.map((xi,i)=>(model(p,xi)-y[i])**2)),p0);
+  const ec50=res.x[2],hill=res.x[3];
+  return{params:res.x,ec50,hill,
+    predict:xi=>model(res.x,xi),
+    r2:1-sum(x.map((xi,i)=>(model(res.x,xi)-y[i])**2))/sum(y.map(yi=>(yi-ym)**2))};
+}
+
+// ── Regression helpers ─────────────────────────────────────────
+function solveLinear(A,b){
+  const n=A.length;
+  const M=A.map((row,i)=>[...row,b[i]]);
+  for(let col=0;col<n;col++){
+    let mx=col;for(let r=col+1;r<n;r++)if(Math.abs(M[r][col])>Math.abs(M[mx][col]))mx=r;
+    [M[col],M[mx]]=[M[mx],M[col]];
+    for(let r=col+1;r<n;r++){const f=M[r][col]/M[col][col];for(let k=col;k<=n;k++)M[r][k]-=f*M[col][k];}
+  }
+  const x=new Array(n).fill(0);
+  for(let i=n-1;i>=0;i--){x[i]=M[i][n];for(let j=i+1;j<n;j++)x[i]-=M[i][j]*x[j];x[i]/=M[i][i];}
+  return x;
+}
+function fitLinear(x,y){
+  const n=x.length,mx=mean(x),my=mean(y);
+  const b=sum(x.map((xi,i)=>(xi-mx)*(y[i]-my)))/sum(x.map(xi=>(xi-mx)**2));
+  const a=my-b*mx;
+  const pred=x.map(xi=>a+b*xi);
+  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  return{type:'linear',params:{a,b},predict:xi=>a+b*xi,r2,pred,
+    equation:`y = ${a.toFixed(4)} + ${b.toFixed(4)}·x`};
+}
+function fitPolynomial(x,y,deg){
+  const n=x.length,d=deg+1;
+  const A=x.map(xi=>Array.from({length:d},(_,k)=>xi**k));
+  const AT=A[0].map((_,j)=>A.map(r=>r[j]));
+  const ATA=AT.map(row=>AT[0].map((_,j)=>sum(row.map((v,k)=>v*AT[j][k]))));
+  const ATy=AT.map(row=>sum(row.map((v,k)=>v*y[k])));
+  const params=solveLinear(ATA,ATy);
+  const my=mean(y);
+  const pred=x.map(xi=>sum(params.map((c,k)=>c*xi**k)));
+  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  const eqTerms=params.map((c,k)=>k===0?c.toFixed(4):`${c.toFixed(4)}x${k>1?'^'+k:''}`).join(' + ');
+  return{type:`poly${deg}`,params,predict:xi=>sum(params.map((c,k)=>c*xi**k)),r2,pred,equation:`y = ${eqTerms}`};
+}
+function fitLogarithmic(x,y){
+  if(x.some(xi=>xi<=0))return{error:'Need x > 0 for logarithmic fit'};
+  const lx=x.map(Math.log);const {params:{a,b}}=fitLinear(lx,y);
+  const my=mean(y);const pred=x.map(xi=>a+b*Math.log(xi));
+  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  return{type:'log',params:{a,b},predict:xi=>a+b*Math.log(xi),r2,pred,
+    equation:`y = ${a.toFixed(4)} + ${b.toFixed(4)}·ln(x)`};
+}
+function fitExponential(x,y){
+  if(y.some(yi=>yi<=0))return{error:'Need y > 0 for exponential fit'};
+  const lny=y.map(Math.log);const {params:{a:lna,b}}=fitLinear(x,lny);
+  const a=Math.exp(lna),my=mean(y);const pred=x.map(xi=>a*Math.exp(b*xi));
+  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  return{type:'exp',params:{a,b},predict:xi=>a*Math.exp(b*xi),r2,pred,
+    equation:`y = ${a.toFixed(4)}·e^(${b.toFixed(4)}·x)`};
+}
+function fitPower(x,y){
+  if(x.some(xi=>xi<=0)||y.some(yi=>yi<=0))return{error:'Need x,y > 0 for power fit'};
+  const lnx=x.map(Math.log),lny=y.map(Math.log);const {params:{a:lna,b}}=fitLinear(lnx,lny);
+  const a=Math.exp(lna),my=mean(y);const pred=x.map(xi=>a*Math.pow(xi,b));
+  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  return{type:'power',params:{a,b},predict:xi=>a*Math.pow(xi,b),r2,pred,
+    equation:`y = ${a.toFixed(4)}·x^(${b.toFixed(4)})`};
+}
+function fit4PL(x,y){
+  const model=(p,xi)=>p[0]+(p[1]-p[0])/(1+(xi/p[2])**p[3]);
+  const ym=mean(y),yn=Math.min(...y),yx=Math.max(...y),xm=mean(x);
+  const res=nelderMead(p=>sum(x.map((xi,i)=>(model(p,xi)-y[i])**2)),[yn,yx,xm,1]);
+  const [bot,top,ec50,hill]=res.x,my=mean(y);
+  const pred=x.map(xi=>model(res.x,xi));
+  const r2=1-sum(x.map((xi,i)=>(model(res.x,xi)-y[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  return{type:'4pl',params:{bot,top,ec50,hill},predict:xi=>model(res.x,xi),r2,pred,
+    equation:`4PL: bot=${bot.toFixed(3)}, top=${top.toFixed(3)}, EC50=${ec50.toFixed(3)}, hill=${hill.toFixed(3)}`};
+}
+function runRegression(x,y,model,degree){
+  const fns={linear:()=>fitLinear(x,y),log:()=>fitLogarithmic(x,y),exp:()=>fitExponential(x,y),
+    power:()=>fitPower(x,y),'4pl':()=>fit4PL(x,y),'5pl':()=>fit5PL(x,y),
+    poly2:()=>fitPolynomial(x,y,2),poly3:()=>fitPolynomial(x,y,3),poly4:()=>fitPolynomial(x,y,4)};
+  return(fns[model]||(()=>({error:'Unknown model'})))();
+}
+// ── 2-way ANOVA ────────────────────────────────────────────────
+function twowayANOVA(groupData,nA,nB){
+  if(groupData.length!==nA*nB)return{error:`Need exactly ${nA}×${nB}=${nA*nB} groups`};
+  const cells=Array.from({length:nA},(_,a)=>Array.from({length:nB},(_,b)=>groupData[a*nB+b]));
+  for(let a=0;a<nA;a++)for(let b=0;b<nB;b++)if(!cells[a][b].length)return{error:`Cell (A${a+1},B${b+1}) has no data`};
+  const nRep=cells[0][0].length;
+  const grandMean=mean(groupData.flat());
+  const cellMeans=cells.map(row=>row.map(c=>mean(c)));
+  const aMeans=Array.from({length:nA},(_,a)=>mean(cells[a].flat()));
+  const bMeans=Array.from({length:nB},(_,b)=>mean(cells.map(row=>row[b]).flat()));
+  const SSA=nB*nRep*sum(aMeans.map(m=>(m-grandMean)**2));
+  const SSB=nA*nRep*sum(bMeans.map(m=>(m-grandMean)**2));
+  const SSAB=nRep*sum(cells.flatMap((row,a)=>row.map((_,b)=>(cellMeans[a][b]-aMeans[a]-bMeans[b]+grandMean)**2)));
+  const SSError=sum(cells.flatMap((row,a)=>row.flatMap((cell,b)=>cell.map(v=>(v-cellMeans[a][b])**2))));
+  const dfA=nA-1,dfB=nB-1,dfAB=(nA-1)*(nB-1),dfError=nA*nB*(nRep-1);
+  if(dfError<1)return{error:'Not enough replicates per cell for error estimate (need ≥2 reps/cell)'};
+  const MSA=SSA/dfA,MSB=SSB/dfB,MSAB=dfAB>0?SSAB/dfAB:0,MSError=SSError/dfError;
+  const FA=MSA/MSError,FB=MSB/MSError,FAB=dfAB>0?MSAB/MSError:0;
+  const pA=1-jStat.centralF.cdf(FA,dfA,dfError);
+  const pB=1-jStat.centralF.cdf(FB,dfB,dfError);
+  const pAB=dfAB>0?1-jStat.centralF.cdf(FAB,dfAB,dfError):1;
+  return{SSA,SSB,SSAB,SSError,dfA,dfB,dfAB,dfError,MSA,MSB,MSAB,MSError,FA,FB,FAB,pA,pB,pAB,cellMeans,aMeans,bMeans};
+}
+
+function volcanoData(names,log2fc,pvals,fc_thresh=1,p_thresh=0.05){
+  return names.map((n,i)=>({name:n,log2fc:log2fc[i],neglog10p:-Math.log10(pvals[i]),
+    up:log2fc[i]>=fc_thresh&&pvals[i]<p_thresh,
+    down:log2fc[i]<=-fc_thresh&&pvals[i]<p_thresh,
+    sig:Math.abs(log2fc[i])>=fc_thresh&&pvals[i]<p_thresh}));
+}
+
+// ═══════════════════════════════════════════════════════════
+// DATA GRID — 2-tier header, row names, multi-cell paste
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// DATASET MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function renderDataStrip(){
+  const strip=document.getElementById('data-strip');
+  if(!strip)return;
+  strip.innerHTML=datasets.map((ds,i)=>`<button class="ds-tab${activeDS===i?' active':''}" onclick="switchDataset(${i})" ondblclick="renameDataset(${i},event)">${ds.name}<button class="ds-close" onclick="removeDataset(${i});event.stopPropagation()">×</button></button>`).join('')
+    + `<button class="tab-add" onclick="addDataset()" title="Add dataset">+</button>`;
+}
+
+function renameDataset(idx,evt){
+  evt.stopPropagation();
+  const cur=datasets[idx].name;
+  const inp=document.createElement('input');
+  inp.type='text';inp.value=cur;
+  inp.style.cssText='position:absolute;z-index:999;padding:2px 6px;border-radius:4px;border:1px solid var(--ac);background:var(--surf2);color:var(--tx);font-size:11px;width:120px';
+  const rect=evt.currentTarget.getBoundingClientRect();
+  inp.style.left=rect.left+'px';inp.style.top=rect.top+'px';
+  document.body.appendChild(inp);inp.select();
+  const done=()=>{const v=inp.value.trim();if(v)datasets[idx].name=v;inp.remove();renderDataStrip();};
+  inp.addEventListener('blur',done);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')done();if(e.key==='Escape'){inp.remove();}});
+}
+
+function addDataset(){
+  // Save current G to current dataset
+  datasets[activeDS].G=JSON.parse(JSON.stringify(G));
+  datasets[activeDS].activePT=activePT;
+  datasets[activeDS].activeST=activeST;
+  const idx=datasets.length;
+  const newG={nReps:3,groups:[{name:'Control',reps:['Rep1','Rep2','Rep3'],data:[]},{name:'Treatment',reps:['Rep1','Rep2','Rep3'],data:[]}],rowNames:[],nRows:6};
+  datasets.push({id:'ds'+idx,name:'Dataset '+(idx+1),G:newG,activePT:-1,activeST:-1});
+  switchDataset(idx);
+}
+
+function removeDataset(idx){
+  if(datasets.length<=1)return;
+  datasets.splice(idx,1);
+  const newIdx=Math.min(idx,datasets.length-1);
+  activeDS=newIdx; // set directly to avoid saving
+  restoreDataset(newIdx);
+  renderDataStrip();
+}
+
+function switchDataset(idx){
+  if(idx===activeDS)return;
+  // Save current state
+  datasets[activeDS].G=JSON.parse(JSON.stringify(G));
+  datasets[activeDS].activePT=activePT;
+  datasets[activeDS].activeST=activeST;
+  activeDS=idx;
+  restoreDataset(idx);
+  renderDataStrip();
+}
+
+function restoreDataset(idx){
+  const ds=datasets[idx];
+  if(ds.G){
+    G=JSON.parse(JSON.stringify(ds.G));
+  } else {
+    // Fresh dataset
+    G={nReps:3,groups:[{name:'Control',reps:['Rep1','Rep2','Rep3'],data:[]},{name:'Treatment',reps:['Rep1','Rep2','Rep3'],data:[]}],rowNames:[],nRows:6};
+    for(const g of G.groups){while(g.data.length<G.nRows)g.data.push(Array(G.nReps).fill(''));}
+    G.rowNames=Array.from({length:G.nRows},(_,i)=>`Row ${i+1}`);
+    ds.G=JSON.parse(JSON.stringify(G));
+  }
+  renderGrid();
+  document.getElementById('n-reps').value=G.nReps;
+  document.getElementById('n-grps').value=G.groups.length;
+  // Show only this dataset's tabs
+  renderPlotStrip();
+  renderStatStrip();
+  activePT=ds.activePT||plotTabs.filter(t=>t.ds===idx)[0]?.id||-1;
+  activeST=ds.activeST||statTabs.filter(t=>t.ds===idx)[0]?.id||-1;
+  if(activePT&&activePT!==-1)activatePlotTab(activePT);
+  if(activeST&&activeST!==-1)activateStatTab(activeST);
+}
+
+function initData(){
+  const ng=parseInt(document.getElementById('n-grps').value)||2;
+  const nr=parseInt(document.getElementById('n-reps').value)||3;
+  G.groups=[];
+  for(let i=0;i<ng;i++){
+    const reps=Array.from({length:nr},(_,k)=>`Rep${k+1}`);
+    G.groups.push({name:`Group${i+1}`,reps,data:[]});
+  }
+  G.nReps=nr;
+  G.nRows=G.nRows||6;
+  G.rowNames=Array.from({length:G.nRows},(_,i)=>G.rowNames[i]||`Row ${i+1}`);
+  for(const g of G.groups){
+    while(g.data.length<G.nRows)g.data.push(Array(G.nReps).fill(''));
+    g.data=g.data.slice(0,G.nRows).map(r=>{while(r.length<G.nReps)r.push('');return r.slice(0,G.nReps)});
+  }
+  renderGrid();
+}
+
+function renderGrid(){
+  const tbody=document.getElementById('dtbody');
+  const nG=G.groups.length,nR=G.nReps,nRows=G.nRows;
+
+  // Build header rows (2 rows: group names, rep names)
+  let hdr1='<tr><th style="min-width:28px;background:var(--surf)"></th><th style="background:var(--surf);padding:4px 6px;font-size:11px;color:var(--mu)">Row</th>';
+  for(let g=0;g<nG;g++){
+    hdr1+=`<th class="grp-hdr" colspan="${nR}" style="padding:0"><input class="grp" value="${G.groups[g].name}" onchange="G.groups[${g}].name=this.value" style="width:${nR*73}px"></th>`;
+  }
+  hdr1+='</tr>';
+
+  let hdr2='<tr><th style="background:var(--surf)"></th><th style="background:var(--surf)"></th>';
+  for(let g=0;g<nG;g++){
+    for(let r=0;r<nR;r++){
+      hdr2+=`<th class="rep-hdr" style="padding:0"><input class="rep" value="${G.groups[g].reps[r]}" onchange="G.groups[${g}].reps[${r}]=this.value" style="width:72px;border:none;background:transparent;color:var(--mu);text-align:center;font-size:11px;padding:3px 4px"></th>`;
+    }
+  }
+  hdr2+='</tr>';
+
+  // Data rows
+  let rows='';
+  for(let row=0;row<nRows;row++){
+    rows+=`<tr><td class="rnum">${row+1}</td><td style="padding:0"><input class="rn" value="${G.rowNames[row]||''}" onchange="G.rowNames[${row}]=this.value" style="width:80px;border:none;background:transparent;padding:4px 6px"></td>`;
+    for(let g=0;g<nG;g++){
+      for(let r=0;r<nR;r++){
+        const val=G.groups[g].data[row]?.[r]??'';
+        rows+=`<td style="padding:0"><input type="text" value="${val}" data-g="${g}" data-row="${row}" data-r="${r}" onchange="onCell(this,${g},${row},${r})" onmousedown="gridSelStart(event,${g},${row},${r})" onmouseover="gridSelMove(event,${g},${row},${r})" style="width:72px"></td>`;
+      }
+    }
+    rows+='</tr>';
+  }
+
+  tbody.innerHTML=hdr1+hdr2+rows;
+}
+
+function onCell(el,g,row,r){
+  pushUndo();
+  const v=el.value.trim();
+  if(!G.groups[g].data[row]) G.groups[g].data[row]=Array(G.nReps).fill('');
+  G.groups[g].data[row][r]=v===''?'':parseFloat(v);
+}
+
+function onRepsChange(){
+  const nr=Math.max(1,parseInt(document.getElementById('n-reps').value)||1);
+  G.nReps=nr;
+  for(const g of G.groups){
+    g.reps=Array.from({length:nr},(_,k)=>g.reps[k]||`Rep${k+1}`);
+    g.data=g.data.map(r=>{while(r.length<nr)r.push('');return r.slice(0,nr)});
+  }
+  renderGrid();
+}
+
+function onGrpsChange(){
+  const ng=Math.max(1,parseInt(document.getElementById('n-grps').value)||1);
+  while(G.groups.length<ng){
+    const i=G.groups.length;
+    G.groups.push({name:`Group${i+1}`,reps:Array.from({length:G.nReps},(_,k)=>`Rep${k+1}`),data:Array.from({length:G.nRows},()=>Array(G.nReps).fill(''))});
+  }
+  G.groups=G.groups.slice(0,ng);
+  renderGrid();
+}
+
+function gAddGroup(){pushUndo();document.getElementById('n-grps').value=G.groups.length+1;onGrpsChange()}
+function gDelGroup(){if(G.groups.length>1){pushUndo();document.getElementById('n-grps').value=G.groups.length-1;onGrpsChange()}}
+function gAddRow(){pushUndo();G.nRows++;G.rowNames.push(`Row ${G.nRows}`);for(const g of G.groups)g.data.push(Array(G.nReps).fill(''));renderGrid()}
+function gDelRow(){if(G.nRows>1){pushUndo();G.nRows--;G.rowNames.pop();for(const g of G.groups)g.data.pop();renderGrid()}}
+
+// Multi-cell paste (Excel/Sheets TSV)
+document.addEventListener('paste', e=>{pushUndo();
+  const active=document.activeElement;
+  if(!active||!active.closest('#dtbl'))return;
+  const clip=e.clipboardData.getData('text');
+  if(!clip.includes('\t')&&!clip.includes('\n'))return;
+  e.preventDefault();
+  const rows=clip.trim().split('\n').map(r=>r.split('\t'));
+  const startG=parseInt(active.dataset.g??0);
+  const startRow=parseInt(active.dataset.row??0);
+  const startR=parseInt(active.dataset.r??0);
+  if(isNaN(startG)||isNaN(startRow)||isNaN(startR))return;
+  rows.forEach((row,ri)=>{
+    row.forEach((val,ci)=>{
+      const targetRow=startRow+ri;
+      // figure out which group/rep this column offset lands in
+      const absCol=startG*G.nReps+startR+ci;
+      const tG=Math.floor(absCol/G.nReps);
+      const tR=absCol%G.nReps;
+      if(targetRow<G.nRows&&tG<G.groups.length&&tR<G.nReps){
+        const v=parseFloat(val.replace(',','.'));
+        if(!G.groups[tG].data[targetRow]) G.groups[tG].data[targetRow]=Array(G.nReps).fill('');
+        G.groups[tG].data[targetRow][tR]=isNaN(v)?'':v;
+      }
+    });
+  });
+  renderGrid();
+});
+
+// ── Grid selection / copy / cut ──────────────────────────────────────
+function gridSelStart(e,g,row,r){
+  if(!e.shiftKey){
+    gridSel={active:true,startG:g,startRow:row,startR:r,endG:g,endRow:row,endR:r};
+  } else {
+    gridSel.endG=g;gridSel.endRow=row;gridSel.endR=r;
+  }
+  updateSelHighlight();
+}
+function gridSelMove(e,g,row,r){
+  if(!e.buttons)return;
+  gridSel.active=true;gridSel.endG=g;gridSel.endRow=row;gridSel.endR=r;
+  updateSelHighlight();
+}
+document.addEventListener('mouseup',()=>{if(gridSel.active)gridSel.active=false});
+function updateSelHighlight(){
+  document.querySelectorAll('#dtbl input[data-g]').forEach(el=>{
+    const g=parseInt(el.dataset.g),row=parseInt(el.dataset.row),r=parseInt(el.dataset.r);
+    el.classList.toggle('sel-cell',isCellInSel(g,row,r));
+  });
+}
+function isCellInSel(g,row,r){
+  if(gridSel.startG<0)return false;
+  const minG=Math.min(gridSel.startG,gridSel.endG),maxG=Math.max(gridSel.startG,gridSel.endG);
+  const minRow=Math.min(gridSel.startRow,gridSel.endRow),maxRow=Math.max(gridSel.startRow,gridSel.endRow);
+  const minR=Math.min(gridSel.startR,gridSel.endR),maxR=Math.max(gridSel.startR,gridSel.endR);
+  if(row<minRow||row>maxRow)return false;
+  // Check column range (absolute column index)
+  const absCol=g*G.nReps+r;
+  const absMin=minG*G.nReps+minR,absMax=maxG*G.nReps+maxR;
+  return absCol>=absMin&&absCol<=absMax;
+}
+function getSelCells(){
+  // Returns 2D array [row][colOffset] of values in selection
+  if(gridSel.startG<0)return null;
+  const minG=Math.min(gridSel.startG,gridSel.endG),maxG=Math.max(gridSel.startG,gridSel.endG);
+  const minRow=Math.min(gridSel.startRow,gridSel.endRow),maxRow=Math.max(gridSel.startRow,gridSel.endRow);
+  const minR=Math.min(gridSel.startR,gridSel.endR),maxR=Math.max(gridSel.startR,gridSel.endR);
+  const minAbs=minG*G.nReps+minR,maxAbs=maxG*G.nReps+maxR;
+  const result=[];
+  for(let row=minRow;row<=maxRow;row++){
+    const rrow=[];
+    for(let abs=minAbs;abs<=maxAbs;abs++){
+      const tG=Math.floor(abs/G.nReps),tR=abs%G.nReps;
+      const v=G.groups[tG]?.data[row]?.[tR];
+      rrow.push(v===''||v===undefined?'':v);
+    }
+    result.push(rrow);
+  }
+  return result;
+}
+function clearSelCells(){pushUndo();
+  if(gridSel.startG<0)return;
+  const minG=Math.min(gridSel.startG,gridSel.endG),maxG=Math.max(gridSel.startG,gridSel.endG);
+  const minRow=Math.min(gridSel.startRow,gridSel.endRow),maxRow=Math.max(gridSel.startRow,gridSel.endRow);
+  const minR=Math.min(gridSel.startR,gridSel.endR),maxR=Math.max(gridSel.startR,gridSel.endR);
+  const minAbs=minG*G.nReps+minR,maxAbs=maxG*G.nReps+maxR;
+  for(let row=minRow;row<=maxRow;row++){
+    for(let abs=minAbs;abs<=maxAbs;abs++){
+      const tG=Math.floor(abs/G.nReps),tR=abs%G.nReps;
+      if(G.groups[tG]?.data[row])G.groups[tG].data[row][tR]='';
+    }
+  }
+  renderGrid();
+}
+document.addEventListener('keydown',e=>{
+  const active=document.activeElement;
+  const inGrid=active&&active.closest('#dtbl');
+  // Ctrl/Cmd+C = copy selection
+  if((e.ctrlKey||e.metaKey)&&e.key==='c'&&inGrid){
+    const cells=getSelCells();
+    if(cells){
+      const tsv=cells.map(row=>row.join('\t')).join('\n');
+      navigator.clipboard?.writeText(tsv);
+      e.preventDefault();
+    }
+  }
+  // Ctrl/Cmd+X = cut selection
+  if((e.ctrlKey||e.metaKey)&&e.key==='x'&&inGrid){
+    const cells=getSelCells();
+    if(cells){
+      const tsv=cells.map(row=>row.join('\t')).join('\n');
+      navigator.clipboard?.writeText(tsv).then(()=>clearSelCells());
+      e.preventDefault();
+    }
+  }
+  // Undo / Redo
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){undoAction();e.preventDefault();}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){redoAction();e.preventDefault();}
+  // Delete/Backspace: clear selected range (if multi-cell selection active)
+  if(inGrid&&(e.key==='Delete'||e.key==='Backspace')){
+    if(gridSel.startG>=0&&(gridSel.startG!==gridSel.endG||gridSel.startRow!==gridSel.endRow||gridSel.startR!==gridSel.endR)){
+      clearSelCells();e.preventDefault();
+    }
+  }
+  // Arrow key navigation
+  if(inGrid&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)&&!e.shiftKey){
+    const g=parseInt(active.dataset.g??-1),row=parseInt(active.dataset.row??-1),r=parseInt(active.dataset.r??-1);
+    if(g<0||row<0||r<0)return;
+    let ng=g,nrow=row,nr=r;
+    if(e.key==='ArrowUp')nrow=Math.max(0,row-1);
+    else if(e.key==='ArrowDown')nrow=Math.min(G.nRows-1,row+1);
+    else if(e.key==='ArrowLeft'){nr--;if(nr<0){ng=Math.max(0,g-1);nr=G.nReps-1;}}
+    else if(e.key==='ArrowRight'){nr++;if(nr>=G.nReps){ng=Math.min(G.groups.length-1,g+1);nr=0;}}
+    const next=document.querySelector(`#dtbl input[data-g="${ng}"][data-row="${nrow}"][data-r="${nr}"]`);
+    if(next){next.focus();next.select();e.preventDefault();}
+  }
+});
+
+// Get column of values for group g (all reps pooled, NaN removed)
+function getGroupVals(g){return G.groups[g].data.flatMap(row=>row.filter(v=>v!==''&&isFinite(v)).map(v=>parseFloat(v)))}
+// Get column of values for group g, only first rep of each row
+function getGroupCol(g,repIdx=0){return G.groups[g].data.map(row=>{const v=row[repIdx];return v===''||!isFinite(v)?NaN:parseFloat(v)}).filter(isFinite)}
+// Get pooled values for one group, all reps
+function getGroupPooled(g){
+  const vals=[];
+  for(const row of G.groups[g].data){
+    for(const v of row){if(v!==''&&isFinite(v))vals.push(parseFloat(v))}
+  }
+  return vals;
+}
+// Get row-wise data: for each row, return array of values for group g
+function getGroupRows(g){return G.groups[g].data.map(row=>row.filter(v=>v!==''&&isFinite(v)).map(Number))}
+
+// ═══════════════════════════════════════════════════════════
+// ANALYSIS OPTIONS UI
+// ═══════════════════════════════════════════════════════════
+function onTypeChange(){
+  const t=document.getElementById('asel').value;
+  document.getElementById('ahint').textContent=HINTS[t]||'';
+  renderAnalysisOpts(t);
+}
+
+function npModeChange(){
+  const mode=document.getElementById('opt-np-mode')?.value||'pair';
+  const pairWrap=document.getElementById('np-pair-wrap');
+  const ctrlWrap=document.getElementById('np-ctrl-wrap');
+  if(pairWrap){
+    const disabled=(mode==='allpairs');
+    pairWrap.style.opacity=disabled?'0.4':'1';
+    pairWrap.querySelectorAll('select').forEach(s=>s.disabled=disabled);
+  }
+  if(ctrlWrap){
+    ctrlWrap.style.display=(mode==='vsctrl')?'block':'none';
+  }
+}
+
+const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'bar_sd',mw:'bar_sd',wilcoxon:'bar_sd',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',ranksum:'bar_sd',rankprod:'bar_sd',heatmap:'heatmap'};
+
+function renderAnalysisOpts(t){
+  const el=document.getElementById('aopts');
+  const autoPlotType=AUTO_PLOT_FOR_TYPE[t];
+  const autoPlotHint=autoPlotType?`<div class="full-col" style="margin-top:4px"><label class="check-row"><input type="checkbox" id="opt-autoplot" checked> <span style="color:var(--mu);font-size:11px">Auto-plot after run (${PLOT_TYPES.find(p=>p.v===autoPlotType)?.l||autoPlotType})</span></label></div>`:'';
+
+  if(t==='ttest_ind'||t==='ttest_rel'){
+    el.innerHTML=`<div class="opts-grid">
+      <div>
+        <div class="opt-lbl">Normalization</div>
+        <select id="opt-norm"><option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option></select>
+      </div>
+      <div>
+        <div class="opt-lbl">Control group</div>
+        <select id="opt-ctrl">${G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('')}</select>
+      </div>
+      ${t==='ttest_rel'?`<div>
+        <div class="opt-lbl">Comparison</div>
+        <select id="opt-ptype"><option value="delta">Delta (A−B)</option><option value="ratio">Ratio (A/B)</option></select>
+      </div>`:''}
+      <div class="full-col">
+        <label class="check-row"><input type="checkbox" id="opt-perrow"> Run per row (each row = one test)</label>
+      </div>
+      <div id="perrow-opts" style="display:none" class="full-col">
+        <div class="opt-lbl">Per-row correction</div>
+        <select id="opt-corr"><option value="none">None</option><option value="bonferroni">Bonferroni</option><option value="holm">Holm-Bonferroni</option><option value="fdr">FDR (BH)</option></select>
+      </div>
+      ${autoPlotHint}
+    </div>`;
+    document.getElementById('opt-perrow').onchange=function(){document.getElementById('perrow-opts').style.display=this.checked?'block':'none'};
+  } else if(t==='anova'){
+    el.innerHTML=`<div class="opts-grid">
+      <div>
+        <div class="opt-lbl">Post-hoc</div>
+        <select id="opt-ph"><option value="bonferroni">Bonferroni</option><option value="holm">Holm</option><option value="fdr">FDR (BH)</option><option value="tukey">Tukey (approx)</option><option value="none">None</option></select>
+      </div>
+      <div>
+        <div class="opt-lbl">Normalization</div>
+        <select id="opt-norm"><option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option></select>
+      </div>
+      <div>
+        <div class="opt-lbl">Control group</div>
+        <select id="opt-ctrl"><option value="">All pairs</option>${G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('')}</select>
+      </div>
+      ${autoPlotHint}
+    </div>`;
+  } else if(t==='kruskal'){
+    el.innerHTML=`<div class="opts-grid"><div><div class="opt-lbl">Post-hoc correction</div><select id="opt-ph"><option value="bonferroni">Bonferroni</option><option value="none">None</option></select></div>${autoPlotHint}</div>`;
+  } else if(t==='pearson'||t==='spearman'){
+    const nG=G.groups.length;
+    if(nG>2){
+      el.innerHTML=`<div class="opts-grid">
+        <div><div class="opt-lbl">Mode</div><select id="opt-corr-mode"><option value="allpairs">All Pairs</option><option value="ctrl">vs Control</option></select></div>
+        <div id="corr-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-corr-ctrl">${grpOpts}</select></div>
+        ${autoPlotHint}
+      </div>`;
+      setTimeout(()=>{document.getElementById('opt-corr-mode')?.addEventListener('change',function(){document.getElementById('corr-ctrl-wrap').style.display=this.value==='ctrl'?'block':'none'})},10);
+    } else {
+      el.innerHTML=`<div class="opts-grid">${autoPlotHint}</div>`;
+    }
+  } else if(t==='anova2'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Factor A levels (nA)</div><input type="number" id="opt-nA" value="2" min="2" max="20"></div>
+      <div><div class="opt-lbl">Factor B levels (nB)</div><input type="number" id="opt-nB" value="2" min="2" max="20"></div>
+      ${autoPlotHint}
+    </div>`;
+  } else if(t==='regress'){
+    const colOpts=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">X column</div><select id="opt-rx">${colOpts}</select></div>
+      <div><div class="opt-lbl">Y column</div><select id="opt-ry">${G.groups.map((g,i)=>`<option value="${i}" ${i===1?'selected':''}>${g.name}</option>`).join('')}</select></div>
+      <div class="full-col"><div class="opt-lbl">Model</div><select id="opt-rmodel"><option value="linear">Linear</option><option value="poly2">Polynomial deg 2</option><option value="poly3">Polynomial deg 3</option><option value="poly4">Polynomial deg 4</option><option value="log">Logarithmic</option><option value="exp">Exponential</option><option value="power">Power</option><option value="4pl">4-Parameter Logistic</option><option value="5pl" selected>5-Parameter Logistic</option></select></div>
+      ${autoPlotHint}
+    </div>`;
+  } else if(t==='mw'||t==='wilcoxon'||t==='ranksum'||t==='rankprod'){
+    const nG=G.groups.length;
+    const grpOpts2=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
+    const grpOpts2b=G.groups.map((g,i)=>`<option value="${i}" ${i===1?'selected':''}>${g.name}</option>`).join('');
+    const ctrlOpts=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
+    const modeOpts=nG>2?`<div class="full-col"><div class="opt-lbl">Mode</div><select id="opt-np-mode" onchange="npModeChange()"><option value="pair">Single pair</option><option value="allpairs">All pairs (with FDR)</option><option value="vsctrl">vs Control</option></select></div>`:'';
+    const ctrlWrap=nG>2?`<div id="np-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-np-ctrl">${ctrlOpts}</select></div>`:'';
+    const pairOpts=`<div id="np-pair-wrap" style="display:flex;gap:7px;grid-column:1/-1"><div style="flex:1"><div class="opt-lbl">Group A</div><select id="opt-np-g1">${grpOpts2}</select></div><div style="flex:1"><div class="opt-lbl">Group B</div><select id="opt-np-g2">${grpOpts2b}</select></div></div>`;
+    const compOpts=(t==='wilcoxon'||t==='ranksum')?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp"><option value="delta">Delta (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
+    el.innerHTML=`<div class="opts-grid">${modeOpts}${ctrlWrap}${pairOpts}${compOpts}${autoPlotHint}</div>`;
+    if(nG>2)setTimeout(npModeChange,10);
+  } else if(t==='mtc'){
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Correction method</div><select id="opt-mtc-method"><option value="bonferroni">Bonferroni</option><option value="holm">Holm-Bonferroni</option><option value="fdr">FDR (BH)</option></select></div></div>`;
+  } else if(t==='volcano'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">|log2FC| threshold</div><input type="number" id="opt-fc" value="1" step="0.1" min="0"></div>
+      <div><div class="opt-lbl">p-value threshold</div><input type="number" id="opt-pt" value="0.05" step="0.01" min="0" max="1"></div>
+    </div>`;
+  } else if(autoPlotHint){
+    el.innerHTML=`<div class="opts-grid">${autoPlotHint}</div>`;
+  } else {
+    el.innerHTML='';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLOT OPTIONS UI
+// ═══════════════════════════════════════════════════════════
+function onPlotTypeChange(){
+  const t=document.getElementById('psel').value;
+  renderPlotOpts(t);
+}
+
+function renderPlotOpts(t){
+  const el=document.getElementById('popts');
+  const grpOpts=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
+  const grpOpts1=G.groups.map((g,i)=>`<option value="${i}" ${i===1?'selected':''}>${g.name}</option>`).join('');
+  const normOpts='<option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option><option value="minmax">Min-Max</option>';
+  if(['bar_sd','boxplot','violin'].includes(t)){
+    const isBV=t==='bar_sd'||t==='boxplot';
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Normalization</div><select id="popt-norm">${normOpts}</select></div>
+      <div><div class="opt-lbl">Show data</div><select id="popt-dispmode"><option value="both" selected>Mean + dots</option><option value="mean">Mean/box only</option><option value="reps">Dots/raw only</option></select></div>
+      <div><div class="opt-lbl">Dots show</div><select id="popt-dottype"><option value="raw">Raw replicates</option><option value="groupmean">Group mean</option></select></div>
+      ${isBV?`<div><div class="opt-lbl">Group by</div><select id="popt-groupby"><option value="group">By group</option><option value="sample">By sample</option></select></div>`:''}
+      <div class="full-col"><div class="opt-lbl">Y-axis title</div><input type="text" id="popt-ylab" placeholder="Value"></div>
+    </div>`;
+  } else if(t==='scatter'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">X-axis group</div><select id="popt-xg">${grpOpts}</select></div>
+      <div><div class="opt-lbl">Y-axis group</div><select id="popt-yg">${grpOpts1}</select></div>
+      <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-trend"> Show trend line</label></div>
+    </div>`;
+  } else if(t==='line'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Normalization</div><select id="popt-norm">${normOpts}</select></div>
+      <div class="full-col"><div class="opt-lbl">Y-axis title</div><input type="text" id="popt-ylab" placeholder="Value"></div>
+      <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-pts"> Show individual data points</label></div>
+    </div>`;
+  } else if(t==='heatmap'){
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Row normalisation</div><select id="popt-hnorm"><option value="zscore">Z-score (default)</option><option value="minmax">Min-Max</option><option value="none">None (raw values)</option></select></div></div>`;
+  } else if(t==='volcano'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">|log2FC| cutoff</div><input type="number" id="popt-fc" value="1" step="0.1" min="0"></div>
+      <div><div class="opt-lbl">p-value cutoff</div><input type="number" id="popt-pt" value="0.05" step="0.01" min="0" max="1"></div>
+      <div><div class="opt-lbl">log2FC column</div><select id="popt-fcg">${grpOpts}</select></div>
+      <div><div class="opt-lbl">p-value column</div><select id="popt-pg">${grpOpts1}</select></div>
+    </div>`;
+  } else if(t==='pca'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Points show</div><select id="popt-pcmode"><option value="mean">Group means</option><option value="reps">All replicates</option></select></div>
+      <div><div class="opt-lbl">Color by</div><select id="popt-pccol"><option value="group">Group</option><option value="rep">Replicate</option></select></div>
+      <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-pcnorm"> Normalise per feature (Z-score)</label></div>
+    </div>`;
+  } else if(t==='km'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Time column</div><select id="popt-tg">${grpOpts}</select></div>
+      <div><div class="opt-lbl">Event column (1=event, 0=censored)</div><select id="popt-eg">${grpOpts1}</select></div>
+    </div>`;
+  } else if(t==='dose'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Concentration column</div><select id="popt-dxg">${grpOpts}</select></div>
+      <div><div class="opt-lbl">Response column</div><select id="popt-dyg">${grpOpts1}</select></div>
+    </div>`;
+  } else if(t==='qq'){
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Group to test</div><select id="popt-qqg">${grpOpts}</select></div></div>`;
+  } else if(t==='histogram'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Group</div><select id="popt-hg"><option value="all">All groups</option>${grpOpts}</select></div>
+      <div><div class="opt-lbl">Number of bins (0=auto)</div><input type="number" id="popt-bins" value="0" min="0" max="200"></div>
+    </div>`;
+  } else if(t==='mtc'){
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">p-values column</div><select id="popt-mtcg">${grpOpts}</select></div></div>`;
+  } else { el.innerHTML=''; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPT STATE CAPTURE / RESTORE
+// ═══════════════════════════════════════════════════════════
+function captureOptState(){
+  const state={};
+  // Analysis opts
+  const asel=document.getElementById('asel');if(asel)state.asel=asel.value;
+  document.querySelectorAll('#aopts select,#aopts input').forEach(el=>{
+    if(el.id)state['ao_'+el.id]=(el.type==='checkbox'?el.checked:el.value);
+  });
+  // Plot opts
+  const psel=document.getElementById('psel');if(psel)state.psel=psel.value;
+  document.querySelectorAll('#popts select,#popts input').forEach(el=>{
+    if(el.id)state['po_'+el.id]=(el.type==='checkbox'?el.checked:el.value);
+  });
+  return state;
+}
+
+function restoreOptState(state){
+  if(!state)return;
+  if(state.asel){
+    const el=document.getElementById('asel');
+    if(el&&el.value!==state.asel){el.value=state.asel;onTypeChange();}
+  }
+  if(state.psel){
+    const el=document.getElementById('psel');
+    if(el&&el.value!==state.psel){el.value=state.psel;onPlotTypeChange();}
+  }
+  // Restore individual field values after UI is rebuilt
+  setTimeout(()=>{
+    Object.entries(state).forEach(([k,v])=>{
+      if(k.startsWith('ao_')||k.startsWith('po_')){
+        const id=k.slice(3);
+        const el=document.getElementById(id);
+        if(el){if(el.type==='checkbox')el.checked=v;else el.value=v;}
+      }
+    });
+  },50);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB SYSTEM (Plot pane + Stats pane)
+// ═══════════════════════════════════════════════════════════
+function addPlotTab(title, renderFn){
+  const id='pt'+(ptCount++);
+  const optState=captureOptState();
+  plotTabs.push({id,title,renderFn,canvasData:null,linkedStatId:null,optState,ds:activeDS});
+  lastPlotTabId=id;
+  renderPlotStrip();
+  activatePlotTab(id);
+  // After tab is in DOM, run renderFn
+  setTimeout(()=>{
+    const page=document.getElementById(id);
+    if(page&&renderFn)renderFn(page);
+  },30);
+  return id;
+}
+
+function addStatTab(title, html){
+  const id='st'+(stCount++);
+  const optState=captureOptState();
+  statTabs.push({id,title,html,linkedPlotId:null,optState,ds:activeDS});
+  lastStatTabId=id;
+  renderStatStrip();
+  activateStatTab(id);
+  return id;
+}
+
+function linkTabs(statId, plotId){
+  const st=statTabs.find(t=>t.id===statId);
+  const pt=plotTabs.find(t=>t.id===plotId);
+  if(st)st.linkedPlotId=plotId;
+  if(pt)pt.linkedStatId=statId;
+  renderStatStrip();
+  renderPlotStrip();
+}
+
+// Tab drag-and-drop reordering
+let tabDragSrc=null;
+function tabDragStart(e,listType,idx){
+  tabDragSrc={listType,idx};
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',idx);
+}
+function tabDragOver(e,listType,idx){
+  e.preventDefault();e.dataTransfer.dropEffect='move';
+}
+function tabDrop(e,listType,idx){
+  e.preventDefault();
+  if(!tabDragSrc||tabDragSrc.listType!==listType||tabDragSrc.idx===idx)return;
+  const list=listType==='plot'?plotTabs:statTabs;
+  const [item]=list.splice(tabDragSrc.idx,1);
+  list.splice(idx,0,item);
+  tabDragSrc=null;
+  if(listType==='plot')renderPlotStrip();
+  else renderStatStrip();
+}
+
+function renderPlotStrip(){
+  const strip=document.getElementById('plot-strip');
+  const dsTabs=plotTabs.filter(t=>t.ds===activeDS||t.ds===undefined);
+  strip.innerHTML=dsTabs.map((t,idx)=>`<button class="tab-item${activePT===t.id?' active':''}" onclick="activatePlotTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'plot',${idx})" ondragover="tabDragOver(event,'plot',${idx})" ondrop="tabDrop(event,'plot',${idx})">${t.title}${t.linkedStatId?` <button class="tab-link" onclick="activateStatTab('${t.linkedStatId}');event.stopPropagation()" title="Go to linked stat">🔗</button>`:''}  <button class="tab-close" onclick="closePlotTab('${t.id}');event.stopPropagation()">×</button></button>`).join('');
+  const content=document.getElementById('plot-content');
+  if(!dsTabs.length){
+    content.innerHTML='<div class="ph">No plots yet — configure a plot type and click 📈 Plot</div>';
+    // Hide all existing pages
+    content.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active'));
+    return;
+  }
+  // Remove placeholder if present
+  content.querySelectorAll('.ph').forEach(el=>el.remove());
+  // Show/hide pages by dataset
+  plotTabs.forEach(t=>{
+    if(!document.getElementById(t.id)){
+      const page=document.createElement('div');
+      page.id=t.id;page.className='tab-page';
+      content.appendChild(page);
+    }
+  });
+  // Hide pages from other datasets
+  plotTabs.forEach(t=>{
+    const page=document.getElementById(t.id);
+    if(page&&(t.ds!==activeDS&&t.ds!==undefined))page.classList.remove('active');
+  });
+}
+
+function renderStatStrip(){
+  const strip=document.getElementById('stats-strip');
+  const dsStatTabs=statTabs.filter(t=>t.ds===activeDS||t.ds===undefined);
+  strip.innerHTML=dsStatTabs.map((t,idx)=>`<button class="tab-item${activeST===t.id?' active':''}" onclick="activateStatTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'stat',${idx})" ondragover="tabDragOver(event,'stat',${idx})" ondrop="tabDrop(event,'stat',${idx})">${t.title}${t.linkedPlotId?` <button class="tab-link" onclick="activatePlotTab('${t.linkedPlotId}');event.stopPropagation()" title="Go to linked plot">🔗</button>`:''}  <button class="tab-close" onclick="closeStatTab('${t.id}');event.stopPropagation()">×</button></button>`).join('');
+  const content=document.getElementById('stats-content');
+  if(!dsStatTabs.length){
+    content.innerHTML='<div class="ph">No results yet — select a test and click ▶ Run Analysis</div>';
+    statTabs.forEach(t=>{const p=document.getElementById(t.id);if(p)p.classList.remove('active');});
+    return;
+  }
+  // Remove placeholder if present
+  content.querySelectorAll('.ph').forEach(el=>el.remove());
+  // Add new pages; keep existing ones
+  statTabs.forEach(t=>{
+    if(!document.getElementById(t.id)){
+      const page=document.createElement('div');
+      page.id=t.id;page.className='tab-page';
+      page.innerHTML=`<div class="stat-scroll">${t.html}</div>`;
+      content.appendChild(page);
+    }
+    // Hide pages from other datasets
+    const page=document.getElementById(t.id);
+    if(page&&(t.ds!==activeDS&&t.ds!==undefined))page.classList.remove('active');
+  });
+}
+
+function activatePlotTab(id){
+  activePT=id;
+  renderPlotStrip(); // rebuilds strip with correct active class
+  document.querySelectorAll('#plot-content .tab-page').forEach(p=>{p.classList.toggle('active',p.id===id)});
+  const tab=plotTabs.find(t=>t.id===id);
+  if(tab?.optState)restoreOptState(tab.optState);
+}
+
+function activateStatTab(id){
+  activeST=id;
+  renderStatStrip(); // rebuilds strip with correct active class
+  document.querySelectorAll('#stats-content .tab-page').forEach(p=>{p.classList.toggle('active',p.id===id)});
+  const tab=statTabs.find(t=>t.id===id);
+  if(tab?.optState)restoreOptState(tab.optState);
+}
+
+function closePlotTab(id){
+  if(chartInst[id]){try{chartInst[id].destroy()}catch(e){}delete chartInst[id]}
+  document.getElementById(id)?.remove();
+  plotTabs=plotTabs.filter(t=>t.id!==id);
+  if(activePT===id)activePT=plotTabs.length?plotTabs[plotTabs.length-1].id:-1;
+  renderPlotStrip();
+  if(activePT!==-1)activatePlotTab(activePT);
+}
+
+function closeStatTab(id){
+  document.getElementById(id)?.remove();
+  statTabs=statTabs.filter(t=>t.id!==id);
+  if(activeST===id)activeST=statTabs.length?statTabs[statTabs.length-1].id:-1;
+  renderStatStrip();
+  if(activeST!==-1)activateStatTab(activeST);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESIZABLE PANES
+// ═══════════════════════════════════════════════════════════
+function startVSplit(e){
+  e.preventDefault();
+  const handle=document.getElementById('vs');
+  const main=document.getElementById('main');
+  const lp=document.getElementById('lpanel');
+  handle.classList.add('dragging');
+  const onMove=ev=>{
+    const rect=main.getBoundingClientRect();
+    const w=Math.max(200,Math.min(rect.width*0.75,ev.clientX-rect.left));
+    lp.style.width=w+'px';
+  };
+  const onUp=()=>{handle.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+function startLHSplit(e){
+  e.preventDefault();
+  const handle=document.getElementById('ls');
+  const lp=document.getElementById('lpanel');
+  const dp=document.getElementById('data-pane');
+  handle.classList.add('dragging');
+  const onMove=ev=>{
+    const rect=lp.getBoundingClientRect();
+    const h=Math.max(80,Math.min(rect.height-80,ev.clientY-rect.top));
+    dp.style.flex='none';dp.style.height=h+'px';
+  };
+  const onUp=()=>{handle.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+function startHSplit(e){
+  e.preventDefault();
+  const handle=document.getElementById('hs');
+  const rp=document.getElementById('rpanel');
+  const pp=document.getElementById('plot-pane');
+  const sp=document.getElementById('stats-pane');
+  handle.classList.add('dragging');
+  const onMove=ev=>{
+    const rect=rp.getBoundingClientRect();
+    const h=Math.max(80,Math.min(rect.height-80,ev.clientY-rect.top));
+    pp.style.flex='none';pp.style.height=h+'px';
+    sp.style.flex='1';sp.style.height='auto';
+  };
+  const onUp=()=>{handle.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLOT RENDERING  (independent of analysis)
+// ═══════════════════════════════════════════════════════════
+const errBarPlugin={id:'errBars',afterDatasetsDraw(chart){
+  const {ctx,scales:{x,y}}=chart;
+  chart.data.datasets.forEach((ds,di)=>{
+    if(!ds._errBars)return;
+    const meta=chart.getDatasetMeta(di);
+    ds._errBars.forEach((eb,i)=>{
+      if(!eb||!meta.data[i])return;
+      const cx=meta.data[i].x,top=y.getPixelForValue(eb.hi),bot=y.getPixelForValue(eb.lo);
+      ctx.save();ctx.strokeStyle=_exportTheme?'#000000':(Array.isArray(ds.borderColor)?(ds.borderColor[i]||'#fff'):(ds.borderColor||'#fff'));ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(cx,top);ctx.lineTo(cx,bot);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx-5,top);ctx.lineTo(cx+5,top);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx-5,bot);ctx.lineTo(cx+5,bot);ctx.stroke();
+      ctx.restore();
+    });
+  });
+}};
+
+const sigBracketPlugin={id:'sigBrackets',afterDraw(chart){
+  const pairs=chart._sigPairs;
+  if(!pairs||!pairs.length)return;
+  const {ctx,scales:{x,y},chartArea}=chart;
+  // Assign levels (greedy interval coloring)
+  const placed=[];
+  pairs.forEach(pair=>{
+    let lvl=0;
+    while(placed.some(([l,a,b])=>l===lvl&&!(pair.j<a||pair.i>b)))lvl++;
+    pair._lvl=lvl;placed.push([lvl,pair.i,pair.j]);
+  });
+  // Find max error-bar hi across datasets
+  let maxHi=-Infinity;
+  chart.data.datasets.forEach(ds=>{
+    if(ds._errBars)ds._errBars.forEach(eb=>{if(eb&&eb.hi>maxHi)maxHi=eb.hi});
+    if(Array.isArray(ds.data))ds.data.forEach(v=>{const val=typeof v==='number'?v:(v&&typeof v.y==='number'?v.y:null);if(val!==null&&val>maxHi)maxHi=val});
+  });
+  if(!isFinite(maxHi))maxHi=y.max;
+  const step=22,topPad=18;
+  const ink=_exportTheme?'#000000':(isLightTheme()?'#1e293b':'#e2e8f0');
+  pairs.forEach(({i,j,stars,_lvl})=>{
+    if(!stars)return;
+    const x1=x.getPixelForTick(i),x2=x.getPixelForTick(j);
+    const yb=y.getPixelForValue(maxHi)-topPad-_lvl*step;
+    if(yb<chartArea.top+2)return; // skip if no room
+    ctx.save();
+    ctx.strokeStyle=ink;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(x1,yb);ctx.lineTo(x2,yb);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x1,yb);ctx.lineTo(x1,yb+6);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x2,yb);ctx.lineTo(x2,yb+6);ctx.stroke();
+    ctx.font=_exportTheme?`bold 14px ${PRISM_FONT}`:'bold 11px system-ui';ctx.textAlign='center';ctx.fillStyle=ink;
+    ctx.fillText(stars,(x1+x2)/2,yb-4);
+    ctx.restore();
+  });
+}};
+
+function runPlot(){
+  const ptype=document.getElementById('psel').value;
+  const normMethod=document.getElementById('popt-norm')?.value||'none';
+  const title=PLOT_TYPES.find(p=>p.v===ptype)?.l||ptype;
+
+  if(ptype==='bar_sd') plotBarSD(normMethod, title);
+  else if(ptype==='boxplot') plotBoxplot(normMethod, title);
+  else if(ptype==='violin') plotViolin(normMethod, title);
+  else if(ptype==='scatter') plotScatter2(title);
+  else if(ptype==='line') plotLine(title);
+  else if(ptype==='heatmap') plotHeatmapCustom(title);
+  else if(ptype==='volcano') plotVolcanoCustom(title);
+  else if(ptype==='pca') plotPCACustom(title);
+  else if(ptype==='km') plotKMCustom(title);
+  else if(ptype==='dose') plotDoseResponse(title);
+  else if(ptype==='qq') plotQQ2(title);
+  else if(ptype==='histogram') plotHistogram(title);
+  else if(ptype==='mtc') plotMTCCustom(title);
+}
+
+function chartTab(title, chartFn){
+  addPlotTab(title, page=>{
+    page.innerHTML=`<div class="plot-topbar"><span style="font-size:12px;font-weight:600;color:var(--tx)">${title}</span><span style="flex:1"></span><button class="btn-sm" onclick="downloadTabPlot('${page.id}')">⬇ PNG</button> <button class="btn-sm" onclick="downloadTabSVG('${page.id}')">⬇ SVG</button> <button class="btn-sm" onclick="downloadTabPDF('${page.id}')">⬇ PDF</button></div><div class="plot-area" id="pa_${page.id}" style="flex:1;padding:10px;position:relative"><canvas id="c_${page.id}" style="position:absolute;inset:10px;width:calc(100% - 20px)!important;height:calc(100% - 20px)!important"></canvas></div>`;
+    const canvas=document.getElementById('c_'+page.id);
+    const tab=plotTabs.find(t=>t.id===page.id);if(tab)tab._chartFn=chartFn;
+    if(chartInst[page.id]){try{chartInst[page.id].destroy()}catch(e){}}
+    chartInst[page.id]=chartFn(canvas);
+  });
+}
+
+function canvasTab(title, drawFn){
+  addPlotTab(title, page=>{
+    const tab=plotTabs.find(t=>t.id===page.id);if(tab)tab._drawFn=drawFn;
+    page.innerHTML=`<div class="plot-topbar"><span style="font-size:12px;font-weight:600;color:var(--tx)">${title}</span><span style="flex:1"></span><button class="btn-sm" onclick="downloadTabPlot('${page.id}')">⬇ PNG</button> <button class="btn-sm" onclick="downloadTabSVG('${page.id}')">⬇ SVG</button> <button class="btn-sm" onclick="downloadTabPDF('${page.id}')">⬇ PDF</button></div><div class="plot-area" id="pa_${page.id}" style="flex:1;padding:10px;overflow:hidden"></div>`;
+    const pa=document.getElementById('pa_'+page.id);
+    const canvas=document.createElement('canvas');
+    canvas.style.maxWidth='100%';pa.appendChild(canvas);
+    drawFn(canvas,pa);
+  });
+}
+
+// ── Prism-style offscreen render ────────────────────────────────────────
+const PRISM_FONT='Arial, Helvetica, sans-serif';
+const PRISM_SCALE=3; // output pixels per logical px (~300 dpi at typical figure sizes)
+const PRISM_SHAPES=['circle','rect','triangle','rectRot','crossRot','star','rectRounded','cross'];
+const PRISM_DASH=[[],[6,4],[2,3],[10,4,2,4]];
+
+// Rewrites font strings drawn on custom canvases to bold Arial, slightly larger
+function _prismFontStr(v){
+  return String(v).replace(/(?:bold\s+|normal\s+|[1-9]00\s+)?(\d+(?:\.\d+)?)px\s+.*$/,
+    (m,sz)=>`bold ${Math.round(parseFloat(sz)*1.2)}px ${PRISM_FONT}`);
+}
+
+// Canvas-based plots: re-run the draw function at logical size W×H, rendered at PRISM_SCALE
+function _prismCanvasPlot(drawFn,W,H){
+  const S=PRISM_SCALE;
+  const cv=document.createElement('canvas');
+  const realGet=cv.getContext.bind(cv);
+  cv.getContext=function(type,opts){
+    // draw fn sets cv.width/height (logical) just before asking for the context
+    if(cv.width<W*S){cv.width=cv.width*S;cv.height=cv.height*S;}
+    const ctx=realGet(type,opts);
+    ctx.setTransform(S,0,0,S,0,0);
+    const d=Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype,'font');
+    try{Object.defineProperty(ctx,'font',{configurable:true,get(){return d.get.call(ctx)},set(v){d.set.call(ctx,_prismFontStr(v))}});}catch(e){}
+    return ctx;
+  };
+  const fakeParent={clientWidth:W,clientHeight:H,getBoundingClientRect:()=>({width:W,height:H})};
+  drawFn(cv,fakeParent);
+  return cv;
+}
+
+// Restyle a Chart.js config (before construction) to a GraphPad-Prism look
+function _prismifyConfig(cfg){
+  const type=cfg.type,ds=(cfg.data&&cfg.data.datasets)||[];
+  const isBar=d=>(d.type||type)==='bar';
+  const hasBar=ds.some(isBar),nBar=ds.filter(isBar).length;
+  let ptIdx=0,lineIdx=0;
+  ds.forEach((d,i)=>{
+    const t=d.type||type;
+    if(t==='bar'){
+      const C=PRISM_THEME.colors;
+      d.backgroundColor=Array.isArray(d.backgroundColor)?d.backgroundColor.map((_,j)=>C[j%C.length]):(nBar===1?'#bfbfbf':C[i%C.length]);
+      d.borderColor='#000000';d.borderWidth=1.5;
+    } else if(t==='line'||d.showLine===true||d.pointRadius===0){
+      d.borderColor='#000000';d.borderWidth=2;d.tension=0;
+      const isFit=d.pointRadius===0&&type!=='line';
+      if(isFit){d.borderDash=PRISM_DASH[lineIdx%PRISM_DASH.length];}
+      else{ // data series: solid line + distinct marker (filled, then open)
+        const k=lineIdx%(PRISM_SHAPES.length*2);
+        d.pointStyle=PRISM_SHAPES[k%PRISM_SHAPES.length];d.pointRadius=4.5;d.pointHoverRadius=4.5;
+        d.pointBorderColor='#000000';d.pointBorderWidth=1.5;
+        d.pointBackgroundColor=k<PRISM_SHAPES.length?'#000000':'#ffffff';
+      }
+      d.backgroundColor='#000000';d.fill=false;
+      lineIdx++;
+    } else {
+      d.backgroundColor='#000000';d.borderColor='#000000';d.borderWidth=1;
+      d.pointRadius=hasBar?3.5:4.5;d.pointHoverRadius=d.pointRadius;
+      // Bar + dots: drawn by _prismDotsPlugin as a beeswarm centred on each bar
+      if(hasBar){d._prismSwarm=true;d._swarmR=d.pointRadius;d.pointRadius=0;d.pointHoverRadius=0;}
+      if(!hasBar){d.pointStyle=PRISM_SHAPES[ptIdx%PRISM_SHAPES.length];
+        if(ptIdx>=PRISM_SHAPES.length)d.backgroundColor='#ffffff';}
+      ptIdx++;
+    }
+  });
+  const o=cfg.options=cfg.options||{};
+  o.animation=false;o.devicePixelRatio=PRISM_SCALE;
+  o.layout={padding:{top:12,right:16,bottom:4,left:4}};
+  Object.entries(o.scales||{}).forEach(([key,sc])=>{
+    if(key==='xjit')return;
+    sc.grid={display:true,drawOnChartArea:false,drawTicks:true,tickLength:6,color:'#000000',lineWidth:1.5};
+    sc.border={display:true,color:'#000000',width:1.5};
+    sc.ticks={...(sc.ticks||{}),color:'#000000',padding:4,font:{family:PRISM_FONT,size:13,weight:'bold'}};
+    if(sc.title)sc.title={...sc.title,color:'#000000',font:{family:PRISM_FONT,size:15,weight:'bold'}};
+  });
+  o.plugins=o.plugins||{};
+  if(o.plugins.legend&&o.plugins.legend.display!==false){
+    const ptLegend=!hasBar&&(ptIdx>0||lineIdx>0);
+    o.plugins.legend={...o.plugins.legend,labels:{...(o.plugins.legend.labels||{}),color:'#000000',usePointStyle:ptLegend,
+      boxWidth:ptLegend?8:14,boxHeight:ptLegend?8:14,font:{family:PRISM_FONT,size:12,weight:'bold'}}};
+  }
+  o.plugins.tooltip={enabled:false};
+  Object.entries(o.scales||{}).forEach(([k,sc])=>{if(sc.type==='linear'&&sc.min===undefined&&sc.max===undefined&&type==='scatter')sc.grace='6%';});
+  if(ds.some(d=>d._prismSwarm)){cfg.plugins=[_prismDotsPlugin,...(cfg.plugins||[])];}
+  return cfg;
+}
+
+// Beeswarm dot overlay for bar charts (pixel-accurate, centred on each category)
+const _prismDotsPlugin={id:'prismDots',afterDatasetsDraw(chart){
+  const {ctx,scales:{x,y}}=chart;if(!x||!y)return;
+  const labels=chart.data.labels||[];
+  const barMeta=chart.data.datasets.map((d,i)=>chart.getDatasetMeta(i)).find(m=>m.type==='bar');
+  const halfW=barMeta&&barMeta.data[0]?barMeta.data[0].width*0.42:20;
+  chart.data.datasets.forEach(d=>{
+    if(!d._prismSwarm||!Array.isArray(d.data))return;
+    const r=d._swarmR||3.5,byCat={};
+    d.data.forEach(p=>{const lab=p&&typeof p==='object'?p.x:null;const v=p&&typeof p==='object'?p.y:p;
+      const ci=typeof lab==='number'?lab:labels.indexOf(lab);if(ci<0||!isFinite(v))return;(byCat[ci]=byCat[ci]||[]).push(v);});
+    ctx.save();ctx.fillStyle='#000000';
+    Object.entries(byCat).forEach(([ci,vals])=>{
+      const cx=x.getPixelForTick(+ci);const placed=[];
+      vals.map(v=>y.getPixelForValue(v)).sort((a,b)=>a-b).forEach(py=>{
+        let dx=0;
+        for(let k=0;k<200;k++){
+          dx=(k===0?0:(k%2?1:-1)*Math.ceil(k/2)*r*0.5);
+          if(!placed.some(([px,qy])=>Math.hypot(px-dx,qy-py)<2*r+0.5))break;
+        }
+        dx=Math.max(-halfW,Math.min(halfW,dx));placed.push([dx,py]);
+        ctx.beginPath();ctx.arc(cx+dx,py,r,0,Math.PI*2);ctx.fill();
+      });
+    });
+    ctx.restore();
+  });
+}};
+
+// Logical figure size for a Chart.js export: narrow for category bar charts (Prism-like), 4:3 otherwise
+function _prismSize(ci){
+  const isCat=ci&&ci.config.type==='bar'&&Array.isArray(ci.data.labels)&&ci.data.labels.length&&!(ci.options.scales&&ci.options.scales.x&&ci.options.scales.x.type==='linear');
+  if(isCat){const n=ci.data.labels.length;return{W:Math.max(320,Math.min(900,110+105*n)),H:440};}
+  return{W:620,H:460};
+}
+
+function _niceAxis(mn,mx){
+  if(!(mx>mn)){mx=mn+1;}
+  const span=mx-mn,raw=span/5,mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag;
+  const step=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag;
+  const lo=Math.floor(mn/step+1e-9)*step,hi=Math.ceil(mx/step-1e-9)*step;
+  const tk=[];for(let v=lo;v<=hi+step*1e-6;v+=step)tk.push(Math.abs(v)<step*1e-9?0:v);
+  return[lo,hi,tk];
+}
+function _tickFmt(v,tk){
+  if(!_exportTheme)return v.toFixed(2);
+  const step=tk.length>1?Math.abs(tk[1]-tk[0]):1;
+  const dec=Math.max(0,Math.min(4,-Math.floor(Math.log10(step)+1e-9)));
+  return v.toFixed(step%1===0?0:Math.max(dec,(String(step).split('.')[1]||'').length));
+}
+function _deepClone(v){
+  if(Array.isArray(v))return v.map(_deepClone);
+  if(v&&typeof v==='object'&&Object.getPrototypeOf(v)===Object.prototype){const o={};for(const k in v)o[k]=_deepClone(v[k]);return o;}
+  return v;
+}
+function _prismCanvas(pageId){
+  const tab=plotTabs.find(t=>t.id===pageId);
+  const S=PRISM_SCALE;
+  let src=null;
+  _exportTheme=PRISM_THEME;
+  try{
+    if(tab&&tab._drawFn){
+      src=_prismCanvasPlot(tab._drawFn,720,480);
+    } else {
+      const live=chartInst[pageId];
+      const {W,H}=_prismSize(live);
+      const holder=document.createElement('div');
+      holder.style.cssText=`position:fixed;left:-20000px;top:0;width:${W}px;height:${H}px;`;
+      document.body.appendChild(holder);
+      const cv=document.createElement('canvas');holder.appendChild(cv);
+      const prevAnim=Chart.defaults.animation,prevDpr=Chart.defaults.devicePixelRatio,prevFam=Chart.defaults.font.family;
+      Chart.defaults.animation=false;Chart.defaults.devicePixelRatio=S;Chart.defaults.font.family=PRISM_FONT;
+      let ci=null;const OrigChart=window.Chart;
+      try{
+        if(tab&&tab._chartFn){
+          window.Chart=new Proxy(OrigChart,{construct(T,args){if(args[1])_prismifyConfig(args[1]);return new T(...args);}});
+          try{ci=tab._chartFn(cv);}finally{window.Chart=OrigChart;}
+        } else if(live){ // e.g. PCA (built outside chartTab): clone its config
+          const cfg=_prismifyConfig({type:live.config.type,data:_deepClone(live.data),options:{..._deepClone(live.config.options||{}),responsive:true,maintainAspectRatio:false}});
+          ci=new OrigChart(cv,{...cfg,plugins:live.config.plugins||[]});
+          if(live._sigPairs)ci._sigPairs=live._sigPairs;
+        }
+        if(ci){
+          ci.resize(W,H);ci.update('none');
+          src=document.createElement('canvas');src.width=cv.width;src.height=cv.height;
+          src.getContext('2d').drawImage(cv,0,0);
+          ci.destroy();
+        }
+      } finally {
+        Chart.defaults.animation=prevAnim;Chart.defaults.devicePixelRatio=prevDpr;Chart.defaults.font.family=prevFam;
+        holder.remove();
+      }
+    }
+  } finally { _exportTheme=null; }
+  if(!src){ // last resort: plain copy of on-screen canvas (no stretching)
+    const c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');
+    if(!c)return null;src=c;
+  }
+  const out=document.createElement('canvas');out.width=src.width;out.height=src.height;
+  const octx=out.getContext('2d');octx.fillStyle='#ffffff';octx.fillRect(0,0,out.width,out.height);
+  octx.drawImage(src,0,0);
+  return out;
+}
+
+function downloadTabPlot(pageId){
+  if(getExportStyle()==='prism'){
+    const off=_prismCanvas(pageId);if(!off)return;
+    const a=document.createElement('a');a.href=off.toDataURL('image/png');a.download='plot_publication.png';a.click();
+    return;
+  }
+  const c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');
+  if(!c)return;
+  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='plot.png';a.click();
+}
+
+function downloadTabSVG(pageId){
+  let c;
+  if(getExportStyle()==='prism'){c=_prismCanvas(pageId);}else{c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');}
+  if(!c)return;
+  const W=c.width,H=c.height;
+  const imgData=c.toDataURL('image/png',1.0);
+  const svg=`<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">\n  <image href="${imgData}" x="0" y="0" width="${W}" height="${H}"/>\n</svg>`;
+  const blob=new Blob([svg],{type:'image/svg+xml'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=getExportStyle()==='prism'?'plot_publication.svg':'plot.svg';a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function downloadTabPDF(pageId){
+  let c;
+  if(getExportStyle()==='prism'){c=_prismCanvas(pageId);}else{c=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');}
+  if(!c)return;
+  const imgData=c.toDataURL('image/png',1.0);
+  const bg=getExportStyle()==='prism'?'#ffffff':bgCol();
+  const w=window.open('','_blank','width=1050,height=780');
+  if(!w){alert('Allow popups to export PDF');return}
+  w.document.write(`<!DOCTYPE html><html><head><title>Thistle Plot Export</title><style>*{margin:0;padding:0}body{background:${bg};display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:100vw;max-height:100vh;object-fit:contain}@media print{body{margin:0;display:block;background:${bg}}img{width:100%;height:auto}@page{size:A4 landscape;margin:1cm}}</style></head><body><img src="${imgData}"><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`);
+  w.document.close();
+}
+
+const APP_VERSION='0.6.0';
+function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
+// ── Export-theme support ─────────────────────────────────────────────────
+let _exportTheme=null;
+const PRISM_THEME={
+  bg:'#ffffff',surf:'#ffffff',ax:'#000000',tx:'#000000',
+  grid:'rgba(0,0,0,0)',bd:'#000000',
+  colors:['#8c8c8c','#404040','#b8b8b8','#595959','#cfcfcf','#737373','#262626','#a6a6a6'],
+  stroke:'#000000',dot:'#000000',medLine:'#000000',
+  font:'Arial,Helvetica,sans-serif'
+};
+function plotColor(i){const C=_exportTheme?.colors??COLORS;return C[i%C.length];}
+function plotStroke(i){return _exportTheme?.stroke??plotColor(i);}
+function plotDot(i){return _exportTheme?.dot??plotColor(i);}
+function plotMed(){return _exportTheme?.medLine??(isLightTheme()?'#1e293b':'#fff');}
+function plotFont(size,bold){const f=_exportTheme?.font??'system-ui';return `${bold?'bold ':''} ${size}px ${f}`;}
+function getExportStyle(){return document.getElementById('export-style')?.value||'app';}
+// ─────────────────────────────────────────────────────────────────────────
+function axCol(){return _exportTheme?_exportTheme.ax:(isLightTheme()?'#475569':'#94a3b8')}
+function txCol(){return _exportTheme?_exportTheme.tx:(isLightTheme()?'#0f172a':'#e2e8f0')}
+function bgCol(){return _exportTheme?_exportTheme.bg:(isLightTheme()?'#f8fafc':'#0f172a')}
+function surfCol(){return _exportTheme?_exportTheme.surf:(isLightTheme()?'#ffffff':'#1e293b')}
+function bdColorStr(){return _exportTheme?_exportTheme.bd:(isLightTheme()?'#e2e8f0':'#334155')}
+function gridColor(){return _exportTheme?_exportTheme.grid:(isLightTheme()?'rgba(0,0,0,.07)':'rgba(255,255,255,.07)')}
+
+function chartCfgDefaults(){
+  const ac=axCol(),tx=txCol(),gc=gridColor(),bg=surfCol(),bd=bdColorStr();
+  return{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:tx,font:{size:12}}},tooltip:{titleColor:tx,bodyColor:ac,backgroundColor:bg,borderColor:bd,borderWidth:1}},
+    scales:{x:{grid:{color:gc},ticks:{color:ac}},y:{grid:{color:gc},ticks:{color:ac}}}};
+}
+
+function toggleTheme(){
+  const root=document.documentElement;
+  const wasLight=root.getAttribute('data-theme')==='light';
+  root.setAttribute('data-theme',wasLight?'dark':'light');
+  document.getElementById('theme-btn').textContent=wasLight?'🌙':'☀️';
+  // Re-render all plot tabs with new theme
+  plotTabs.forEach(t=>{
+    if(chartInst[t.id]){try{chartInst[t.id].destroy()}catch(e){}; delete chartInst[t.id]}
+    const page=document.getElementById(t.id);
+    if(page&&t.renderFn){page.innerHTML='';setTimeout(()=>t.renderFn(page),30)}
+  });
+}
+
+function plotBarSD(normMethod, title){
+  const yLab=document.getElementById('popt-ylab')?.value||'';
+  const dispMode=document.getElementById('popt-dispmode')?.value||'both';
+  const dotType=document.getElementById('popt-dottype')?.value||'raw';
+  const groupBy=document.getElementById('popt-groupby')?.value||'group';
+  const sigPairs=lastStatPairs?[...lastStatPairs]:null;
+
+  if(groupBy==='sample'){
+    // ── By-sample mode: X axis = samples, clustered bars per group ──
+    canvasTab(title,(canvas,pa)=>{
+      const W=Math.max(300,pa.clientWidth||500),H=Math.max(220,pa.clientHeight||320);
+      canvas.width=W;canvas.height=H;
+      const ctx=canvas.getContext('2d');
+      const bg=bgCol(),axc=axCol(),txc=txCol(),gc=gridColor(),bdc=bdColorStr();
+      ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+      const nG=G.groups.length,nR=G.nRows;
+      // Collect per-row per-group means and optionally raw values
+      const rowData=Array.from({length:nR},(_,row)=>
+        G.groups.map((g,gi)=>{
+          const raw=normalize(g.data[row]?.filter(x=>x!==''&&isFinite(x)).map(Number)||[],normMethod);
+          return{mean:raw.length?mean(raw):0,sd:raw.length>1?stddev(raw):0,raw};
+        })
+      );
+      const allMeans=rowData.flat().map(d=>d.mean);
+      const mn=Math.min(0,...allMeans),mx=Math.max(...allMeans);
+      const pad={l:yLab?75:65,r:20,t:20,b:55};
+      const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+      // Y axis + grid
+      ctx.strokeStyle=bdc;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
+      if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+      for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
+        ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 9px Arial,Helvetica,sans-serif':'9px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-5,y+3);
+        ctx.strokeStyle=gc;ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();}
+      if(yLab){ctx.save();ctx.translate(13,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore();}
+      const plotW=W-pad.l-pad.r;
+      const groupGap=plotW*0.08; // gap between sample clusters
+      const clusterW=(plotW-groupGap*(nR-1))/nR;
+      const barW=Math.min(28,clusterW/nG-2);
+      const y0=toY(0);
+      rowData.forEach((grps,row)=>{
+        const clusterX=pad.l+row*(clusterW+groupGap);
+        const cx=clusterX+clusterW/2;
+        grps.forEach((d,gi)=>{
+          const col=plotColor(gi);
+          const bx=cx+(gi-(nG-1)/2)*(barW+2);
+          if(dispMode!=='reps'){
+            const yTop=toY(d.mean),yBot=Math.max(y0,yTop),barH=Math.abs(yTop-y0);
+            ctx.fillStyle=_exportTheme?col:col+'88';ctx.fillRect(bx-barW/2,Math.min(yTop,y0),barW,barH||2);
+            ctx.strokeStyle=plotStroke(gi);ctx.lineWidth=1.5;ctx.strokeRect(bx-barW/2,Math.min(yTop,y0),barW,barH||2);
+            // SD bar
+            if(d.sd>0){
+              ctx.strokeStyle=plotStroke(gi);ctx.lineWidth=1.5;
+              ctx.beginPath();ctx.moveTo(bx,toY(d.mean+d.sd));ctx.lineTo(bx,toY(d.mean-d.sd));ctx.stroke();
+              ctx.beginPath();ctx.moveTo(bx-3,toY(d.mean+d.sd));ctx.lineTo(bx+3,toY(d.mean+d.sd));ctx.stroke();
+              ctx.beginPath();ctx.moveTo(bx-3,toY(d.mean-d.sd));ctx.lineTo(bx+3,toY(d.mean-d.sd));ctx.stroke();
+            }
+          }
+          if(dispMode!=='mean'){
+            const pts=dotType==='groupmean'?[d.mean]:d.raw;
+            pts.forEach(v=>{
+              ctx.fillStyle=_exportTheme?plotDot(gi):col+'dd';ctx.beginPath();
+              ctx.arc(bx+(Math.random()-.5)*barW*.5,toY(v),3,0,Math.PI*2);ctx.fill();
+            });
+          }
+        });
+        // Sample label
+        ctx.fillStyle=txc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='center';
+        ctx.fillText(G.rowNames[row]||`Row ${row+1}`,cx,H-pad.b+13);
+      });
+      // Legend
+      G.groups.forEach((g,gi)=>{
+        const col=plotColor(gi);
+        const lx=pad.l+gi*90;const ly=H-pad.b+30;
+        ctx.fillStyle=_exportTheme?col:col+'aa';ctx.fillRect(lx,ly,12,10);
+        ctx.fillStyle=txc;ctx.font=_exportTheme?'10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='left';ctx.fillText(g.name,lx+15,ly+9);
+      });
+    });
+    return;
+  }
+
+  // ── Default: by-group mode ──
+  chartTab(title, canvas=>{
+    const labels=G.groups.map(g=>g.name);
+    const datasets=[];
+    const means=[],errs=[];
+    for(let g=0;g<G.groups.length;g++){
+      const vals=normalize(getGroupPooled(g),normMethod);
+      const m=mean(vals),s=vals.length>1?stddev(vals):0;
+      means.push(m);errs.push({lo:m-s,hi:m+s});
+    }
+    if(dispMode!=='reps'){
+      datasets.push({type:'bar',label:'Mean ± SD',data:means,backgroundColor:COLORS.map(c=>c+'88'),borderColor:COLORS,borderWidth:2,_errBars:errs,barPercentage:0.5});
+    }
+    if(dispMode!=='mean'){
+      for(let g=0;g<G.groups.length;g++){
+        const vals=normalize(getGroupPooled(g),normMethod);
+        // "Group mean": one point per sample row (mean of its replicates); "Raw": all rep values
+        const pts=dotType==='groupmean'
+          ?G.groups[g].data.map(rowVals=>{const v=rowVals?.filter(x=>x!==''&&isFinite(x)).map(Number)||[];return v.length?mean(normalize(v,normMethod)):null;}).filter(v=>v!==null)
+          :vals;
+        datasets.push({type:'scatter',label:G.groups[g].name+' pts',data:pts.map(v=>({x:labels[g],y:v})),
+          backgroundColor:COLORS[g]+'cc',pointRadius:5,pointHoverRadius:7,showLine:false});
+      }
+    }
+    const cfg={...chartCfgDefaults()};
+    cfg.plugins={...cfg.plugins,legend:{display:false}};
+    if(yLab)cfg.scales.y.title={display:true,text:yLab,color:axCol()};
+    if(sigPairs&&sigPairs.length){
+      const hiVals=errs.map(e=>e.hi).filter(isFinite);
+      if(hiVals.length){
+        const maxHi=Math.max(...hiVals);
+        const dataMin=Math.min(...means.map((m,i)=>m-errs[i].hi+m).filter(isFinite),0);
+        const range=maxHi-dataMin||1;
+        const extra=range*0.12*Math.max(1,sigPairs.length>3?3:sigPairs.length);
+        cfg.scales.y.max=maxHi+extra;
+      }
+    }
+    const chart=new Chart(canvas,{type:'bar',data:{labels,datasets},options:cfg,plugins:[errBarPlugin,sigBracketPlugin]});
+    if(sigPairs)chart._sigPairs=sigPairs;
+    return chart;
+  });
+}
+
+function plotRegressionFit(){
+  const d=window._lastRegress;if(!d)return;
+  chartTab(`Fit: ${d.res.type}`, canvas=>{
+    const {xs,ys,res,r2,xName,yName}=d;
+    // Smooth fit curve
+    const mn=Math.min(...xs),mx=Math.max(...xs),nPts=200;
+    const fitX=Array.from({length:nPts},(_,i)=>mn+(mx-mn)*i/(nPts-1));
+    const fitY=fitX.map(x=>{try{return res.predict(x)}catch(e){return NaN}}).filter(y=>isFinite(y));
+    const fitXf=fitX.filter((_,i)=>isFinite(fitX.map(x=>{try{return res.predict(x)}catch(e){return NaN}})[i]));
+    const cfg={...chartCfgDefaults()};
+    cfg.scales.x={type:'linear',position:'bottom',ticks:{color:axCol()},grid:{color:gridColor()},title:{display:true,text:xName,color:axCol()}};
+    cfg.scales.y.title={display:true,text:yName,color:axCol()};
+    cfg.plugins={...cfg.plugins,legend:{display:true,labels:{color:txCol()}}};
+    const fXY=fitX.map((x,i)=>({x,y:fitX.map(xx=>{try{return res.predict(xx)}catch(e){return NaN}})[i]})).filter(p=>isFinite(p.y));
+    return new Chart(canvas,{type:'scatter',data:{datasets:[
+      {label:'Data',data:xs.map((x,i)=>({x,y:ys[i]})),backgroundColor:COLORS[0]+'cc',pointRadius:5},
+      {label:`Fit (R²=${r2.toFixed(3)})`,data:fXY,type:'line',borderColor:COLORS[1],backgroundColor:'transparent',pointRadius:0,borderWidth:2,tension:0}
+    ]},options:cfg});
+  });
+}
+
+function plotResiduals(){
+  const d=window._lastRegress;if(!d)return;
+  chartTab('Residuals', canvas=>{
+    const {xs,ys,res,xName}=d;
+    const resids=ys.map((y,i)=>y-res.predict(xs[i]));
+    const cfg={...chartCfgDefaults()};
+    cfg.scales.x={type:'linear',position:'bottom',ticks:{color:axCol()},grid:{color:gridColor()},title:{display:true,text:xName,color:axCol()}};
+    cfg.scales.y.title={display:true,text:'Residual',color:axCol()};
+    cfg.plugins={...cfg.plugins,legend:{display:false}};
+    return new Chart(canvas,{type:'scatter',data:{datasets:[
+      {label:'Residuals',data:xs.map((x,i)=>({x,y:resids[i]})),backgroundColor:COLORS[2]+'cc',pointRadius:5},
+      {label:'Zero line',data:[{x:Math.min(...xs),y:0},{x:Math.max(...xs),y:0}],type:'line',borderColor:axCol(),backgroundColor:'transparent',pointRadius:0,borderWidth:1,borderDash:[4,4]}
+    ]},options:cfg});
+  });
+}
+
+function plotBoxplot(normMethod, title){
+  const yLab=document.getElementById('popt-ylab')?.value||'';
+  const dispMode=document.getElementById('popt-dispmode')?.value||'both';
+  const dotType=document.getElementById('popt-dottype')?.value||'raw';
+  const groupBy=document.getElementById('popt-groupby')?.value||'group';
+  canvasTab(title,(canvas,pa)=>{
+    const W=Math.max(300,pa.clientWidth||500),H=Math.max(220,pa.clientHeight||320);
+    canvas.width=W;canvas.height=H;
+    const ctx=canvas.getContext('2d');
+    const bg=bgCol(),axc=axCol(),txc=txCol(),gc=gridColor(),bdc=bdColorStr();
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+
+    if(groupBy==='sample'){
+      // ── By-sample: one box cluster per row, one box per group ──
+      const nR=G.nRows,nG=G.groups.length;
+      const rowData=Array.from({length:nR},(_,row)=>
+        G.groups.map((g,gi)=>normalize(g.data[row]?.filter(x=>x!==''&&isFinite(x)).map(Number)||[],normMethod))
+      );
+      const allV=rowData.flat(2).filter(isFinite);
+      if(!allV.length)return;
+      const mn=Math.min(...allV),mx=Math.max(...allV);
+      const pad={l:yLab?75:65,r:20,t:20,b:55};
+      const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+      // Y axis
+      ctx.strokeStyle=bdc;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
+      if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+      for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
+        ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 9px Arial,Helvetica,sans-serif':'9px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-5,y+3);
+        ctx.strokeStyle=gc;ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();}
+      if(yLab){ctx.save();ctx.translate(13,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore();}
+      const plotW=W-pad.l-pad.r;
+      const groupGap=plotW*0.08;
+      const clusterW=(plotW-groupGap*(nR-1))/nR;
+      const bw=Math.min(24,clusterW/nG-2);
+      rowData.forEach((grps,row)=>{
+        const clusterX=pad.l+row*(clusterW+groupGap);
+        const cx=clusterX+clusterW/2;
+        grps.forEach((vals,gi)=>{
+          const col=plotColor(gi);
+          const bx=cx+(gi-(nG-1)/2)*(bw+2);
+          const sv=[...vals].sort((a,b)=>a-b).filter(isFinite);
+          if(!sv.length)return;
+          const q1=percentile(sv,25),q3=percentile(sv,75),med=median(sv);
+          const iqr=q3-q1,lo=Math.max(sv[0],q1-1.5*iqr),hi=Math.min(sv[sv.length-1],q3+1.5*iqr);
+          // Whiskers
+          ctx.strokeStyle=plotStroke(gi);ctx.lineWidth=1.5;
+          ctx.beginPath();ctx.moveTo(bx,toY(lo));ctx.lineTo(bx,toY(q1));
+          ctx.moveTo(bx,toY(q3));ctx.lineTo(bx,toY(hi));
+          ctx.moveTo(bx-bw/4,toY(lo));ctx.lineTo(bx+bw/4,toY(lo));
+          ctx.moveTo(bx-bw/4,toY(hi));ctx.lineTo(bx+bw/4,toY(hi));ctx.stroke();
+          // Box
+          if(dispMode!=='reps'){
+            ctx.fillStyle=_exportTheme?col:col+'33';ctx.strokeStyle=plotStroke(gi);ctx.lineWidth=1.5;
+            ctx.fillRect(bx-bw/2,toY(q3),bw,toY(q1)-toY(q3));
+            ctx.strokeRect(bx-bw/2,toY(q3),bw,toY(q1)-toY(q3));
+            ctx.strokeStyle=axc;ctx.lineWidth=1.5;
+            ctx.beginPath();ctx.moveTo(bx-bw/2,toY(med));ctx.lineTo(bx+bw/2,toY(med));ctx.stroke();
+          }
+          // Dots
+          if(dispMode!=='mean'){
+            const pts=dotType==='groupmean'?[mean(sv)]:sv;
+            pts.forEach(v=>{
+              ctx.fillStyle=_exportTheme?plotDot(gi):col+'cc';ctx.beginPath();
+              ctx.arc(bx+(Math.random()-.5)*bw*.4,toY(v),2.5,0,Math.PI*2);ctx.fill();
+            });
+          }
+        });
+        ctx.fillStyle=txc;ctx.font='10px system-ui';ctx.textAlign='center';
+        ctx.fillText(G.rowNames[row]||`Row ${row+1}`,cx,H-pad.b+13);
+      });
+      // Legend
+      G.groups.forEach((g,gi)=>{
+        const col=plotColor(gi);
+        const lx=pad.l+gi*90,ly=H-pad.b+30;
+        ctx.fillStyle=_exportTheme?col:col+'aa';ctx.fillRect(lx,ly,12,10);
+        ctx.fillStyle=txc;ctx.font='10px system-ui';ctx.textAlign='left';ctx.fillText(g.name,lx+15,ly+9);
+      });
+      return;
+    }
+
+    // ── By-group (default) ──
+    const groups=G.groups.map((g,i)=>({name:g.name,vals:normalize(getGroupPooled(i),normMethod)}));
+    const allVals=groups.flatMap(g=>g.vals).filter(isFinite);
+    if(!allVals.length)return;
+    const mn=Math.min(...allVals),mx=Math.max(...allVals);
+    const pad={l:yLab?65:55,r:20,t:20,b:40};
+    const bw=Math.min(60,(W-pad.l-pad.r)/groups.length-20);
+    const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+    // Y axis line
+    ctx.strokeStyle=bdc;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
+    if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+    // Grid + Y tick labels
+    for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
+      ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-4,y+3);
+      ctx.strokeStyle=gc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke()}
+    // Y-axis title
+    if(yLab){ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore()}
+    groups.forEach((g,i)=>{
+      const cx=pad.l+(i+0.5)*(W-pad.l-pad.r)/groups.length;
+      const vals=[...g.vals].sort((a,b)=>a-b).filter(isFinite);
+      if(!vals.length)return;
+      const q1=percentile(vals,25),q3=percentile(vals,75),med=median(vals);
+      const iqr=q3-q1,lo=Math.max(vals[0],q1-1.5*iqr),hi=Math.min(vals[vals.length-1],q3+1.5*iqr);
+      const col=plotColor(i);
+      // Whiskers
+      ctx.strokeStyle=plotStroke(i);ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(cx,toY(lo));ctx.lineTo(cx,toY(q1));ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx,toY(q3));ctx.lineTo(cx,toY(hi));ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx-bw/4,toY(lo));ctx.lineTo(cx+bw/4,toY(lo));ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx-bw/4,toY(hi));ctx.lineTo(cx+bw/4,toY(hi));ctx.stroke();
+      // Box
+      if(dispMode!=='reps'){
+        ctx.fillStyle=_exportTheme?col:col+'33';ctx.strokeStyle=plotStroke(i);ctx.lineWidth=2;
+        ctx.fillRect(cx-bw/2,toY(q3),bw,toY(q1)-toY(q3));
+        ctx.strokeRect(cx-bw/2,toY(q3),bw,toY(q1)-toY(q3));
+        // Median line
+        ctx.strokeStyle=plotMed();ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(cx-bw/2,toY(med));ctx.lineTo(cx+bw/2,toY(med));ctx.stroke();
+      }
+      // Outliers & jittered dots
+      if(dispMode!=='mean'){
+        const pts=dotType==='groupmean'
+          ?G.groups[i].data.map(rowVals=>{const rv=rowVals?.filter(x=>x!==''&&isFinite(x)).map(Number)||[];return rv.length?mean(normalize(rv,normMethod)):null;}).filter(v=>v!==null)
+          :vals;
+        pts.forEach(v=>{
+          const isOut=v<lo||v>hi;
+          ctx.fillStyle=_exportTheme?(isOut?'#ef4444':plotDot(i)):(isOut?'#ef4444':col+'aa');
+          ctx.beginPath();ctx.arc(cx+(Math.random()-.5)*bw*.4,toY(v),isOut?4:3,0,Math.PI*2);ctx.fill();
+        });
+      }
+      // X label
+      ctx.fillStyle=txc;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+16);
+    });
+  });
+}
+
+function plotViolin(normMethod, title){
+  const yLab=document.getElementById('popt-ylab')?.value||'';
+  const dispMode=document.getElementById('popt-dispmode')?.value||'both';
+  canvasTab(title,(canvas,pa)=>{
+    const W=pa.clientWidth||400,H=pa.clientHeight||300;
+    canvas.width=W;canvas.height=H;
+    const ctx=canvas.getContext('2d');
+    const bg=bgCol(),axc=axCol(),txc=txCol(),gc=gridColor(),bdc=bdColorStr();
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    const groups=G.groups.map((g,i)=>({name:g.name,vals:normalize(getGroupPooled(i),normMethod).filter(isFinite)}));
+    const allVals=groups.flatMap(g=>g.vals);
+    if(!allVals.length)return;
+    const mn=Math.min(...allVals),mx=Math.max(...allVals);
+    const pad={l:yLab?65:55,r:20,t:20,b:40};
+    const [_n0,_n1,_tk]=_exportTheme?_niceAxis(mn,mx):[mn,mx,Array.from({length:6},(_,i)=>mn+(mx-mn)*i/5)];const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
+    const nSteps=50;
+    function kde(vals,bw){
+      return Array.from({length:nSteps},(_,i)=>{
+        const y=mn+(mx-mn)*i/(nSteps-1);
+        const d=mean(vals.map(v=>{const u=(v-y)/bw;return Math.exp(-0.5*u*u)/(bw*Math.sqrt(2*Math.PI))}));
+        return{y,d};
+      });
+    }
+    // Y axis + grid
+    ctx.strokeStyle=bdc;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.stroke();
+    if(_exportTheme){ctx.strokeStyle=bdc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();}
+    for(let i=0;i<_tk.length;i++){const v=_tk[i];const y=toY(v);
+      ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 10px Arial,Helvetica,sans-serif':'10px system-ui';ctx.textAlign='right';ctx.fillText(_tickFmt(v,_tk),pad.l-4,y+3);
+      ctx.strokeStyle=gc;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke()}
+    if(yLab){ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'11px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore()}
+    groups.forEach((g,i)=>{
+      if(!g.vals.length)return;
+      const cx=pad.l+(i+0.5)*(W-pad.l-pad.r)/groups.length;
+      const bw=1.06*stddev(g.vals)*Math.pow(g.vals.length,-0.2)||0.1;
+      const dens=kde(g.vals,bw);
+      const maxD=Math.max(...dens.map(d=>d.d));
+      if(maxD===0)return;
+      const halfW=Math.min(50,(W-pad.l-pad.r)/groups.length/2-5);
+      const col=plotColor(i);
+      ctx.fillStyle=_exportTheme?col:col+'55';ctx.strokeStyle=plotStroke(i);ctx.lineWidth=1.5;
+      ctx.beginPath();
+      dens.forEach((d,k)=>{const x=cx+(d.d/maxD)*halfW,y=toY(d.y);k===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+      dens.slice().reverse().forEach(d=>{ctx.lineTo(cx-(d.d/maxD)*halfW,toY(d.y))});
+      ctx.closePath();ctx.fill();ctx.stroke();
+      const med=median(g.vals);
+      if(dispMode!=='reps'){
+        // Violin shape already drawn; show median dot
+        ctx.fillStyle=plotMed();
+        ctx.beginPath();ctx.arc(cx,toY(med),4,0,Math.PI*2);ctx.fill();
+      }
+      if(dispMode!=='mean'){
+        // Show individual data points as jittered dots
+        const halfWd=Math.min(50,(W-pad.l-pad.r)/groups.length/2-5);
+        g.vals.forEach(v=>{
+          ctx.fillStyle=_exportTheme?plotDot(i):col+'bb';
+          ctx.beginPath();ctx.arc(cx+(Math.random()-.5)*halfWd*.5,toY(v),3,0,Math.PI*2);ctx.fill();
+        });
+      }
+      ctx.fillStyle=txc;ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+16);
+    });
+  });
+}
+
+function plotScatter2(title){
+  const xi=parseInt(document.getElementById('popt-xg')?.value||0);
+  const yi=parseInt(document.getElementById('popt-yg')?.value||1);
+  const showTrend=document.getElementById('popt-trend')?.checked||false;
+  chartTab(title, canvas=>{
+    const xg=G.groups[xi]||G.groups[0];
+    const yg=G.groups[Math.min(yi,G.groups.length-1)]||G.groups[0];
+    const xv=getGroupPooled(xi),yv=getGroupPooled(Math.min(yi,G.groups.length-1));
+    const n=Math.min(xv.length,yv.length);
+    const data=Array.from({length:n},(_,i)=>({x:xv[i],y:yv[i]})).filter(p=>isFinite(p.x)&&isFinite(p.y));
+    const ac=axCol();
+    const cfg={...chartCfgDefaults()};
+    cfg.scales.x.title={display:true,text:xg.name,color:ac};
+    cfg.scales.y.title={display:true,text:yg.name,color:ac};
+    const datasets=[{label:`${xg.name} vs ${yg.name}`,data,backgroundColor:'#3b82f699',pointRadius:5}];
+    if(showTrend&&data.length>=2){
+      const xs=data.map(p=>p.x),ys=data.map(p=>p.y);
+      const mx=mean(xs),my=mean(ys);
+      const num=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0);
+      const den=xs.reduce((s,x)=>s+(x-mx)**2,0);
+      const slope=den?num/den:0,intercept=my-slope*mx;
+      const minX=Math.min(...xs),maxX=Math.max(...xs);
+      datasets.push({type:'line',label:'Trend',data:[{x:minX,y:slope*minX+intercept},{x:maxX,y:slope*maxX+intercept}],
+        borderColor:'#f59e0b',borderWidth:2,pointRadius:0,fill:false});
+    }
+    return new Chart(canvas,{type:'scatter',data:{datasets},options:cfg});
+  });
+}
+
+function plotLine(title){
+  const normMethod=document.getElementById('popt-norm')?.value||'none';
+  const yLab=document.getElementById('popt-ylab')?.value||'';
+  const showPts=document.getElementById('popt-pts')?.checked||false;
+  chartTab(title, canvas=>{
+    const labels=G.rowNames.slice(0,G.nRows);
+    const datasets=G.groups.map((g,i)=>{
+      const rawVals=g.data.map(r=>{const v=r.filter(x=>x!==''&&isFinite(x)).map(Number);return v.length?mean(v):null});
+      const finiteVals=rawVals.filter(v=>v!==null);
+      const normed=normalize(finiteVals,normMethod);
+      let ni=0;
+      const data=rawVals.map(v=>v===null?null:normed[ni++]);
+      return{label:g.name,data,borderColor:COLORS[i],backgroundColor:COLORS[i]+'33',tension:0.3,fill:false,pointRadius:showPts?4:0,pointHoverRadius:5,spanGaps:true};
+    });
+    const cfg={...chartCfgDefaults()};
+    if(yLab)cfg.scales.y.title={display:true,text:yLab,color:axCol()};
+    return new Chart(canvas,{type:'line',data:{labels,datasets},options:cfg});
+  });
+}
+
+// UPGMA hierarchical clustering — returns {leafOrder, links, maxDist}
+// links[i] = {left, right, dist, leftY(set later), rightY, mergeY}
+function upgmaClustering(distFn, n){
+  if(n<=1)return{leafOrder:[0],links:[],maxDist:1};
+  // Build initial distance matrix
+  const dmat=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>i===j?0:distFn(i,j)));
+  const links=[];
+  // Track which active indices map to cluster node ids
+  // nodeId < n → leaf, nodeId >= n → internal (index into links as nodeId-n)
+  let active=Array.from({length:n},(_,i)=>i); // nodeIds of active clusters
+  const nodeSize=Array(n).fill(1); // size of each cluster node
+  while(active.length>1){
+    // Find closest pair
+    let bestD=Infinity,bi=0,bj=1;
+    for(let a=0;a<active.length;a++)for(let b=a+1;b<active.length;b++){
+      const ia=active[a],ib=active[b];
+      if(dmat[ia][ib]<bestD){bestD=dmat[ia][ib];bi=a;bj=b;}
+    }
+    const na=active[bi],nb=active[bj];
+    const sa=nodeSize[na]||1,sb=nodeSize[nb]||1;
+    const newId=n+links.length;
+    nodeSize[newId]=sa+sb;
+    links.push({left:na,right:nb,dist:bestD});
+    // UPGMA: update distances from new cluster to remaining
+    dmat[newId]=[];
+    active.forEach(k=>{
+      if(k===na||k===nb)return;
+      dmat[newId][k]=dmat[k][newId]=(dmat[na][k]*sa+dmat[nb][k]*sb)/(sa+sb);
+    });
+    dmat[newId][newId]=0;
+    active=active.filter((_,idx)=>idx!==bi&&idx!==bj);
+    active.push(newId);
+  }
+  // Extract leaf order by in-order traversal of merge tree
+  function leaves(nodeId){
+    if(nodeId<n)return[nodeId];
+    const lk=links[nodeId-n];
+    return[...leaves(lk.left),...leaves(lk.right)];
+  }
+  const root=links[links.length-1];
+  const leafOrder=root?leaves(n+links.length-1):Array.from({length:n},(_,i)=>i);
+  return{leafOrder,links,maxDist:root?.dist||1};
+}
+
+// Draw a bracket-style dendrogram on a canvas context.
+// axis='y': dendrogram on left (rows); axis='x': dendrogram on top (cols).
+// nLeaves: number of leaves (= n passed to upgmaClustering).
+// leafPos: pixel centres for leaves in leafOrder order (y for rows, x for cols).
+// links: from upgmaClustering — each {left, right, dist}.
+// region: rectangle the dendrogram fills {x0,y0,w,h}.
+//   axis='y': leaves at x=x0+w (heatmap edge), root at x=x0 (far left).
+//   axis='x': leaves at y=y0+h (heatmap edge), root at y=y0 (far top).
+function drawDendrogram(ctx,links,nLeaves,leafOrder,leafPos,maxDist,region,axis,axc){
+  if(!links.length||!leafOrder.length)return;
+  // mainPx[nodeId] = position along the MAIN axis (y for rows, x for cols)
+  // depthPx[nodeId] = position along the DEPTH axis (x for rows, y for cols)
+  const mainPx={},depthPx={};
+  // Leaves
+  leafOrder.forEach((leafId,pos)=>{
+    mainPx[leafId]=leafPos[pos];
+    depthPx[leafId]=axis==='y'?(region.x0+region.w):(region.y0+region.h);
+  });
+  // Internal nodes (links are in merge order, so children always processed before parents)
+  links.forEach((lk,li)=>{
+    const id=nLeaves+li;
+    const lMain=mainPx[lk.left],rMain=mainPx[lk.right];
+    if(lMain===undefined||rMain===undefined)return;
+    mainPx[id]=(lMain+rMain)/2;
+    // depth: distance-proportional position away from heatmap
+    const frac=1-lk.dist/(maxDist||1); // 0=far, 1=close
+    depthPx[id]=axis==='y'?(region.x0+region.w*frac):(region.y0+region.h*frac);
+  });
+  ctx.strokeStyle=axc;ctx.lineWidth=1;
+  links.forEach((lk,li)=>{
+    const id=nLeaves+li;
+    const lMain=mainPx[lk.left],rMain=mainPx[lk.right];
+    const lDepth=depthPx[lk.left],rDepth=depthPx[lk.right],mDepth=depthPx[id];
+    if(lMain===undefined||rMain===undefined||mDepth===undefined)return;
+    ctx.beginPath();
+    if(axis==='y'){
+      // Horizontal lines from each child depth → merge depth (at child's y)
+      ctx.moveTo(lDepth,lMain);ctx.lineTo(mDepth,lMain);
+      ctx.moveTo(rDepth,rMain);ctx.lineTo(mDepth,rMain);
+      // Vertical line at merge depth connecting the two children
+      ctx.moveTo(mDepth,lMain);ctx.lineTo(mDepth,rMain);
+    } else {
+      // Vertical lines from each child depth → merge depth (at child's x)
+      ctx.moveTo(lMain,lDepth);ctx.lineTo(lMain,mDepth);
+      ctx.moveTo(rMain,rDepth);ctx.lineTo(rMain,mDepth);
+      // Horizontal line at merge depth connecting the two children
+      ctx.moveTo(lMain,mDepth);ctx.lineTo(rMain,mDepth);
+    }
+    ctx.stroke();
+  });
+}
+
+function plotHeatmapCustom(title){
+  const normMode=document.getElementById('popt-hnorm')?.value||'zscore';
+  canvasTab(title,(canvas,pa)=>{
+    const nR=G.nRows,nC=G.groups.length;
+    const W=Math.max(420,pa.clientWidth||520),H=Math.max(320,pa.clientHeight||420);
+    canvas.width=W;canvas.height=H;
+    const ctx=canvas.getContext('2d');
+    const bg=bgCol(),axc=axCol(),txc=txCol();
+    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+
+    // Padding: left = row labels + row dendrogram; top = col dendrogram; bottom = col labels + legend
+    const rowDendW=50, colDendH=50;
+    const rowLabelW=70;
+    const pad={l:rowLabelW+rowDendW+8,r:20,t:colDendH+8,b:90};
+    const cw=(W-pad.l-pad.r)/nC,ch=(H-pad.t-pad.b)/nR;
+
+    // Build row-wise data matrix (rows × groups, using group mean per row)
+    const rows=Array.from({length:nR},(_,r)=>G.groups.map((g)=>{
+      const v=g.data[r]?.filter(x=>x!==''&&isFinite(x)).map(Number);return v?.length?mean(v):0;
+    }));
+    // Normalise
+    let normRows;
+    if(normMode==='zscore'){
+      normRows=rows.map(r=>{const m=mean(r),s=stddev(r,0);return r.map(v=>s>0?(v-m)/s:0);});
+    } else if(normMode==='minmax'){
+      normRows=rows.map(r=>{const mn=Math.min(...r),mx=Math.max(...r),range=mx-mn||1;return r.map(v=>(v-mn)/range);});
+    } else { normRows=rows; }
+
+    const allV=normRows.flat();
+    const minV=Math.min(...allV),maxV=Math.max(...allV);
+    function cellColor(v){
+      const t=(v-minV)/(maxV-minV||1);
+      if(t<0.5){const s=t*2;return`rgb(${Math.round(s*215)},${Math.round(s*215)},215)`;}
+      else{const s=(t-0.5)*2;return`rgb(215,${Math.round((1-s)*215)},${Math.round((1-s)*215)})`;}
+    }
+
+    // ── Row clustering (UPGMA on rows, distance = Euclidean on normalised row vectors)
+    let rowOrder=Array.from({length:nR},(_,i)=>i);
+    let rowLinks=[],rowMaxD=1;
+    if(nR>=3){
+      try{
+        const cl=upgmaClustering((i,j)=>{
+          const a=normRows[i],b=normRows[j];
+          return Math.sqrt(a.reduce((s,v,k)=>s+(v-b[k])**2,0));
+        },nR);
+        rowOrder=cl.leafOrder.filter(i=>i<nR);
+        rowLinks=cl.links;rowMaxD=cl.maxDist||1;
+      }catch(e){console.warn('Row clustering',e);}
+    }
+
+    // ── Col clustering (UPGMA on cols, distance = Euclidean on normalised col vectors)
+    let colOrder=Array.from({length:nC},(_,i)=>i);
+    let colLinks=[],colMaxD=1;
+    if(nC>=3){
+      try{
+        // col vector = normRows[:][col]
+        const colVecs=Array.from({length:nC},(_,c)=>normRows.map(r=>r[c]));
+        const cl=upgmaClustering((i,j)=>{
+          const a=colVecs[i],b=colVecs[j];
+          return Math.sqrt(a.reduce((s,v,k)=>s+(v-b[k])**2,0));
+        },nC);
+        colOrder=cl.leafOrder.filter(i=>i<nC);
+        colLinks=cl.links;colMaxD=cl.maxDist||1;
+      }catch(e){console.warn('Col clustering',e);}
+    }
+
+    // ── Draw heatmap cells (reordered)
+    rowOrder.forEach((origRow,ri)=>{
+      colOrder.forEach((origCol,ci)=>{
+        ctx.fillStyle=cellColor(normRows[origRow][origCol]);
+        ctx.fillRect(pad.l+ci*cw,pad.t+ri*ch,cw-1,ch-1);
+      });
+    });
+
+    // ── Row dendrogram (right of labels, touching heatmap left edge)
+    if(rowLinks.length){
+      const leafPos=rowOrder.map((_,pos)=>pad.t+pos*ch+ch/2);
+      drawDendrogram(ctx,rowLinks,nR,rowOrder,leafPos,rowMaxD,
+        {x0:pad.l-rowDendW,y0:pad.t,w:rowDendW,h:H-pad.t-pad.b},
+        'y',axc);
+    }
+
+    // ── Col dendrogram (top, bracket style growing upward)
+    if(colLinks.length){
+      const leafPos=colOrder.map((_,pos)=>pad.l+pos*cw+cw/2);
+      drawDendrogram(ctx,colLinks,nC,colOrder,leafPos,colMaxD,
+        {x0:pad.l,y0:pad.t-colDendH-6,w:W-pad.l-pad.r,h:colDendH},
+        'x',axc);
+    }
+
+    // ── Row labels
+    rowOrder.forEach((origRow,ri)=>{
+      ctx.fillStyle=axc;ctx.font='10px system-ui';ctx.textAlign='right';
+      ctx.fillText(G.rowNames[origRow]||`Row ${origRow+1}`,pad.l-rowDendW-10,pad.t+ri*ch+ch/2+4);
+    });
+
+    // ── Col labels (rotated)
+    colOrder.forEach((origCol,ci)=>{
+      ctx.save();ctx.translate(pad.l+ci*cw+cw/2,H-pad.b+8);ctx.rotate(-0.6);
+      ctx.fillStyle=txc;ctx.font='11px system-ui';ctx.textAlign='right';
+      ctx.fillText(G.groups[origCol].name,0,0);ctx.restore();
+    });
+
+    // ── Colour legend
+    const lx=pad.l,ly=H-pad.b+55,lw=Math.min(140,W-pad.l-pad.r),lh=12;
+    const grad=ctx.createLinearGradient(lx,0,lx+lw,0);
+    grad.addColorStop(0,'rgb(0,0,215)');grad.addColorStop(0.5,'rgb(215,215,215)');grad.addColorStop(1,'rgb(215,0,0)');
+    ctx.fillStyle=grad;ctx.fillRect(lx,ly,lw,lh);
+    ctx.strokeStyle=axc;ctx.lineWidth=0.5;ctx.strokeRect(lx,ly,lw,lh);
+    ctx.fillStyle=axc;ctx.font='9px system-ui';
+    ctx.textAlign='center';ctx.fillText(normMode==='none'?'Value':normMode==='zscore'?'Z-score':'Scaled',lx+lw/2,ly-3);
+    ctx.textAlign='left'; ctx.fillText(normMode==='none'?minV.toFixed(1):'low',lx,ly+lh+11);
+    ctx.textAlign='right';ctx.fillText(normMode==='none'?maxV.toFixed(1):'high',lx+lw,ly+lh+11);
+  });
+}
+
+
+function plotVolcanoCustom(title){
+  chartTab(title, canvas=>{
+    const fc_thresh=parseFloat(document.getElementById('popt-fc')?.value||1);
+    const p_thresh=parseFloat(document.getElementById('popt-pt')?.value||0.05);
+    const fcgi=parseInt(document.getElementById('popt-fcg')?.value||0);
+    const pgi=parseInt(document.getElementById('popt-pg')?.value||Math.min(1,G.groups.length-1));
+    const fcVals=getGroupPooled(fcgi),pVals=getGroupPooled(pgi);
+    const n=Math.min(fcVals.length,pVals.length);
+    const names=G.rowNames.slice(0,n);
+    const pts=volcanoData(names,fcVals.slice(0,n),pVals.slice(0,n),fc_thresh,p_thresh);
+    const datasets=[
+      {label:'NS',data:pts.filter(p=>!p.sig).map(p=>({x:p.log2fc,y:p.neglog10p,name:p.name})),backgroundColor:'#94a3b888',pointRadius:4},
+      {label:`Up (FC≥${fc_thresh})`,data:pts.filter(p=>p.up).map(p=>({x:p.log2fc,y:p.neglog10p,name:p.name})),backgroundColor:'#ef4444cc',pointRadius:5},
+      {label:`Down (FC≤-${fc_thresh})`,data:pts.filter(p=>p.down).map(p=>({x:p.log2fc,y:p.neglog10p,name:p.name})),backgroundColor:'#3b82f6cc',pointRadius:5},
+    ];
+    const cfg={...chartCfgDefaults()};
+    cfg.plugins.tooltip={...cfg.plugins.tooltip,callbacks:{label:c=>c.raw.name+`: FC=${c.raw.x.toFixed(2)}, -log10p=${c.raw.y.toFixed(2)}`}};
+    const ac=axCol();
+    cfg.scales.x.title={display:true,text:'log2 Fold Change',color:ac};
+    cfg.scales.y.title={display:true,text:'-log10(p)',color:ac};
+    return new Chart(canvas,{type:'scatter',data:{datasets},options:cfg});
+  });
+}
+
+function plotPCACustom(title){
+  const doNorm=document.getElementById('popt-pcnorm')?.checked||false;
+  const pcMode=document.getElementById('popt-pcmode')?.value||'mean';
+  const colBy=document.getElementById('popt-pccol')?.value||'group';
+  addPlotTab(title, page=>{
+    // Build PCA matrix: rows = samples, cols = features
+    let X=[],pointLabels=[],pointGroupIdx=[];
+    if(pcMode==='reps'){
+      const nReps=G.nReps||1;
+      G.groups.forEach((g,gi)=>{
+        for(let ri=0;ri<nReps;ri++){
+          const row=Array.from({length:G.nRows},(_,f)=>{const v=G.groups[gi].data[f];return (v&&Array.isArray(v)&&isFinite(v[ri]))?Number(v[ri]):0;});
+          X.push(row);pointLabels.push(`${g.name} R${ri+1}`);pointGroupIdx.push(gi);
+        }
+      });
+    } else {
+      // Group means: X[g][f] = mean of group g at feature f
+      G.groups.forEach((g,gi)=>{
+        const row=G.groups[0].data.map((_,f)=>{const v=G.groups[gi].data[f]?.filter(x=>x!==''&&isFinite(x)).map(Number);return v?.length?mean(v):0;});
+        X.push(row);pointLabels.push(g.name);pointGroupIdx.push(gi);
+      });
+    }
+    if(doNorm){
+      const nFeat=X[0]?.length||0;
+      for(let f=0;f<nFeat;f++){const col=X.map(r=>r[f]);const m=mean(col),s=stddev(col)||1;X.forEach(r=>r[f]=(r[f]-m)/s);}
+    }
+    const res=pcaCompute(X);
+    // Attach extra info for replicate coloring
+    res._pointLabels=pointLabels;res._pointGroupIdx=pointGroupIdx;res._colBy=colBy;res._pcMode=pcMode;
+    page._pcaData=res;
+    const nPC=res.nPCs;
+    const pcOpts=Array.from({length:nPC},(_,i)=>`<option value="${i}" ${i===0?'selected':''}>PC${i+1} (${res.varExplained[i].toFixed(1)}%)</option>`).join('');
+    const pcOpts2=Array.from({length:nPC},(_,i)=>`<option value="${i}" ${i===1?'selected':''}>PC${i+1} (${res.varExplained[i].toFixed(1)}%)</option>`).join('');
+    let cumVar90Marked=false;
+    const varRows=Array.from({length:nPC},(_,i)=>{
+      const cumV=res.varExplained.slice(0,i+1).reduce((s,v)=>s+v,0);
+      const is90=!cumVar90Marked&&cumV>=90;
+      if(is90)cumVar90Marked=true;
+      const style=is90?' style="color:var(--ok);font-weight:700"':'';
+      return`<tr${style}><td>PC${i+1}</td><td>${res.varExplained[i].toFixed(2)}%</td><td>${cumV.toFixed(2)}%${is90?' ✓':''}</td></tr>`;
+    }).join('');
+    page.innerHTML=`<div class="plot-topbar">
+      <span style="font-size:12px;font-weight:600;color:var(--tx)">${title}</span>
+      <span style="font-size:11px;color:var(--mu)">X axis:</span>
+      <select id="pca-xpc-${page.id}" onchange="pcaReplot('${page.id}')" style="font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--bd);background:var(--su);color:var(--tx)">${pcOpts}</select>
+      <span style="font-size:11px;color:var(--mu)">Y axis:</span>
+      <select id="pca-ypc-${page.id}" onchange="pcaReplot('${page.id}')" style="font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--bd);background:var(--su);color:var(--tx)">${pcOpts2}</select>
+      <span style="flex:1"></span>
+      <button class="btn-sm" onclick="downloadTabPlot('${page.id}')">⬇ PNG</button>
+      <button class="btn-sm" onclick="downloadTabSVG('${page.id}')">⬇ SVG</button>
+      <button class="btn-sm" onclick="downloadTabPDF('${page.id}')">⬇ PDF</button>
+    </div>
+    <div style="display:flex;flex:1;overflow:hidden">
+      <div class="plot-area" id="pa_${page.id}" style="flex:1;padding:10px;overflow:hidden"><canvas id="c_${page.id}" style="max-width:100%;max-height:100%"></canvas></div>
+      <div style="width:200px;overflow-y:auto;padding:8px;border-left:1px solid var(--bd);font-size:11px">
+        <div style="font-weight:600;margin-bottom:4px;color:var(--tx)">Variance Explained</div>
+        <table class="rtbl" style="font-size:11px"><thead><tr><th>PC</th><th>%</th><th>Cum%</th></tr></thead><tbody>${varRows}</tbody></table>
+      </div>
+    </div>`;
+    setTimeout(()=>pcaReplot(page.id),30);
+  });
+}
+
+function pcaReplot(pid){
+  const page=document.getElementById(pid);if(!page||!page._pcaData)return;
+  const res=page._pcaData;
+  const xpc=parseInt(document.getElementById('pca-xpc-'+pid)?.value||0);
+  const ypc=parseInt(document.getElementById('pca-ypc-'+pid)?.value||1);
+  const canvas=document.getElementById('c_'+pid);if(!canvas)return;
+  if(chartInst[pid]){try{chartInst[pid].destroy()}catch(e){}}
+  const txc=txCol(),ac=axCol();
+  const cfg={...chartCfgDefaults()};
+  cfg.scales.x={type:'linear',position:'bottom',ticks:{color:ac},grid:{color:gridColor()},title:{display:true,text:`PC${xpc+1} (${(res.varExplained[xpc]||0).toFixed(1)}%)`,color:ac}};
+  cfg.scales.y={type:'linear',ticks:{color:ac},grid:{color:gridColor()},title:{display:true,text:`PC${ypc+1} (${(res.varExplained[ypc]||0).toFixed(1)}%)`,color:ac}};
+
+  const colBy=res._colBy||'group';
+  const pointLabels=res._pointLabels||res.scores.map((_,i)=>G.groups[i%G.groups.length]?.name||('S'+(i+1)));
+  const pointGroupIdx=res._pointGroupIdx||res.scores.map((_,i)=>i%G.groups.length);
+
+  // Build datasets: one per unique color key
+  let datasets;
+  if(colBy==='group'){
+    // One dataset per group so legend shows group names with correct color
+    datasets=G.groups.map((g,gi)=>{
+      const pts=res.scores.map((s,i)=>pointGroupIdx[i]===gi?{x:s[xpc]||0,y:s[ypc]||0,label:pointLabels[i]}:null).filter(Boolean);
+      return{label:g.name,data:pts,backgroundColor:COLORS[gi%COLORS.length]+'cc',borderColor:COLORS[gi%COLORS.length],pointRadius:7};
+    }).filter(ds=>ds.data.length>0);
+  } else {
+    // Color by replicate index; group name still as label
+    const nReps=G.nReps||1;
+    datasets=Array.from({length:nReps},(_,ri)=>{
+      const pts=res.scores.map((s,i)=>{
+        const repIdx=Math.floor(i/G.groups.length);  // replicate index within group
+        return (i%G.groups.length===pointGroupIdx[i]&&(res._pcMode==='reps'?i%nReps===ri:false))?{x:s[xpc]||0,y:s[ypc]||0,label:pointLabels[i]}:null;
+      }).filter(Boolean);
+      // Simpler: just use point index mod nReps
+      const pts2=res.scores.map((s,i)=>(i%nReps)===ri?{x:s[xpc]||0,y:s[ypc]||0,label:pointLabels[i]}:null).filter(Boolean);
+      return{label:`Rep ${ri+1}`,data:pts2,backgroundColor:COLORS[ri%COLORS.length]+'cc',borderColor:COLORS[ri%COLORS.length],pointRadius:7};
+    }).filter(ds=>ds.data.length>0);
+  }
+
+  const labelPlugin={id:'pcaLabels',afterDatasetsDraw(chart){
+    const {ctx,scales:{x,y}}=chart;
+    chart.data.datasets.forEach(ds=>ds.data.forEach(pt=>{
+      const px=x.getPixelForValue(pt.x),py=y.getPixelForValue(pt.y);
+      ctx.fillStyle=_exportTheme?'#000000':txc;ctx.font=_exportTheme?`bold 12px ${PRISM_FONT}`:'10px system-ui';ctx.textAlign='left';ctx.fillText(pt.label,px+7,py-5);
+    }));
+  }};
+  cfg.plugins={...cfg.plugins,legend:{display:true,labels:{color:txc,boxWidth:12,font:{size:11}}}};
+  chartInst[pid]=new Chart(canvas,{type:'scatter',data:{datasets},options:cfg,plugins:[labelPlugin]});
+}
+
+function plotKMCustom(title){
+  chartTab(title, canvas=>{
+    const ti=parseInt(document.getElementById('popt-tg')?.value||0);
+    const ei=parseInt(document.getElementById('popt-eg')?.value||Math.min(1,G.groups.length-1));
+    const times=getGroupPooled(ti),events=getGroupPooled(ei);
+    const km=kaplanMeier(times,events);
+    const pts=[{x:0,y:1},...km.map(p=>({x:p.t,y:p.s}))];
+    const cfg={...chartCfgDefaults()};
+    const ac=axCol();
+    cfg.scales.x.title={display:true,text:'Time',color:ac};
+    cfg.scales.y.title={display:true,text:'Survival Probability',color:ac};
+    cfg.scales.y.min=0;cfg.scales.y.max=1;
+    return new Chart(canvas,{type:'line',
+      data:{datasets:[{label:'KM Curve',data:pts,borderColor:'#3b82f6',backgroundColor:'#3b82f622',stepped:true,fill:true,pointRadius:3}]},
+      options:cfg});
+  });
+}
+
+function plotDoseResponse(title){
+  chartTab(title, canvas=>{
+    const dxi=parseInt(document.getElementById('popt-dxg')?.value||0);
+    const dyi=parseInt(document.getElementById('popt-dyg')?.value||Math.min(1,G.groups.length-1));
+    const xv=getGroupPooled(dxi),yv=getGroupPooled(dyi);
+    const n=Math.min(xv.length,yv.length);
+    if(n<4)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
+    const res=fit5PL(xv.slice(0,n),yv.slice(0,n));
+    const mn=Math.min(...xv),mx=Math.max(...xv);
+    const curveX=Array.from({length:100},(_,i)=>mn+(mx-mn)*i/99);
+    const curveData=curveX.map(x=>({x,y:res.predict(x)}));
+    const cfg={...chartCfgDefaults()};
+    const ac=axCol();
+    cfg.scales.x.title={display:true,text:G.groups[dxi]?.name||'Concentration',color:ac};
+    cfg.scales.y.title={display:true,text:G.groups[dyi]?.name||'Response',color:ac};
+    return new Chart(canvas,{type:'scatter',data:{datasets:[
+      {label:'Data',data:xv.slice(0,n).map((x,i)=>({x,y:yv[i]})),backgroundColor:'#ef4444cc',pointRadius:5},
+      {type:'line',label:'5PL Fit',data:curveData,borderColor:'#3b82f6',borderWidth:2,pointRadius:0}
+    ]},options:cfg});
+  });
+}
+
+function plotQQ2(title){
+  const qqgi=parseInt(document.getElementById('popt-qqg')?.value||0);
+  chartTab(title, canvas=>{
+    const vals=getGroupPooled(qqgi).filter(isFinite).sort((a,b)=>a-b);
+    const n=vals.length;
+    if(n<4)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
+    const theo=Array.from({length:n},(_,i)=>jStat.normal.inv((i+0.375)/(n+0.25),0,1));
+    const data=vals.map((v,i)=>({x:theo[i],y:v}));
+    const ac=axCol();
+    const cfg={...chartCfgDefaults()};
+    cfg.scales.x.title={display:true,text:'Theoretical Quantiles',color:ac};
+    cfg.scales.y.title={display:true,text:'Sample Quantiles',color:ac};
+    // Add reference line
+    const mn=Math.min(...vals),mx=Math.max(...vals);
+    const tMn=Math.min(...theo),tMx=Math.max(...theo);
+    return new Chart(canvas,{type:'scatter',data:{datasets:[
+      {label:G.groups[qqgi]?.name||'',data,backgroundColor:'#3b82f6cc',pointRadius:4},
+      {type:'line',label:'Reference',data:[{x:tMn,y:mn},{x:tMx,y:mx}],borderColor:'#f59e0b',borderWidth:1.5,pointRadius:0,fill:false}
+    ]},options:cfg});
+  });
+}
+
+function plotHistogram(title){
+  const hgv=document.getElementById('popt-hg')?.value||'all';
+  const binsReq=parseInt(document.getElementById('popt-bins')?.value||0);
+  chartTab(title, canvas=>{
+    const ac=axCol();
+    const groupsToPlot=hgv==='all'?G.groups.map((_,i)=>i):[parseInt(hgv)];
+    const datasets=groupsToPlot.map(i=>{
+      const vals=getGroupPooled(i).filter(isFinite).sort((a,b)=>a-b);
+      if(!vals.length)return null;
+      const mn=Math.min(...vals),mx=Math.max(...vals);
+      const bins=binsReq>0?binsReq:Math.max(5,Math.ceil(Math.sqrt(vals.length)));
+      const bw=(mx-mn)/bins||1;
+      const counts=Array(bins).fill(0);
+      vals.forEach(v=>{const b=Math.min(Math.floor((v-mn)/bw),bins-1);counts[b]++});
+      const labels=Array.from({length:bins},(_,b)=>(mn+b*bw).toFixed(2));
+      return{label:G.groups[i].name,data:counts,backgroundColor:COLORS[i]+'88',borderColor:COLORS[i],borderWidth:1,_labels:labels};
+    }).filter(Boolean);
+    if(!datasets.length)return new Chart(canvas,{type:'bar',data:{datasets:[]},options:chartCfgDefaults()});
+    const labels=datasets[0]._labels||[];
+    const cfg={...chartCfgDefaults()};
+    cfg.scales.x.title={display:true,text:'Value',color:ac};
+    cfg.scales.y.title={display:true,text:'Count',color:ac};
+    return new Chart(canvas,{type:'bar',data:{labels,datasets},options:cfg});
+  });
+}
+
+function plotMTCCustom(title){
+  chartTab(title, canvas=>{
+    const mtci=parseInt(document.getElementById('popt-mtcg')?.value||0);
+    const pvals=getGroupPooled(mtci).filter(v=>isFinite(v)&&v>0);const n=pvals.length;
+    if(!n)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
+    const names=G.rowNames.slice(0,n);
+    const bonf=bonferroni(pvals);const fdr=fdrBH(pvals);
+    const ac=axCol();
+    const cfg={...chartCfgDefaults()};
+    cfg.scales.x.title={display:true,text:'Feature index',color:ac};
+    cfg.scales.y.title={display:true,text:'-log10(p)',color:ac};
+    cfg.plugins.tooltip={...cfg.plugins.tooltip,callbacks:{label:c=>`${names[c.raw.x]||c.raw.x}: ${c.raw.y.toFixed(3)}`}};
+    return new Chart(canvas,{type:'scatter',data:{datasets:[
+      {label:'Raw p',data:names.map((n,i)=>({x:i,y:-Math.log10(pvals[i])})),backgroundColor:'#94a3b8cc',pointRadius:5},
+      {label:'Bonferroni',data:names.map((n,i)=>({x:i,y:-Math.log10(bonf[i])})),backgroundColor:'#ef4444cc',pointRadius:5},
+      {label:'FDR (BH)',data:names.map((n,i)=>({x:i,y:-Math.log10(fdr[i])})),backgroundColor:'#22c55ecc',pointRadius:5}
+    ]},options:cfg});
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RUN ANALYSIS — dispatches all tests, creates stat tabs
+// ═══════════════════════════════════════════════════════════
+function runAnalysis(){
+  const atype=document.getElementById('asel').value;
+  const normMethod=document.getElementById('opt-norm')?.value||'none';
+  lastStatPairs=null; // reset significance pairs
+
+  function getG(i){ return normalize(getGroupPooled(i),normMethod) }
+  function grpNames(){ return G.groups.map(g=>g.name) }
+
+  try{
+    if(atype==='desc'){
+      let html=`<div class="scard"><h3>Descriptive Statistics</h3><table class="rtbl"><thead><tr><th>Group</th><th>N</th><th>Mean</th><th>SD</th><th>SEM</th><th>Median</th><th>Min</th><th>Max</th><th>95% CI</th></tr></thead><tbody>`;
+      G.groups.forEach((g,i)=>{
+        const d=describeGroup(getG(i));
+        if(!d)return;
+        html+=`<tr><td>${g.name}</td><td>${d.n}</td><td>${fmtF(d.mean)}</td><td>${fmtF(d.sd)}</td><td>${fmtF(d.sem)}</td><td>${fmtF(d.median)}</td><td>${fmtF(d.min)}</td><td>${fmtF(d.max)}</td><td>[${fmtF(d.ci95lo,2)}, ${fmtF(d.ci95hi,2)}]</td></tr>`;
+      });
+      html+='</tbody></table></div>';
+      addStatTab('Descriptive', html);
+
+    } else if(atype==='ttest_ind'||atype==='ttest_rel'){
+      const ctrl=parseInt(document.getElementById('opt-ctrl')?.value||0);
+      const ptype=document.getElementById('opt-ptype')?.value||'delta';
+      const perRow=document.getElementById('opt-perrow')?.checked;
+      const corr=document.getElementById('opt-corr')?.value||'none';
+      const a=getG(ctrl);
+
+      if(perRow){
+        // Per-row test
+        const rowResults=[];
+        for(let r=0;r<G.nRows;r++){
+          const rows=[];
+          G.groups.forEach((g,i)=>{
+            const v=g.data[r]?.filter(x=>x!==''&&isFinite(x)).map(Number)||[];
+            rows.push(v);
+          });
+          // Compare ctrl vs each other group
+          const pvals=[];const labels=[];
+          G.groups.forEach((g,i)=>{
+            if(i===ctrl)return;
+            const res=atype==='ttest_ind'?ttestInd(rows[ctrl],rows[i]):ttestRel(rows[ctrl],rows[i],ptype);
+            pvals.push(res.error?NaN:(res.p));
+            labels.push(`${G.groups[ctrl].name} vs ${g.name}`);
+          });
+          rowResults.push({row:r,name:G.rowNames[r]||`Row ${r+1}`,pvals,labels});
+        }
+        // Apply correction
+        const allP=rowResults.flatMap(r=>r.pvals);
+        let adjP;
+        if(corr==='bonferroni') adjP=bonferroni(allP);
+        else if(corr==='holm') adjP=holmBonferroni(allP);
+        else if(corr==='fdr') adjP=fdrBH(allP);
+        else adjP=[...allP];
+        let idx=0;rowResults.forEach(r=>{r.adjPvals=r.pvals.map(()=>adjP[idx++])});
+
+        const cols=rowResults[0].labels;
+        let html=`<div class="scard"><h3>Per-Row ${atype==='ttest_ind'?'Unpaired':'Paired'} t-test (correction: ${corr})</h3>
+          <table class="rtbl"><thead><tr><th>Row</th>${cols.map(c=>`<th>${c} p-raw</th><th>${c} p-adj</th>`).join('')}</tr></thead><tbody>`;
+        rowResults.forEach(r=>{
+          html+=`<tr><td>${r.name}</td>${r.labels.map((_,i)=>`<td>${pRow(r.pvals[i])}</td><td>${pRow(r.adjPvals[i])}</td>`).join('')}</tr>`;
+        });
+        html+='</tbody></table></div>';
+        addStatTab(`Per-Row ${atype==='ttest_ind'?'t-ind':'t-rel'}`,html);
+        return;
+      }
+
+      // Standard: ctrl vs each other group
+      const other=G.groups.map((_,i)=>i).filter(i=>i!==ctrl);
+      let html='';
+      const tSigPairs=[];
+      other.forEach(i=>{
+        const b=getG(i);
+        const res=atype==='ttest_ind'?ttestInd(a,b):ttestRel(a,b,ptype);
+        if(res.error){html+=`<div class="ebox">${res.error}</div>`;return}
+        const stars=sigStars(res.p);
+        if(stars!=='ns')tSigPairs.push({i:ctrl,j:i,stars});
+        html+=`<div class="scard">
+          <h3>${atype==='ttest_ind'?'Unpaired (Welch)':'Paired'} t-test: ${G.groups[ctrl].name} vs ${G.groups[i].name}</h3>
+          <div class="rh"><span class="rt">${atype==='ttest_ind'?'Welch':'Paired'} t-test</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${stars}</span></div>
+          <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
+          <tr><td>t statistic</td><td>${fmtF(res.t)}</td></tr>
+          <tr><td>df</td><td>${fmtF(res.df,1)}</td></tr>
+          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+          ${atype==='ttest_ind'?`<tr><td>Mean (${G.groups[ctrl].name})</td><td>${fmtF(res.m1)}</td></tr><tr><td>Mean (${G.groups[i].name})</td><td>${fmtF(res.m2)}</td></tr><tr><td>Cohen's d</td><td>${fmtF(res.d)} (${eff(res.d||0)})</td></tr>`:
+          `<tr><td>Mean ${ptype==='ratio'?'ratio':'diff'}</td><td>${fmtF(res.mean_diff)}</td></tr><tr><td>SD diff</td><td>${fmtF(res.sd_diff)}</td></tr>`}
+          </tbody></table></div>`;
+      });
+      lastStatPairs=tSigPairs;
+      addStatTab(atype==='ttest_ind'?'t-ind':'t-rel',html||'<div class="ebox">No groups to compare</div>');
+
+    } else if(atype==='mw'){
+      const npMode=document.getElementById('opt-np-mode')?.value||'pair';
+      const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
+      const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
+      const names=grpNames();
+      if(npMode==='allpairs'&&G.groups.length>2){
+        // All-pairs with FDR correction
+        const pairs=[];
+        for(let i=0;i<G.groups.length-1;i++)for(let j=i+1;j<G.groups.length;j++){
+          const res=mannWhitneyU(getG(i),getG(j));
+          pairs.push({i,j,na:names[i],nb:names[j],...res});
+        }
+        // BH FDR
+        const m=pairs.length;pairs.sort((a,b)=>a.p-b.p);
+        pairs.forEach((p,k)=>{p.p_adj=Math.min(p.p*(m/(k+1)),1);});
+        pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
+        lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
+        const html=`<div class="scard"><h3>Mann-Whitney U — All Pairs (FDR)</h3>
+          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (FDR)</th><th>Sig</th></tr></thead><tbody>
+          ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
+          </tbody></table></div>`;
+        addStatTab('MW All-Pairs',html);
+      } else {
+        const a=getG(g1i),b=getG(g2i);
+        const res=mannWhitneyU(a,b);
+        if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
+        const html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Mann-Whitney U</h3>
+          <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong></div>
+          <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
+          <tr><td>U statistic</td><td>${fmtF(res.U,1)}</td></tr>
+          <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
+          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+          <tr><td>n1 (${names[g1i]})</td><td>${res.n1}</td></tr>
+          <tr><td>n2 (${names[g2i]})</td><td>${res.n2}</td></tr>
+          </tbody></table></div>`;
+        addStatTab('Mann-Whitney',html);
+      }
+
+    } else if(atype==='wilcoxon'){
+      const npMode=document.getElementById('opt-np-mode')?.value||'pair';
+      const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
+      const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
+      const npComp=document.getElementById('opt-np-comp')?.value||'delta';
+      const names=grpNames();
+      if(npMode==='allpairs'&&G.groups.length>2){
+        const pairs=[];
+        for(let i=0;i<G.groups.length-1;i++)for(let j=i+1;j<G.groups.length;j++){
+          let a=getG(i),b=getG(j);
+          if(npComp==='ratio'){const mn=Math.min(a.length,b.length);a=a.slice(0,mn).map((v,k)=>b[k]!==0?v/b[k]:NaN).filter(isFinite);b=Array(a.length).fill(1);}
+          const res=wilcoxonSR(a,b);
+          pairs.push({i,j,na:names[i],nb:names[j],...res});
+        }
+        const m=pairs.length;pairs.sort((a,b)=>a.p-b.p);
+        pairs.forEach((p,k)=>{p.p_adj=Math.min(p.p*(m/(k+1)),1);});
+        pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
+        lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
+        const html=`<div class="scard"><h3>Wilcoxon Signed-Rank — All Pairs (FDR, ${npComp})</h3>
+          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>W</th><th>z</th><th>p</th><th>p adj</th><th>Sig</th></tr></thead><tbody>
+          ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.W,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
+          </tbody></table></div>`;
+        addStatTab('Wilcoxon All-Pairs',html);
+      } else {
+        let a=getG(g1i),b=getG(g2i);
+        if(npComp==='ratio'){const mn=Math.min(a.length,b.length);a=a.slice(0,mn).map((v,k)=>b[k]!==0?v/b[k]:NaN).filter(isFinite);b=Array(a.length).fill(1);}
+        const res=wilcoxonSR(a,b);
+        if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
+        const html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Wilcoxon Signed-Rank${npComp==='ratio'?' (Ratio)':''}</h3>
+          <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong></div>
+          <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
+          <tr><td>W statistic</td><td>${fmtF(res.W,1)}</td></tr>
+          <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
+          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+          <tr><td>n (non-zero diffs)</td><td>${res.n}</td></tr>
+          </tbody></table></div>`;
+        addStatTab('Wilcoxon',html);
+      }
+
+    } else if(atype==='ranksum'){
+      const npMode=document.getElementById('opt-np-mode')?.value||'pair';
+      const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
+      const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
+      const npComp=document.getElementById('opt-np-comp')?.value||'delta';
+      const names=grpNames();
+      if(npMode==='allpairs'&&G.groups.length>2){
+        const pairs=[];
+        for(let i=0;i<G.groups.length-1;i++)for(let j=i+1;j<G.groups.length;j++){
+          const res=rankSumTest(getG(i),getG(j),npComp);
+          pairs.push({i,j,na:names[i],nb:names[j],...res});
+        }
+        const m=pairs.length;pairs.sort((a,b)=>a.p-b.p);
+        pairs.forEach((p,k)=>{p.p_adj=Math.min(p.p*(m/(k+1)),1);});
+        pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
+        lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
+        const html=`<div class="scard"><h3>Rank Sum — All Pairs (FDR, ${npComp})</h3>
+          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj</th><th>Sig</th></tr></thead><tbody>
+          ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
+          </tbody></table></div>`;
+        addStatTab('Rank Sum All',html);
+      } else {
+        const res=rankSumTest(getG(g1i),getG(g2i),npComp);
+        if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
+        const html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Rank Sum Test (${npComp})</h3>
+          <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong></div>
+          <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
+          <tr><td>U</td><td>${fmtF(res.U,1)}</td></tr>
+          <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
+          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+          </tbody></table></div>`;
+        addStatTab('Rank Sum',html);
+      }
+
+    } else if(atype==='rankprod'){
+      const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
+      const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
+      const npComp=document.getElementById('opt-np-comp')?.value||'ratio';
+      const names=grpNames();
+      // Build per-row replicate arrays
+      const aRows=G.groups[g1i].data.map(repArr=>repArr.filter(x=>x!==''&&isFinite(x)).map(Number));
+      const bRows=G.groups[g2i].data.map(repArr=>repArr.filter(x=>x!==''&&isFinite(x)).map(Number));
+      const results=rankProductTest(aRows,bRows,npComp);
+      // BH FDR on p values
+      const sorted=[...results.map((r,i)=>({...r,row:i}))].sort((a,b)=>a.p-b.p);
+      const nRP=sorted.length;
+      sorted.forEach((r,k)=>{r.p_adj=Math.min(r.p*(nRP/(k+1)),1);});
+      sorted.sort((a,b)=>a.rp-b.rp); // sort by rank product
+      const topN=Math.min(sorted.length,30);
+      const html=`<div class="scard"><h3>Rank Product (${npComp})</h3>
+        <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong> — showing top ${topN} rows by rank product</div>
+        <table class="rtbl"><thead><tr><th>Row</th><th>Mean FC</th><th>RP</th><th>Direction</th><th>p</th><th>p adj (FDR)</th></tr></thead><tbody>
+        ${sorted.slice(0,topN).map(r=>`<tr><td>${G.rowNames[r.row]||'Row '+(r.row+1)}</td><td>${fmtF(r.meanFC)}</td><td>${fmtF(r.rp,4)}</td><td>${r.direction}</td><td>${pRow(r.p)}</td><td>${pRow(r.p_adj)}</td></tr>`).join('')}
+        </tbody></table></div>`;
+      addStatTab('Rank Product',html);
+
+    } else if(atype==='anova'){
+      const ph=document.getElementById('opt-ph')?.value||'bonferroni';
+      const ctrl=document.getElementById('opt-ctrl')?.value;
+      let groups=G.groups.map((_,i)=>getG(i));
+      const names=grpNames();
+      const res=onewayANOVA(groups,ph);
+      if(res.error){addStatTab('ANOVA',`<div class="ebox">${res.error}</div>`);return}
+      const ctrlI=ctrl?parseInt(ctrl):-1;
+      lastStatPairs=res.posthoc.filter(p=>(ctrlI<0||p.i===ctrlI||p.j===ctrlI)).map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
+      let html=`<div class="scard"><h3>One-Way ANOVA</h3>
+        <div class="rh"><span class="rt">F(${res.dfB},${res.dfW}) = ${fmtF(res.F)}</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${sigStars(res.p)}</span></div>
+        <table class="rtbl"><thead><tr><th>Source</th><th>SS</th><th>df</th><th>MS</th><th>F</th><th>p</th></tr></thead><tbody>
+        <tr><td>Between</td><td>${fmtF(res.SSB)}</td><td>${res.dfB}</td><td>${fmtF(res.MSB)}</td><td>${fmtF(res.F)}</td><td>${pRow(res.p)}</td></tr>
+        <tr><td>Within</td><td>${fmtF(res.SSW)}</td><td>${res.dfW}</td><td>${fmtF(res.MSW)}</td><td></td><td></td></tr>
+        </tbody></table>
+        <div class="sdiv"><h4>Post-hoc (${ph})</h4>
+        <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>t</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
+        ${res.posthoc.map(ph=>(ctrlI<0||ph.i===ctrlI||ph.j===ctrlI)?`<tr><td>${names[ph.i]}</td><td>${names[ph.j]}</td><td>${fmtF(ph.t)}</td><td>${pRow(ph.p_raw)}</td><td>${pRow(ph.p_adj)}</td></tr>`:'').join('')}
+        </tbody></table></div></div>`;
+      addStatTab('ANOVA',html);
+
+    } else if(atype==='kruskal'){
+      const groups=G.groups.map((_,i)=>getG(i));
+      const names=grpNames();
+      const res=kruskalWallis(groups);
+      if(res.error){addStatTab('Kruskal',`<div class="ebox">${res.error}</div>`);return}
+      lastStatPairs=res.posthoc.map(ph=>({i:ph.a,j:ph.b,stars:sigStars(ph.p)})).filter(p=>p.stars!=='ns');
+      let html=`<div class="scard"><h3>Kruskal-Wallis H Test</h3>
+        <div class="rh"><span class="rt">H(${res.df}) = ${fmtF(res.H)}</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${sigStars(res.p)}</span></div>
+        <div class="sdiv"><h4>Dunn's Post-hoc (Bonferroni)</h4>
+        <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>z</th><th>p-adj</th></tr></thead><tbody>
+        ${res.posthoc.map(ph=>`<tr><td>${names[ph.a]}</td><td>${names[ph.b]}</td><td>${fmtF(ph.z)}</td><td>${pRow(ph.p)}</td></tr>`).join('')}
+        </tbody></table></div></div>`;
+      addStatTab('Kruskal',html);
+
+    } else if(atype==='pearson'||atype==='spearman'){
+      const nG=G.groups.length;
+      const corrFn=(x,y)=>atype==='pearson'?pearsonR(x,y):spearmanR(x,y);
+      const corrMode=document.getElementById('opt-corr-mode')?.value||'allpairs';
+      const corrCtrl=parseInt(document.getElementById('opt-corr-ctrl')?.value||0);
+      const label=atype==='pearson'?'Pearson':'Spearman';
+      let pairs=[];
+      if(nG<=2){
+        pairs=[[0,1]];
+      } else if(corrMode==='ctrl'){
+        pairs=G.groups.map((_,i)=>i).filter(i=>i!==corrCtrl).map(i=>[corrCtrl,i]);
+      } else {
+        for(let i=0;i<nG-1;i++)for(let j=i+1;j<nG;j++)pairs.push([i,j]);
+      }
+      let html=`<div class="scard"><h3>${label} Correlation — ${pairs.length} pair(s)</h3>
+        <table class="rtbl"><thead><tr><th>Pair</th><th>r</th><th>p</th>${atype==='pearson'?'<th>95% CI</th>':''}<th>n</th></tr></thead><tbody>`;
+      pairs.forEach(([i,j])=>{
+        const res=corrFn(getG(i),getG(j));
+        if(res.error){html+=`<tr><td colspan="5">${G.groups[i].name} vs ${G.groups[j].name}: ${res.error}</td></tr>`;return;}
+        html+=`<tr><td>${G.groups[i].name} vs ${G.groups[j].name}</td><td>${fmtF(res.r,4)}</td><td>${pRow(res.p)}</td>${atype==='pearson'?`<td>[${fmtF(res.ci95lo,4)}, ${fmtF(res.ci95hi,4)}]</td>`:''}<td>${res.n}</td></tr>`;
+      });
+      html+='</tbody></table></div>';
+      addStatTab(label,html);
+
+    } else if(atype==='mtc'){
+      const pvals=getGroupPooled(0);
+      const method=document.getElementById('opt-mtc-method')?.value||'bonferroni';
+      let adj;
+      if(method==='bonferroni') adj=bonferroni(pvals);
+      else if(method==='holm') adj=holmBonferroni(pvals);
+      else adj=fdrBH(pvals);
+      const names=G.rowNames.slice(0,pvals.length);
+      let html=`<div class="scard"><h3>Multiple Testing Correction (${method})</h3>
+        <table class="rtbl"><thead><tr><th>Test</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
+        ${pvals.map((p,i)=>`<tr><td>${names[i]||i+1}</td><td>${pRow(p)}</td><td>${pRow(adj[i])}</td></tr>`).join('')}
+        </tbody></table></div>`;
+      addStatTab('MTC',html);
+
+    } else if(atype==='fisher'){
+      const rows=G.groups[0].data.slice(0,2).map(r=>r.slice(0,2).map(Number));
+      const a=rows[0]?.[0]??0,b=rows[0]?.[1]??0,c=rows[1]?.[0]??0,d=rows[1]?.[1]??0;
+      const res=fishersExact(a,b,c,d);
+      let html=`<div class="scard"><h3>Fisher's Exact Test</h3>
+        <table class="rtbl" style="margin-bottom:8px"><thead><tr><th></th><th>Col 1</th><th>Col 2</th></tr></thead><tbody>
+        <tr><td>Row 1</td><td>${a}</td><td>${b}</td></tr><tr><td>Row 2</td><td>${c}</td><td>${d}</td></tr></tbody></table>
+        <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
+        <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+        <tr><td>Odds Ratio</td><td>${fmtF(res.or)}</td></tr>
+        </tbody></table></div>`;
+      addStatTab("Fisher's",html);
+
+    } else if(atype==='chisq'){
+      const obs=G.groups[0].data.map((row,r)=>G.groups.map((_,c)=>parseFloat(G.groups[c].data[r]?.[0])||0));
+      const res=chiSquare(obs);
+      let html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Chi-Square Contingency</h3>
+        <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
+        <tr><td>χ²</td><td>${fmtF(res.chi)}</td></tr>
+        <tr><td>df</td><td>${res.df}</td></tr>
+        <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+        </tbody></table></div>`;
+      addStatTab('Chi-Sq',html);
+
+    } else if(atype==='norm'){
+      let html='';
+      G.groups.forEach((g,i)=>{
+        const res=normalityJB(getG(i));
+        html+=res.error?`<div class="ebox">${g.name}: ${res.error}</div>`:`<div class="scard"><h3>Normality: ${g.name}</h3>
+          <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
+          <tr><td>Jarque-Bera</td><td>${fmtF(res.JB)}</td></tr>
+          <tr><td>Skewness</td><td>${fmtF(res.skewness)}</td></tr>
+          <tr><td>Excess kurtosis</td><td>${fmtF(res.kurtosis)}</td></tr>
+          <tr><td>n</td><td>${res.n}</td></tr>
+          <tr><td>p-value</td><td>${pRow(res.p)} (H₀: normal)</td></tr>
+          </tbody></table></div>`;
+      });
+      addStatTab('Normality',html);
+
+    } else if(atype==='km'){
+      const times=getGroupPooled(0),events=getGroupPooled(1);
+      const km=kaplanMeier(times,events);
+      const lr=logRankTest([times],[events]);
+      let html=`<div class="scard"><h3>Kaplan-Meier</h3>
+        <table class="rtbl"><thead><tr><th>t</th><th>At Risk</th><th>Events</th><th>Censored</th><th>S(t)</th></tr></thead><tbody>
+        ${km.filter((_,i)=>i<30).map(p=>`<tr><td>${fmtF(p.t,1)}</td><td>${p.n}</td><td>${p.d||0}</td><td>${p.c||0}</td><td>${fmtF(p.s,4)}</td></tr>`).join('')}
+        </tbody></table></div>`;
+      addStatTab('KM',html);
+
+    } else if(atype==='pca'){
+      const X=Array.from({length:G.nRows},(_,r)=>G.groups.map((_,c)=>{const v=G.groups[c].data[r]?.filter(x=>x!==''&&isFinite(x)).map(Number);return v?.length?mean(v):0}));
+      const res=pcaCompute(X);
+      const cumVar=res.varExplained.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
+      const scoreHeaders=Array.from({length:res.nPCs},(_,i)=>`<th>PC${i+1}</th>`).join('');
+      let html=`<div class="scard"><h3>PCA</h3>
+        <table class="rtbl"><thead><tr><th>Component</th><th>Variance Explained (%)</th><th>Cumulative (%)</th></tr></thead><tbody>
+        ${res.varExplained.map((v,i)=>`<tr><td>PC${i+1}</td><td>${fmtF(v,2)}</td><td>${fmtF(cumVar[i],2)}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="sdiv"><h4>Sample Scores</h4>
+        <table class="rtbl"><thead><tr><th>Sample</th>${scoreHeaders}</tr></thead><tbody>
+        ${res.scores.map((s,i)=>`<tr><td>${G.rowNames[i]||'Row '+(i+1)}</td>${s.map(v=>`<td>${fmtF(v)}</td>`).join('')}</tr>`).join('')}
+        </tbody></table></div></div>`;
+      addStatTab('PCA',html);
+
+    } else if(atype==='volcano'){
+      const fc_thresh=parseFloat(document.getElementById('opt-fc')?.value||1);
+      const p_thresh=parseFloat(document.getElementById('opt-pt')?.value||0.05);
+      const fcVals=getGroupPooled(0),pVals=getGroupPooled(1);
+      const n=Math.min(fcVals.length,pVals.length);
+      const names=G.rowNames.slice(0,n);
+      const pts=volcanoData(names,fcVals.slice(0,n),pVals.slice(0,n),fc_thresh,p_thresh);
+      const up=pts.filter(p=>p.up),dn=pts.filter(p=>p.down);
+      let html=`<div class="scard"><h3>Volcano Plot Summary</h3>
+        <table class="rtbl"><thead><tr><th>Category</th><th>N</th></tr></thead><tbody>
+        <tr><td>Up-regulated</td><td>${up.length}</td></tr>
+        <tr><td>Down-regulated</td><td>${dn.length}</td></tr>
+        <tr><td>Not significant</td><td>${pts.filter(p=>!p.sig).length}</td></tr>
+        </tbody></table>
+        ${up.length?`<div class="sdiv"><h4>Top Up-regulated</h4><table class="rtbl"><thead><tr><th>Gene</th><th>log2FC</th><th>p</th></tr></thead><tbody>${up.slice(0,10).map(p=>`<tr><td>${p.name}</td><td>${fmtF(p.log2fc)}</td><td>${fmtP(Math.pow(10,-p.neglog10p))}</td></tr>`).join('')}</tbody></table></div>`:''}
+        </div>`;
+      addStatTab('Volcano',html);
+
+    } else if(atype==='dose'){
+      const xv=getGroupPooled(0),yv=getGroupPooled(1);
+      const n=Math.min(xv.length,yv.length);
+      if(n<4){addStatTab('5PL','<div class="ebox">Need ≥ 4 data points</div>');return}
+      const res=fit5PL(xv.slice(0,n),yv.slice(0,n));
+      const [bot,top,ec50,hill,asym]=res.params;
+      let html=`<div class="scard"><h3>5PL Dose-Response</h3>
+        <table class="rtbl"><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>
+        <tr><td>Bottom</td><td>${fmtF(bot)}</td></tr>
+        <tr><td>Top</td><td>${fmtF(top)}</td></tr>
+        <tr><td>EC50 / IC50</td><td>${fmtF(ec50)}</td></tr>
+        <tr><td>Hill slope</td><td>${fmtF(hill)}</td></tr>
+        <tr><td>Asymmetry</td><td>${fmtF(asym)}</td></tr>
+        <tr><td>R²</td><td>${fmtF(res.r2,4)}</td></tr>
+        </tbody></table></div>`;
+      addStatTab('5PL',html);
+
+    } else if(atype==='heatmap'){
+      let html=`<div class="scard"><h3>Heatmap Data Summary</h3>
+        <table class="rtbl"><thead><tr><th>Group</th><th>Mean</th><th>SD</th></tr></thead><tbody>
+        ${G.groups.map((g,i)=>{const v=getG(i);const d=describeGroup(v);return d?`<tr><td>${g.name}</td><td>${fmtF(d.mean)}</td><td>${fmtF(d.sd)}</td></tr>`:''}).join('')}
+        </tbody></table></div>`;
+      const hmStId=addStatTab('Heatmap',html);
+      if(document.getElementById('opt-autoplot')?.checked!==false){
+        plotHeatmapCustom('Heatmap');
+        if(lastPlotTabId&&hmStId)linkTabs(hmStId,lastPlotTabId);
+      }
+
+    } else if(atype==='anova2'){
+      const nA=parseInt(document.getElementById('opt-nA')?.value||2);
+      const nB=parseInt(document.getElementById('opt-nB')?.value||2);
+      if(G.groups.length<nA*nB){addStatTab('2-Way ANOVA',`<div class="ebox">Need ${nA*nB} groups for ${nA}×${nB} design (have ${G.groups.length})</div>`);return}
+      const groupData=Array.from({length:nA*nB},(_,k)=>getG(k));
+      const names=grpNames();
+      const fA=Array.from({length:nA},(_,a)=>names.slice(a*nB,(a+1)*nB)[0].replace(/[_\d]+$/,'')||`A${a+1}`);
+      const fB=Array.from({length:nB},(_,b)=>names[b]||`B${b+1}`);
+      const res=twowayANOVA(groupData,nA,nB);
+      if(res.error){addStatTab('2-Way ANOVA',`<div class="ebox">${res.error}</div>`);return}
+      let html=`<div class="scard"><h3>Two-Way ANOVA (${nA}×${nB})</h3>
+        <table class="rtbl"><thead><tr><th>Source</th><th>SS</th><th>df</th><th>MS</th><th>F</th><th>p</th></tr></thead><tbody>
+        <tr><td>Factor A (${fA.join('/')})</td><td>${fmtF(res.SSA)}</td><td>${res.dfA}</td><td>${fmtF(res.MSA)}</td><td>${fmtF(res.FA)}</td><td>${pRow(res.pA)}</td></tr>
+        <tr><td>Factor B (${fB.join('/')})</td><td>${fmtF(res.SSB)}</td><td>${res.dfB}</td><td>${fmtF(res.MSB)}</td><td>${fmtF(res.FB)}</td><td>${pRow(res.pB)}</td></tr>
+        <tr><td>A × B Interaction</td><td>${fmtF(res.SSAB)}</td><td>${res.dfAB}</td><td>${fmtF(res.MSAB)}</td><td>${fmtF(res.FAB)}</td><td>${pRow(res.pAB)}</td></tr>
+        <tr><td>Error</td><td>${fmtF(res.SSError)}</td><td>${res.dfError}</td><td>${fmtF(res.MSError)}</td><td></td><td></td></tr>
+        </tbody></table>
+        <div class="sdiv"><h4>Cell Means</h4>
+        <table class="rtbl"><thead><tr><th>A\B</th>${fB.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>
+        ${Array.from({length:nA},(_,a)=>`<tr><td>${fA[a]}</td>${Array.from({length:nB},(_,b)=>`<td>${fmtF(res.cellMeans[a*nB+b])}</td>`).join('')}</tr>`).join('')}
+        </tbody></table></div></div>`;
+      addStatTab('2-Way ANOVA',html);
+
+    } else if(atype==='regress'){
+      const xi=parseInt(document.getElementById('opt-rx')?.value||0);
+      const yi=parseInt(document.getElementById('opt-ry')?.value||1);
+      const model=document.getElementById('opt-rmodel')?.value||'linear';
+      const xv=getG(xi),yv=getG(yi);
+      const n=Math.min(xv.length,yv.length);
+      if(n<3){addStatTab('Regression','<div class="ebox">Need ≥ 3 points</div>');return}
+      const xs=xv.slice(0,n),ys=yv.slice(0,n);
+      const degree=model.startsWith('poly')?parseInt(model[4]):undefined;
+      const res=runRegression(xs,ys,model,degree);
+      if(res.error){addStatTab('Regression',`<div class="ebox">${res.error}</div>`);return}
+      const residuals=ys.map((y,i)=>y-res.pred[i]);
+      const ssRes=residuals.reduce((s,r)=>s+r*r,0);
+      const ssTotal=ys.reduce((s,y)=>s+(y-mean(ys))**2,0);
+      const r2=Math.max(0,1-ssRes/ssTotal);
+      let html=`<div class="scard"><h3>Regression: ${res.type}</h3>
+        <div class="rh"><span class="rt">Model: ${res.type}</span><span class="rp">R² = ${fmtF(r2,4)}</span></div>
+        <div style="font-family:monospace;margin:8px 0;padding:8px;background:var(--su);border-radius:4px;color:var(--tx);font-size:12px">${res.equation||''}</div>
+        <table class="rtbl"><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>
+        ${Object.entries(res.params||{}).map(([k,v])=>`<tr><td>${k}</td><td>${fmtF(v,4)}</td></tr>`).join('')}
+        <tr><td>R²</td><td>${fmtF(r2,4)}</td></tr>
+        <tr><td>RMSE</td><td>${fmtF(Math.sqrt(ssRes/n),4)}</td></tr>
+        </tbody></table></div>`;
+      // Store regression data for plots
+      window._lastRegress={xs,ys,res,residuals,r2,xName:G.groups[xi]?.name||'X',yName:G.groups[yi]?.name||'Y'};
+      addStatTab('Regression',html);
+      // Auto-generate fit plot + residuals plot after stat tab created
+      const rStatId=lastStatTabId;
+      setTimeout(()=>{
+        plotRegressionFit();
+        const fitId=lastPlotTabId;
+        if(fitId&&rStatId)linkTabs(rStatId,fitId);
+        setTimeout(()=>{
+          plotResiduals();
+          const resId=lastPlotTabId;
+          if(resId&&rStatId)linkTabs(rStatId,resId);
+        },60);
+      },30);
+      return; // skip normal auto-plot
+    }
+  } catch(e){
+    addStatTab('Error',`<div class="ebox">Error: ${e.message}</div>`);
+  }
+  // Auto-plot: if the checkbox is ticked and this test has a natural plot, run it
+  const autoPlotType=AUTO_PLOT_FOR_TYPE[atype];
+  if(autoPlotType&&document.getElementById('opt-autoplot')?.checked){
+    const psel=document.getElementById('psel');
+    if(psel){psel.value=autoPlotType;renderPlotOpts(autoPlotType);}
+    const statIdToLink=lastStatTabId;
+    setTimeout(()=>{
+      runPlot();
+      // Link stat tab to the auto-generated plot tab
+      if(lastPlotTabId&&statIdToLink) linkTabs(statIdToLink,lastPlotTabId);
+    },50);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SAVE / LOAD
+// ═══════════════════════════════════════════════════════════
+function saveProject(){
+  const snap={
+    app:'Thistle Plot',version:2,appVersion:APP_VERSION,
+    G:{nReps:G.nReps,nRows:G.nRows,rowNames:[...G.rowNames],
+       groups:G.groups.map(g=>({name:g.name,reps:[...g.reps],data:g.data.map(r=>[...r])}))},
+    statTabs:statTabs.map(t=>({id:t.id,title:t.title,html:t.html})),
+    plotTabs:plotTabs.map(t=>{
+      const c=document.getElementById('c_'+t.id)||document.querySelector('#'+t.id+' canvas');
+      return{id:t.id,title:t.title,imageData:c?c.toDataURL('image/png'):null};
+    }),
+    activePT,activeST
+  };
+  const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='thistle_project.thistle';a.click();
+}
+
+function loadProject(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const snap=JSON.parse(e.target.result);
+      G.nReps=snap.G.nReps||3;G.nRows=snap.G.nRows||6;
+      G.rowNames=snap.G.rowNames||[];
+      G.groups=snap.G.groups.map(g=>({name:g.name,reps:g.reps||[],data:g.data||[]}));
+      document.getElementById('n-reps').value=G.nReps;
+      document.getElementById('n-grps').value=G.groups.length;
+      renderGrid();
+      // Restore stat tabs
+      statTabs=[];stCount=0;
+      document.getElementById('stats-content').innerHTML='';
+      (snap.statTabs||[]).forEach(t=>{addStatTab(t.title,t.html)});
+      // Restore plot tabs as image previews
+      plotTabs=[];ptCount=0;
+      document.getElementById('plot-content').innerHTML='';
+      (snap.plotTabs||[]).forEach(t=>{
+        if(t.imageData){
+          addPlotTab(t.title,page=>{
+            page.innerHTML=`<div class="plot-topbar"><span style="font-size:12px;font-weight:600;color:var(--tx)">${t.title}</span></div><div class="plot-area" style="flex:1;display:flex;align-items:center;justify-content:center"><img src="${t.imageData}" style="max-width:100%;max-height:100%"></div>`;
+          });
+        }
+      });
+      alert('Project loaded successfully');
+    }catch(err){alert('Failed to load: '+err.message)}
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXAMPLE DATA + INIT
+// ═══════════════════════════════════════════════════════════
+function loadExample(){
+  G.nReps=3;G.nRows=6;
+  G.rowNames=['Sample 1','Sample 2','Sample 3','Sample 4','Sample 5','Sample 6'];
+  G.groups=[
+    {name:'Control',reps:['Rep1','Rep2','Rep3'],data:[[2.1,2.3,1.9],[3.2,2.8,3.1],[1.8,2.0,2.2],[4.1,3.9,4.3],[2.5,2.7,2.3],[3.8,3.6,4.0]]},
+    {name:'Treatment A',reps:['Rep1','Rep2','Rep3'],data:[[4.5,4.8,4.2],[5.1,5.4,4.9],[3.9,4.1,4.3],[6.2,5.8,6.1],[4.7,5.0,4.6],[5.5,5.3,5.8]]},
+    {name:'Treatment B',reps:['Rep1','Rep2','Rep3'],data:[[3.0,3.2,2.8],[4.1,3.8,4.0],[2.7,2.9,3.1],[5.0,4.7,5.2],[3.5,3.8,3.3],[4.4,4.2,4.6]]}
+  ];
+  document.getElementById('n-reps').value=3;
+  document.getElementById('n-grps').value=3;
+  renderGrid();
+}
+
+function clearData(){
+  G.nRows=6;G.nReps=3;
+  G.rowNames=Array.from({length:6},(_,i)=>`Row ${i+1}`);
+  G.groups=G.groups.map(g=>({...g,data:Array.from({length:6},()=>Array(G.nReps).fill(''))}));
+  renderGrid();
+}
+
+function onCSV(event){
+  const file=event.target.files[0];if(!file)return;
+  Papa.parse(file,{header:false,dynamicTyping:true,complete:res=>{
+    const rows=res.data.filter(r=>r.some(v=>v!==null&&v!==''));
+    if(!rows.length)return;
+    // Check if first row is headers
+    const firstIsHdr=rows[0].some(v=>typeof v==='string'&&isNaN(parseFloat(v)));
+    const headers=firstIsHdr?rows[0].map(String):rows[0].map((_,i)=>`Group${i+1}`);
+    const dataRows=firstIsHdr?rows.slice(1):rows;
+    // First col might be row names
+    const firstColIsName=headers[0]===''||headers[0]==='Row'||dataRows.some(r=>typeof r[0]==='string'&&isNaN(parseFloat(r[0])));
+    const startCol=firstColIsName?1:0;
+    const colNames=headers.slice(startCol);
+    G.nReps=1;G.nRows=dataRows.length;
+    document.getElementById('n-reps').value=1;
+    G.rowNames=dataRows.map((r,i)=>firstColIsName?(String(r[0])||`Row ${i+1}`):`Row ${i+1}`);
+    G.groups=colNames.map((name,c)=>({name,reps:['Rep1'],data:dataRows.map(r=>[parseFloat(r[c+startCol])])}));
+    document.getElementById('n-grps').value=G.groups.length;
+    renderGrid();
+  }});
+  event.target.value='';
+}
+
+// ═══════════════════════════════════════════════════════════
+// BOOTSTRAP
+// ═══════════════════════════════════════════════════════════
+function populateSelects(){
+  const asel=document.getElementById('asel');
+  asel.innerHTML=ANALYSIS_CATEGORIES.map(c=>`<optgroup label="${c.cat}">${c.tests.map(t=>`<option value="${t.v}">${t.l}</option>`).join('')}</optgroup>`).join('');
+  const psel=document.getElementById('psel');
+  psel.innerHTML=PLOT_TYPES.map(t=>`<option value="${t.v}">${t.l}</option>`).join('');
+}
+
+function checkLibs(){
+  if(typeof jStat!=='undefined'&&typeof Chart!=='undefined'&&typeof Papa!=='undefined'){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('hdr').style.display='flex';
+    document.getElementById('main').style.display='flex';
+    populateSelects();
+    initData();
+    renderDataStrip();
+    onTypeChange();
+    onPlotTypeChange();
+    renderStatStrip();
+    renderPlotStrip();
+  } else {
+    document.getElementById('lmsg').textContent='Loading libraries… '+
+      (typeof jStat==='undefined'?'jStat ':'')+(typeof Chart==='undefined'?'Chart.js ':'')+(typeof Papa==='undefined'?'PapaParse ':'')+' still loading';
+    setTimeout(checkLibs,400);
+  }
+}
+window.addEventListener('load',checkLibs);
+</script>
+</body>
+</html>
