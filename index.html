@@ -146,6 +146,23 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 .ebox{background:#3b1515;border:1px solid var(--er);border-radius:7px;padding:11px;color:#fca5a5;font-size:12px}
 .sdiv{border-top:1px solid var(--bd);margin:10px 0;padding-top:10px}
 .sdiv h4{font-size:11px;font-weight:700;color:var(--mu);text-transform:uppercase;margin-bottom:7px}
+
+/* ── Help modal ── */
+#help-ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px}
+#help-ov.open{display:flex}
+#help-box{background:var(--surf);color:var(--tx);border:1px solid var(--bd);border-radius:10px;width:min(980px,100%);height:min(88vh,100%);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+#help-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd)}
+#help-head .htab{background:none;border:none;color:var(--mu);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+#help-head .htab.active{background:var(--surf2);color:var(--ac)}
+#help-body{overflow:auto;padding:6px 26px 30px;font-size:13.5px;line-height:1.6}
+#help-body h2{font-size:18px;margin:22px 0 8px}#help-body h3{font-size:15px;margin:22px 0 6px;color:var(--ac)}
+#help-body p{margin:8px 0}#help-body ul,#help-body ol{margin:6px 0 6px 22px}#help-body li{margin:3px 0}
+#help-body table{border-collapse:collapse;width:100%;margin:10px 0;font-size:12.5px}
+#help-body th,#help-body td{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}
+#help-body th{background:var(--surf2)}
+#help-body code{background:var(--surf2);padding:1px 5px;border-radius:4px;font-size:12px}
+.hpane{display:none}.hpane.active{display:block}
+@media print{body>*:not(#help-ov){display:none!important}#help-ov{position:static;display:block!important;background:#fff;padding:0}#help-box{border:none;box-shadow:none;height:auto;width:100%;color:#000;background:#fff}#help-head{display:none}#help-body{overflow:visible}.hpane{display:block!important}#help-body th{background:#eee}#help-body h3{color:#000}}
 </style>
 </head>
 <body>
@@ -163,6 +180,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <button class="btn" onclick="document.getElementById('fi-csv').click()">⬆ CSV</button>
   <button class="btn" onclick="loadExample()">📋 Example</button>
   <button class="btn" onclick="clearData()">🗑 Clear</button>
+  <button class="btn" onclick="openHelp()" title="Help and manuals (F1)">❓ Help</button>
   <button class="btn" id="theme-btn" onclick="toggleTheme()" title="Toggle dark/light mode" style="font-size:16px;padding:4px 9px">🌙</button>
   <span style="font-size:11px;color:var(--mu)">Export:</span>
   <select id="export-style" title="Export figure style" style="width:170px;flex:none;font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--bd);background:var(--surf2);color:var(--tx)">
@@ -3525,6 +3543,449 @@ function checkLibs(){
   }
 }
 window.addEventListener('load',checkLibs);
+</script>
+<div id="help-ov" onclick="if(event.target===this)closeHelp()">
+ <div id="help-box" role="dialog" aria-label="Thistle Plot help">
+  <div id="help-head">
+   <strong style="margin-right:8px">Thistle Plot Help</strong>
+   <button class="htab active" data-p="hq" onclick="helpTab('hq')">Quick Manual</button>
+   <button class="htab" data-p="hf" onclick="helpTab('hf')">Full Manual</button>
+   <button class="htab" data-p="hv" onclick="helpTab('hv')">Version History</button>
+   <span style="flex:1"></span>
+   <button class="btn-sm" onclick="window.print()" title="Print or save all manuals as PDF">🖨 Print / PDF</button>
+   <button class="btn-sm" onclick="closeHelp()" title="Close (Esc)">✕</button>
+  </div>
+  <div id="help-body">
+   <div class="hpane active" id="hq"><h2>About TP</h2>
+<p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (pure JavaScript, no Python, no server) and never uploads your data anywhere.</p>
+<p>TP is a <strong>beta (v0.6.0)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.6.0.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<h2>Quick Manual</h2>
+<p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
+<ol>
+<li><strong>Open TP</strong> and click <strong>📋 Example</strong> once to see how data is laid out. Click <strong>🗑 Clear</strong> when you are ready for your own data.</li>
+<li><strong>Set the shape of your table.</strong> In the Data panel, set <strong>Reps/group</strong> (replicates per group) and <strong>Groups</strong> (conditions). Use <strong>+Row / −Row</strong> for samples.</li>
+<li><strong>Enter data.</strong> Paste a block straight from Excel or Google Sheets with Ctrl/Cmd+V, or click <strong>⬆ CSV</strong> to import a file. Double-click a group header or row name to rename it.</li>
+<li><strong>Pick a test</strong> under <strong>Statistical Test</strong>, for example <em>One-Way ANOVA</em> or <em>Unpaired t-test (Welch)</em>. Read the grey hint under the menu: it tells you how that test expects the columns.</li>
+<li><strong>Click ▶ Run Analysis.</strong> Results appear in a new tab on the right. With <em>Auto-plot after run</em> ticked, a matching plot opens too.</li>
+<li><strong>Pick a plot</strong> under <strong>Visualisation</strong>, for example <em>Bar + SD + Dots</em>, set its options (normalisation, dots shown, Y-axis label) and click <strong>📈 Plot</strong>.</li>
+<li><strong>Check the figure.</strong> Significance brackets (*, **, ***, ****) from your last test are drawn automatically on bar charts.</li>
+<li><strong>Choose an export style</strong> in the header: <strong>App</strong> (what you see on screen) or <strong>Publication (Prism-like)</strong> (white background, black axes, bold Arial, greyscale, about 300 dpi).</li>
+<li><strong>Download</strong> with <strong>⬇ PNG</strong>, <strong>⬇ SVG</strong> or <strong>⬇ PDF</strong> at the top of the plot tab.</li>
+<li><strong>Save your work</strong> with <strong>💾 Save</strong>. This downloads a <code>.thistle</code> project file you can reopen later with <strong>📂 Load</strong>.</li>
+</ol>
+<p>Tip: Ctrl/Cmd+Z undoes and Ctrl/Cmd+Y redoes any change to the data table.</p></div>
+   <div class="hpane" id="hf"><h2>Full Manual</h2><h3>1. Screen layout</h3>
+<p>TP has a header bar, a left panel for data and settings, and a right panel of result and plot tabs.</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>What it holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Header</td>
+<td>Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 📋 Example, 🗑 Clear, 🌙/☀️ theme toggle, Export style menu, ❓ Help</td>
+</tr>
+<tr>
+<td>Left panel, top</td>
+<td>Dataset tabs and the data grid</td>
+</tr>
+<tr>
+<td>Left panel, Visualisation</td>
+<td>Plot type, plot options, 📈 Plot</td>
+</tr>
+<tr>
+<td>Left panel, Statistical Test</td>
+<td>Test type, test options, ▶ Run Analysis</td>
+</tr>
+<tr>
+<td>Right panel</td>
+<td>One tab per result or plot; × closes a tab, 🔗 jumps between a test and its linked plot</td>
+</tr>
+</tbody>
+</table>
+<h3>2. How data is organised</h3>
+<p>Every dataset is one table: <strong>groups</strong> (conditions, such as Control or Treatment A) across the top, each split into <strong>replicates</strong> (Rep1, Rep2…), and <strong>rows</strong> (samples, genes, time points) down the side.</p>
+<p>Most tests pool all values in a group's columns. Some tests read columns positionally instead (Col 1 = X, Col 2 = Y); the grey hint under each test says which. The layouts for those tests are:</p>
+<table>
+<thead>
+<tr>
+<th>Test or plot</th>
+<th>Expected layout</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kaplan-Meier</td>
+<td>Col 1 = time, Col 2 = event (1 = event, 0 = censored)</td>
+</tr>
+<tr>
+<td>Dose-Response (5PL)</td>
+<td>Col 1 = concentration, Col 2 = response</td>
+</tr>
+<tr>
+<td>Volcano Plot</td>
+<td>Col 1 = log2 fold change, Col 2 = p-value, one gene per row</td>
+</tr>
+<tr>
+<td>Regression</td>
+<td>Col 1 = X, Col 2 = Y</td>
+</tr>
+<tr>
+<td>Multiple Testing Correction</td>
+<td>Col 1 = p-values, Col 2 (optional) = labels</td>
+</tr>
+<tr>
+<td>Fisher's Exact</td>
+<td>2×2 table: 2 columns × 2 rows of counts</td>
+</tr>
+<tr>
+<td>Chi-Square</td>
+<td>Counts: columns = groups, rows = categories</td>
+</tr>
+<tr>
+<td>PCA, Heatmap</td>
+<td>Rows = features/genes, columns = samples</td>
+</tr>
+<tr>
+<td>Two-Way ANOVA</td>
+<td>Balanced design, columns ordered A1B1, A1B2 … A2B1 …; set nA and nB in options</td>
+</tr>
+</tbody>
+</table>
+<h3>3. Entering and editing data</h3>
+<ul>
+<li><strong>Type</strong> into any cell. Arrow keys move between cells.</li>
+<li><strong>Paste</strong> a block from Excel or Sheets with Ctrl/Cmd+V; it fills from the selected cell.</li>
+<li><strong>Copy / cut</strong> a selection with Ctrl/Cmd+C or X. <strong>Delete</strong> or Backspace clears selected cells.</li>
+<li><strong>Resize</strong> with Reps/group and Groups, or with +Grp, −Grp, +Row, −Row.</li>
+<li><strong>Rename</strong> a group, row or dataset by double-clicking its name; Enter confirms, Esc cancels.</li>
+<li><strong>Undo / Redo</strong> with the ↩/↪ buttons or Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Ctrl/Cmd+Z).</li>
+<li><strong>Import CSV</strong> with ⬆ CSV. A first row of text becomes group names; a first column of text becomes row names. Each column becomes a group with one replicate.</li>
+<li><strong>Multiple datasets:</strong> click <strong>+</strong> beside the dataset tabs to add another table; each keeps its own data.</li>
+</ul>
+<h3>4. Visualisation</h3>
+<p>Choose a plot type, set its options, then click <strong>📈 Plot</strong>. Each plot opens in its own tab, and you can keep as many open as you like.</p>
+<table>
+<thead>
+<tr>
+<th>Plot</th>
+<th>Best for</th>
+<th>Main options</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bar + SD + Dots</td>
+<td>Group means with spread and individual points</td>
+<td>Normalisation; Show data (Mean + dots, Mean only, Dots only); Dots show (Raw replicates, or Group mean = one dot per sample row); Group by (group or sample); Y-axis label</td>
+</tr>
+<tr>
+<td>Boxplot</td>
+<td>Distributions and outliers (red dots)</td>
+<td>Same as Bar</td>
+</tr>
+<tr>
+<td>Violin</td>
+<td>Distribution shape</td>
+<td>Same as Bar</td>
+</tr>
+<tr>
+<td>Scatter (X vs Y)</td>
+<td>Two variables against each other</td>
+<td>X group, Y group, optional trend line</td>
+</tr>
+<tr>
+<td>Line</td>
+<td>Values across rows (time course, samples)</td>
+<td>Normalisation, Y-axis label, show points</td>
+</tr>
+<tr>
+<td>Heatmap (Z-scored)</td>
+<td>Many features × samples</td>
+<td>Row normalisation (Z-score, Min-Max, none)</td>
+</tr>
+<tr>
+<td>Volcano Plot</td>
+<td>Fold change vs significance</td>
+<td>log2FC and p-value columns; &#124;log2FC&#124; and p-value cutoffs</td>
+</tr>
+<tr>
+<td>PCA Scores</td>
+<td>Sample clustering</td>
+<td>Points show (Group means, All replicates); Color by (Group, Replicate); PC on each axis</td>
+</tr>
+<tr>
+<td>Kaplan-Meier</td>
+<td>Survival curves</td>
+<td>Time column; event column (1 = event, 0 = censored)</td>
+</tr>
+<tr>
+<td>Dose-Response (5PL)</td>
+<td>IC50/EC50 curves</td>
+<td>Concentration column; response column</td>
+</tr>
+<tr>
+<td>Q-Q Normal</td>
+<td>Checking normality by eye</td>
+<td>Group to test</td>
+</tr>
+<tr>
+<td>Histogram</td>
+<td>Value distribution</td>
+<td>Group (or all groups); number of bins (0 = automatic)</td>
+</tr>
+<tr>
+<td>Multiple Testing</td>
+<td>Raw vs adjusted p-values</td>
+<td>p-values column</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Normalisation</strong> options for group plots are None, log2, log10, Z-score and Min-Max.</p>
+<p><strong>Significance brackets.</strong> After you run a test that compares pairs (t-test, ANOVA with post-hoc, Mann-Whitney and similar), the next Bar + SD + Dots plot by group shows brackets with stars: * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001, **** p &lt; 0.0001. Non-significant pairs get no bracket.</p>
+<h3>5. Statistical tests</h3>
+<p>Choose a test, set its options, then click <strong>▶ Run Analysis</strong>. Results open in a new tab with the statistic, p-value (shown as &lt;0.0001 when very small), stars and any post-hoc table. Tick <strong>Auto-plot after run</strong> to open a matching plot at the same time.</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Test</th>
+<th>Key options</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Descriptive</td>
+<td>Descriptive Statistics</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Descriptive</td>
+<td>Normality Test (Shapiro-Wilk)</td>
+<td>Each column tested separately</td>
+</tr>
+<tr>
+<td>Parametric</td>
+<td>Unpaired t-test (Welch)</td>
+<td>Normalisation; control group; Run per row with Bonferroni, Holm-Bonferroni or FDR (BH) correction</td>
+</tr>
+<tr>
+<td>Parametric</td>
+<td>Paired t-test</td>
+<td>As above, plus Comparison: Delta (A−B) or Ratio (A/B)</td>
+</tr>
+<tr>
+<td>Parametric</td>
+<td>One-Way ANOVA</td>
+<td>Post-hoc: Bonferroni, Holm, FDR (BH), Tukey (approximate), None; normalisation; all pairs or vs a control group</td>
+</tr>
+<tr>
+<td>Parametric</td>
+<td>Two-Way ANOVA</td>
+<td>Factor A levels (nA), Factor B levels (nB); balanced designs only</td>
+</tr>
+<tr>
+<td>Non-parametric</td>
+<td>Mann-Whitney U</td>
+<td>Single pair, All pairs (with FDR), or vs Control</td>
+</tr>
+<tr>
+<td>Non-parametric</td>
+<td>Wilcoxon Signed-Rank</td>
+<td>Mode as above; Delta or Ratio</td>
+</tr>
+<tr>
+<td>Non-parametric</td>
+<td>Kruskal-Wallis H</td>
+<td>Post-hoc: Bonferroni or None</td>
+</tr>
+<tr>
+<td>Non-parametric</td>
+<td>Rank Sum (paired)</td>
+<td>Mode; Delta or Ratio</td>
+</tr>
+<tr>
+<td>Non-parametric</td>
+<td>Rank Product</td>
+<td>Rows consistently up or down across replicates (Breitling 2004)</td>
+</tr>
+<tr>
+<td>Correlation / XY</td>
+<td>Pearson, Spearman</td>
+<td>All pairs or vs Control</td>
+</tr>
+<tr>
+<td>Correlation / XY</td>
+<td>Regression / Curve Fitting</td>
+<td>X and Y columns; Linear, Polynomial (degree 2–4), Logarithmic, Exponential, Power, 4-Parameter Logistic; fit and residual plots made automatically</td>
+</tr>
+<tr>
+<td>Multivariate</td>
+<td>PCA, Hierarchical Heatmap</td>
+<td>Rows = features, columns = samples</td>
+</tr>
+<tr>
+<td>Categorical</td>
+<td>Fisher's Exact (2×2), Chi-Square</td>
+<td>Counts tables</td>
+</tr>
+<tr>
+<td>Categorical</td>
+<td>Multiple Testing Correction</td>
+<td>Bonferroni, Holm-Bonferroni, FDR (BH)</td>
+</tr>
+<tr>
+<td>Survival / XY</td>
+<td>Kaplan-Meier + Log-Rank</td>
+<td>Time and event columns</td>
+</tr>
+<tr>
+<td>Survival / XY</td>
+<td>Dose-Response (5PL)</td>
+<td>Concentration and response columns</td>
+</tr>
+<tr>
+<td>Survival / XY</td>
+<td>Volcano Plot</td>
+<td>&#124;log2FC&#124; and p-value thresholds</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Choosing a test.</strong> For two groups use the Welch t-test (unpaired) or paired t-test; for three or more, One-Way ANOVA with a post-hoc correction. If the data are clearly not normal (check with Shapiro-Wilk or a Q-Q plot), use the non-parametric equivalent: Mann-Whitney, Wilcoxon or Kruskal-Wallis.</p>
+<p><strong>Linking.</strong> A result tab and the plot it produced are linked; the 🔗 button on either one jumps to the other.</p>
+<h3>6. Exporting figures</h3>
+<p>The <strong>Export</strong> menu in the header sets the style for every download button.</p>
+<table>
+<thead>
+<tr>
+<th>Style</th>
+<th>Look</th>
+<th>Size</th>
+<th>File names</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App</td>
+<td>Exactly as on screen, in the current light or dark theme</td>
+<td>Screen size</td>
+<td>plot.png / plot.svg</td>
+</tr>
+<tr>
+<td>Publication (Prism-like)</td>
+<td>White background; black L-shaped axes with outward ticks, no gridlines; greyscale bars with black outlines; black error bars and dots spread so they don't overlap; bold Arial labels; distinct marker shapes per series</td>
+<td>About 300 dpi: bar charts narrow (width grows with the number of groups), other plots 4:3</td>
+<td>plot_publication.png / .svg</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>⬇ PNG</strong> saves a raster image. Use it for slides and most journal submissions.</li>
+<li><strong>⬇ SVG</strong> saves an SVG file that wraps the same high-resolution image. It opens in Illustrator or Inkscape but is <strong>not</strong> editable vector art.</li>
+<li><strong>⬇ PDF</strong> opens a print window; choose "Save as PDF". Allow pop-ups for TP if nothing happens.</li>
+</ul>
+<h3>7. Saving and loading projects</h3>
+<p><strong>💾 Save</strong> downloads <code>thistle_project.thistle</code>, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. <strong>📂 Load</strong> reopens it. Projects saved by earlier versions (<code>.pprism</code>) still load.</p>
+<p>Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, click 📈 Plot again.</p>
+<h3>8. Light and dark theme</h3>
+<p>The 🌙/☀️ button switches the on-screen theme and redraws all open plots. It only affects App-style exports; Publication exports are always white.</p>
+<h3>9. Using TP on the Confluence wiki</h3>
+<ol>
+<li>Host the HTML at an https:// address, for example on GitHub Pages: upload it as <code>index.html</code> to a repository, then turn on Settings → Pages.</li>
+<li>Ask the Confluence admin to allow these iFrame sandbox permissions: <code>allow-scripts allow-downloads allow-popups allow-popups-to-escape-sandbox allow-modals</code>. Without allow-scripts TP does not start; without allow-downloads exports fail silently.</li>
+<li>On the wiki page, go to Insert more content → Other macros → <strong>iFrame</strong>. Set URL to the hosted address, Width <code>100%</code>, Height <code>900px</code>, tick Allow Full-Screen Mode, then save.</li>
+<li>To update TP, replace <code>index.html</code> in the repository; the wiki page picks up the new version automatically.</li>
+</ol>
+<p>The Widget Connector macro cannot embed TP.</p>
+<h3>10. Troubleshooting and limitations</h3>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stuck on "Loading…"</td>
+<td>TP cannot reach cdnjs.cloudflare.com. Check the internet connection or network firewall.</td>
+</tr>
+<tr>
+<td>PDF export does nothing</td>
+<td>Allow pop-ups for the page.</td>
+</tr>
+<tr>
+<td>Blank frame on the wiki</td>
+<td>Check the iFrame sandbox permissions and that the URL starts with https://.</td>
+</tr>
+<tr>
+<td>No significance brackets</td>
+<td>Run a pairwise test first, then plot Bar + SD + Dots grouped by group; only p &lt; 0.05 gets a bracket.</td>
+</tr>
+<tr>
+<td>Test gives an error or NaN</td>
+<td>Check the column layout in section 2 and that cells hold numbers, not text.</td>
+</tr>
+</tbody>
+</table>
+<p>Known limitations of v0.6.0 (beta):</p>
+<ul>
+<li>Tukey post-hoc is an approximation, not the exact studentised-range test.</li>
+<li>Two-Way ANOVA supports balanced designs only.</li>
+<li>SVG export is an embedded image, not editable vectors.</li>
+<li>Publication style is greyscale only; there are no colour publication palettes yet.</li>
+<li>Project files store only the active dataset, and plots only as snapshot images.</li>
+<li>TP has not yet been formally validated against a reference package. Spot-check key results.</li>
+</ul></div>
+   <div class="hpane" id="hv"><h2>Version History</h2><p>All releases are beta (0.x). Earlier builds were called PyPrism / PyPrism Pro; numbers before 0.6.0 are mapped from the old v1–v5 builds.</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Name</th>
+<th>Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.6.0 (5 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Renamed from PyPrism Pro, with a new thistle icon; BETA and version badges in the header; built-in ❓ Help with these manuals; Publication (Prism-like) export style rebuilt so figures are redrawn at about 300 dpi instead of stretched (fixes distorted shapes, skewed fonts and coloured outlines); Prism-like axes, greyscale fills, round-number ticks and non-overlapping dots; marker shapes per series on line and scatter plots; project files now <code>.thistle</code> (<code>.pprism</code> still loads)</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>PyPrism Pro v5</td>
+<td>Datasets renamed by double-click; Visualisation and Statistical Test sections visually separated</td>
+</tr>
+<tr>
+<td>0.4</td>
+<td>PyPrism Pro v4</td>
+<td>Rebuilt after file damage; PCA "All replicates" mode fixed; Bar/Boxplot "Group mean" shows one dot per sample row</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>PyPrism Pro v3 / v3b</td>
+<td>First single-file web app in pure JavaScript, replacing Python</td>
+</tr>
+<tr>
+<td>0.1–0.2</td>
+<td>PyPrism v1–v2</td>
+<td>Python desktop and Streamlit prototypes</td>
+</tr>
+</tbody>
+</table></div>
+  </div>
+ </div>
+</div>
+<script>
+function openHelp(t){document.getElementById('help-ov').classList.add('open');if(t)helpTab(t);}
+function closeHelp(){document.getElementById('help-ov').classList.remove('open');}
+function helpTab(id){document.querySelectorAll('.hpane').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('#help-head .htab').forEach(b=>b.classList.toggle('active',b.dataset.p===id));document.getElementById('help-body').scrollTop=0;}
+document.addEventListener('keydown',e=>{if(e.key==='F1'){e.preventDefault();openHelp();}else if(e.key==='Escape'&&document.getElementById('help-ov').classList.contains('open'))closeHelp();});
 </script>
 </body>
 </html>
