@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install markdown
+      - name: Help panes match docs/*.md
+        run: python3 tools/build_help.py --check
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - name: Keep exported PNGs from the run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: test-output, path: test-output/, if-no-files-found: ignore }

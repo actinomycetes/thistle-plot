@@ -1,0 +1,18 @@
+# Thistle Plot (TP) — beta
+
+Free, single-file web app for bench statistics and publication-style figures. Runs entirely in the browser; your data never leaves your computer.
+Open `index.html`, or use the hosted copy (GitHub Pages). Press **F1** inside the app for the manuals.
+
+**Status:** beta (0.x). Check important results against an established package before publishing.
+
+## For developers
+See `CLAUDE.md` for architecture, rules and the release checklist.
+
+```bash
+npm install && npx playwright install chromium
+pip install markdown
+npm test
+```
+
+Layout: `index.html` (the app) · `docs/` (manual sources) · `tools/build_help.py` (builds Help into `index.html`) ·
+`tests/` (Playwright tests) · `.github/workflows/ci.yml` (runs everything on each push).

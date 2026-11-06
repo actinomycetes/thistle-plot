@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.7.0 (Beta)</title>
+<title>Thistle Plot v0.8.2 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -71,7 +71,9 @@ select:focus,input:focus{outline:1px solid var(--ac);border-color:var(--ac)}
 .grid-toolbar{display:flex;gap:4px;margin-bottom:5px;align-items:center;flex-wrap:wrap}
 .grid-toolbar .lbl{font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;flex:1}
 #tbl-wrap{overflow:auto;flex:1;border:1px solid var(--bd);border-radius:5px;min-height:60px}
-#dtbl{border-collapse:collapse;width:max-content}
+#dtbl{border-collapse:separate;border-spacing:0;width:max-content}
+#dtbl tr.h1 th{position:sticky;top:0;z-index:2;background:var(--surf)}
+#dtbl tr.h2 th{position:sticky;top:var(--h1h,27px);z-index:2;background:var(--surf)}
 #dtbl th,#dtbl td{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);padding:0}
 #dtbl th:last-child,#dtbl td:last-child{border-right:none}
 #dtbl tr:last-child td{border-bottom:none}
@@ -94,8 +96,10 @@ select:focus,input:focus{outline:1px solid var(--ac);border-color:var(--ac)}
 .opt-hint{font-size:10.5px;color:var(--mu);line-height:1.4;margin-top:3px;font-style:italic}
 .run-opts{font-size:11px;color:var(--mu);background:var(--surf2);border:1px dashed var(--bd);border-radius:6px;padding:6px 9px;margin-bottom:8px;line-height:1.5}
 .run-opts b{color:var(--tx)}
+.stat-tools{display:flex;justify-content:flex-end;margin-bottom:4px}
 .ex-row{display:flex;gap:6px;align-items:center}.ex-row select{flex:1;min-width:0}
 .btn-ex{white-space:nowrap;font-size:11px;padding:4px 8px}
+.ctrl-list{display:flex;flex-wrap:wrap;gap:4px 12px;max-height:120px;overflow:auto;padding:4px 2px}
 .full-col{grid-column:1/-1}
 input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 .check-row{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx);cursor:pointer}
@@ -177,7 +181,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.7.0</span>
+  <span class="badge" id="app-version" title="Version">v0.8.2</span>
   <span class="badge">Pure JS</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
@@ -222,8 +226,9 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
         </div>
       </div>
       <div class="pane-scroll" style="display:flex;flex-direction:column">
-        <div id="tbl-wrap" style="flex:1"><table id="dtbl"><tbody id="dtbody"></tbody></table></div>
+        <div id="tbl-wrap" style="flex:1" onscroll="onGridScroll()"><table id="dtbl"><tbody id="dtbody"></tbody></table></div>
         <div style="padding:3px 0;font-size:11px;color:var(--mu)">💡 Paste from Excel/Sheets (Ctrl/Cmd+V in table)</div>
+        <div id="grid-info" style="font-size:10.5px;color:var(--mu)"></div>
         <div id="data-note" style="display:none;padding:4px 7px;margin-top:3px;font-size:11px;border-radius:5px;background:var(--surf2);border:1px solid var(--bd);color:var(--tx)"></div>
       </div>
     </div>
@@ -300,7 +305,8 @@ let activeDS=0; // index into datasets[]
 let plotTabs=[], statTabs=[], activePT=-1, activeST=-1, ptCount=0, stCount=0;
 let chartInst={}; // tabId -> Chart instance
 // Significance bracket data passed from runAnalysis to auto-plot
-let lastStatRowPairs=null,_autoPlotGroupBy=null,_suppressAutoPlot=false; // per-row tests: [{row,i,j,stars}]
+let lastStatGeneSet=null,lastStatRowPairs=null,_autoPlotGroupBy=null,_suppressAutoPlot=false; // per-row tests: [{row,i,j,stars}]
+let _linkedPlotCtx=false; // true only while a plot is being drawn as the linked figure of a specific test run
 let lastStatPairs=null; // [{i,j,stars}] group-index pairs with significance stars
 let lastStatTabId=null; // most recently created stat tab id
 let lastPlotTabId=null; // most recently created plot tab id
@@ -311,6 +317,8 @@ const MAX_UNDO=50;
 function pushUndo(){
   undoStack.push(JSON.stringify(G));
   if(undoStack.length>MAX_UNDO)undoStack.shift();
+  // keep the undo history under ~80 MB for very large tables
+  let tot=undoStack.reduce((n,x)=>n+x.length,0);while(undoStack.length>1&&tot>8e7){tot-=undoStack.shift().length;}
   redoStack=[];
   updateUndoButtons();
 }
@@ -349,7 +357,8 @@ const PLOT_TYPES=[
   {v:'dose',l:'Dose-Response (5PL)'},
   {v:'qq',l:'Q-Q Normal'},
   {v:'histogram',l:'Histogram'},
-  {v:'mtc',l:'Multiple Testing'}
+  {v:'mtc',l:'Multiple Testing'},
+  {v:'ecdf',l:'Cumulative Distribution (ECDF)'}
 ];
 
 const ANALYSIS_CATEGORIES=[
@@ -368,7 +377,8 @@ const ANALYSIS_CATEGORIES=[
     {v:'wilcoxon',l:'Wilcoxon Signed-Rank'},
     {v:'kruskal',l:'Kruskal-Wallis H'},
     {v:'ranksum',l:'Rank Sum (paired, delta/ratio)'},
-    {v:'rankprod',l:'Rank Product'}
+    {v:'rankprod',l:'Rank Product'},
+    {v:'ks',l:'Kolmogorov–Smirnov'}
   ]},
   {cat:'Correlation / XY',tests:[
     {v:'pearson',l:'Pearson Correlation'},
@@ -398,13 +408,13 @@ const HINTS={
   norm:'Shapiro–Wilk: tests whether each group could come from a normal distribution (p < 0.05 = evidence of non-normality). Use it to choose between parametric and non-parametric tests; with small n it has little power, so also check a Q-Q plot.',
   ttest_ind:'Welch\'s unpaired t-test: compares the means of independent groups without assuming equal variances. Data: control group vs each other group. Use when samples are independent and roughly normal. Non-parametric alternative: Mann–Whitney. For matched values use the paired t-test.',
   ttest_rel:'Paired t-test: compares matched measurements (same subject, animal or row measured twice). Data: control vs each other group, values matched by position. More powerful than the unpaired test when pairing is real. Non-parametric alternative: Wilcoxon signed-rank.',
-  anova:'One-way ANOVA: tests whether 3 or more group means differ, then post-hoc tests show which pairs differ. Assumes roughly normal data and similar spread. Non-parametric alternative: Kruskal–Wallis. For two factors use two-way ANOVA.',
-  anova2:'Two-way ANOVA: effects of two factors (e.g. genotype × treatment) and their interaction. Data: balanced design, columns ordered A1B1, A1B2 … A2B1 …; set nA and nB below.',
+  anova:'One-way ANOVA: tests whether 3 or more group means differ, then post-hoc tests show which pairs differ: Tukey for all pairs, Dunnett for each group vs one control, or any correction vs several controls. Assumes roughly normal data and similar spread. Non-parametric alternative: Kruskal–Wallis. For two factors use two-way ANOVA.',
+  anova2:'Two-way ANOVA: effects of two factors (e.g. genotype × treatment) and their interaction, with optional post-hoc tests (main effects, simple effects within each level, or all cells). Data: balanced design, groups ordered A1B1, A1B2 … A2B1 …; set nA and nB below. Name groups "WT · Drug" (or WT_Drug) to label the factor levels.',
   mw:'Mann–Whitney U (Wilcoxon rank-sum): compares independent groups using ranks, so it is robust to skew and outliers. Use instead of the unpaired t-test for non-normal data. For matched values use Wilcoxon signed-rank.',
   wilcoxon:'Wilcoxon signed-rank: compares matched pairs using the ranks of their differences. Non-parametric alternative to the paired t-test. For independent groups use Mann–Whitney.',
   kruskal:'Kruskal–Wallis H: rank-based test across 3 or more independent groups, followed by Dunn\'s pairwise tests. Non-parametric alternative to one-way ANOVA.',
   ranksum:'Paired rank test on transformed values: ranks the per-pair difference (A−B) or ratio (A/B). Like Wilcoxon signed-rank, but lets you test ratios, e.g. fold changes.',
-  rankprod:'Rank Product (Breitling 2004): finds rows (genes) that rank consistently high or low across replicates. Designed for screens with few replicates. Data: rows = genes, Group A vs Group B replicates.',
+  rankprod:'Rank Product (Breitling 2004): finds rows (genes) that rank consistently among the largest increases, or the largest decreases, across replicate pairs. Up and down are analysed separately, each with its own FDR. Designed for screens with few replicates. Data: rows = genes; Group A = reference (e.g. control), Group B = test; replicate i of A is paired with replicate i of B.',
   pearson:'Pearson r: strength of a straight-line relationship between two columns. Sensitive to outliers; assumes roughly normal data. Use Spearman for curved-but-monotonic relationships, ranks or outliers.',
   spearman:'Spearman ρ: correlation of ranks, so it detects any monotonic relationship and resists outliers. Use Pearson when the relationship is linear and the data roughly normal.',
   regress:'Regression / curve fitting: fits Y as a function of X and reports the equation, parameters and R². Data: Col 1 = X, Col 2 = Y. Use it for an equation or prediction; use correlation when you only need the strength of association.',
@@ -413,15 +423,17 @@ const HINTS={
   fisher:'Fisher\'s exact test: association in a 2×2 table of counts. Exact, so best for small counts (any expected count < 5). Data: 2 columns × 2 rows of counts. For larger tables use Chi-square.',
   chisq:'Chi-square test of independence for a table of counts. Data: columns = groups, rows = categories. Approximate: needs expected counts ≥ 5; for small 2×2 tables use Fisher\'s exact.',
   mtc:'Adjusts p-values you already have for multiple comparisons. Data: Col 1 = p-values, one per row; row names label the tests.',
-  km:'Kaplan–Meier survival estimate. Data: Col 1 = time, Col 2 = event (1 = event, 0 = censored).',
+  km:'Kaplan–Meier survival curves with a log-rank test between groups. Data: Col 1 = time; each further column is one group, holding 1 (event) or 0 (censored) for the subjects in that group and blank otherwise (one subject per row, as in Prism). With 3+ groups, pairwise log-rank tests are corrected.',
+  ks:'Kolmogorov–Smirnov: compares whole distributions (shape, spread and location), not just means or medians. Two-sample mode: are two groups drawn from the same distribution? (Mann–Whitney is more powerful for a simple shift.) Normality mode: Lilliefors-corrected KS against a normal curve; Shapiro–Wilk is usually more powerful.',
   dose:'5-parameter logistic (5PL) dose–response fit: bottom, top, EC50/IC50, Hill slope and asymmetry. Data: Col 1 = concentration, Col 2 = response. For a symmetric 4PL fit use Regression → 4-Parameter Logistic.',
   volcano:'Volcano summary: classifies genes by log2 fold change and p-value cutoffs. Data: Col 1 = log2FC, Col 2 = p-value, one gene per row.'
 };
 
 // ── Multiple-comparison correction ──────────────────────────────────────
-const CORR_LABEL={tukey:'Tukey HSD (all pairs)',holm_sidak:'Holm–Šídák (step-down, FWER)',holm:'Holm–Bonferroni (step-down, FWER)',bonferroni:'Bonferroni (single-step, FWER)',fdr:'Benjamini–Hochberg (FDR)',none:'None (uncorrected)'};
-const CORR_SHORT={tukey:'Tukey',holm_sidak:'Holm–Šídák',holm:'Holm',bonferroni:'Bonferroni',fdr:'FDR (BH)',none:'uncorrected'};
+const CORR_LABEL={dunnett:'Dunnett (vs one control)',tukey:'Tukey HSD (all pairs)',holm_sidak:'Holm–Šídák (step-down, FWER)',holm:'Holm–Bonferroni (step-down, FWER)',bonferroni:'Bonferroni (single-step, FWER)',fdr:'Benjamini–Hochberg (FDR)',none:'None (uncorrected)'};
+const CORR_SHORT={dunnett:'Dunnett',tukey:'Tukey',holm_sidak:'Holm–Šídák',holm:'Holm',bonferroni:'Bonferroni',fdr:'FDR (BH)',none:'uncorrected'};
 const CORR_HINT={
+  dunnett:'Compares each group with a single control, accounting for the shared control exactly (multivariate t). More power than Tukey or Holm–Šídák for this design. Needs exactly one control.',
   tukey:'Compares every pair of means with the studentised range (Tukey–Kramer for unequal n). The standard choice after one-way ANOVA when you want all pairs.',
   holm_sidak:'Controls the chance of any false positive (family-wise error, FWER). Step-down Šídák: a little more power than Holm–Bonferroni; assumes tests are independent or positively correlated. GraphPad Prism\'s default.',
   holm:'Controls family-wise error like Bonferroni but step-down, so it is always at least as powerful. Makes no assumption about how the tests relate.',
@@ -430,6 +442,35 @@ const CORR_HINT={
   none:'No adjustment: each p-value is judged on its own. With several comparisons some will look significant by chance.'
 };
 // Adjust p-values. NaNs are left as NaN and not counted.
+// Full result tables can be very long (e.g. 20,000 genes): show the top rows, offer the rest as CSV
+const _csvStore={};let _csvN=0;
+function csvButton(name,header,rows){
+  const id='csv'+(_csvN++);
+  const esc=v=>{const t=v===null||v===undefined||(typeof v==='number'&&!isFinite(v))?'':String(v);return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t;};
+  _csvStore[id]={name,text:[header,...rows].map(r=>r.map(esc).join(',')).join('\n')};
+  return `<button class="btn-sm" onclick="downloadCSV('${id}')">⬇ Full table (CSV, ${rows.length.toLocaleString()} rows)</button>`;
+}
+// Export every table shown in a result tab (with its heading) as one CSV
+function exportStatTables(tabId){
+  const page=document.getElementById(tabId);const tab=statTabs.find(t=>t.id===tabId);if(!page)return;
+  const esc=t=>{t=String(t??'').replace(/\s+/g,' ').trim();return /[",]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t;};
+  const lines=[];
+  const ro=page.querySelector('.run-opts');if(ro)ro.innerText.split('\n').forEach(l=>lines.push(esc(l)));
+  page.querySelectorAll('table.rtbl').forEach(tbl=>{
+    let h=null,el=tbl;while(el&&!h){let p=el.previousElementSibling;while(p&&!/^H[34]$/.test(p.tagName)&&!p.querySelector?.('h3,h4'))p=p.previousElementSibling;if(p)h=/^H[34]$/.test(p.tagName)?p:p.querySelector('h3,h4');else el=el.parentElement;if(el&&el.classList?.contains('stat-scroll'))break;}
+    lines.push('');lines.push(esc(h?h.innerText:'Table'));
+    // significance stars are dropped so numeric columns stay numeric
+    tbl.querySelectorAll('tr').forEach(tr=>{lines.push([...tr.children].map(td=>{const c=td.cloneNode(true);c.querySelectorAll('span.stars').forEach(x=>x.remove());return esc(c.textContent);}).join(','));});
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=(tab?.title||'result').replace(/[^\w\-]+/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function downloadCSV(id){
+  const c=_csvStore[id];if(!c){alert('This table was loaded from a saved project; re-run the test to download the full table.');return;}
+  const blob=new Blob([c.text],{type:'text/csv'});const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=c.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+const SHOW_ROWS=200,MAX_SAMPLE_ROWS=40;
 function adjustP(pv,method){
   const out=pv.map(p=>isFinite(p)?p:NaN);
   const idx=out.map((p,i)=>({p,i})).filter(x=>isFinite(x.p)).sort((a,b)=>a.p-b.p);
@@ -447,8 +488,8 @@ function adjustP(pv,method){
   }
   return out;
 }
-function corrSelect(id,{def='holm_sidak',tukey=false,none=true}={}){
-  const keys=[...(tukey?['tukey']:[]),'holm_sidak','holm','bonferroni','fdr',...(none?['none']:[])];
+function corrSelect(id,{def='holm_sidak',tukey=false,dunnett=false,none=true}={}){
+  const keys=[...(dunnett?['dunnett']:[]),...(tukey?['tukey']:[]),'holm_sidak','holm','bonferroni','fdr',...(none?['none']:[])];
   return `<select id="${id}" data-hint="corr">${keys.map(k=>`<option value="${k}"${k===def?' selected':''}>${CORR_LABEL[k]}</option>`).join('')}</select>`;
 }
 // Short explanations shown under option menus, updated as the choice changes
@@ -458,12 +499,18 @@ const OPT_HINTS={
   comp:{delta:'Difference (A − B): use when effects add, e.g. a 2-unit increase.',ratio:'Ratio (A / B): use when effects multiply, e.g. a 2-fold increase.'},
   npmode:{pair:'One chosen pair; no correction needed.',allpairs:'Every pair of groups, corrected for multiple comparisons.',vsctrl:'Control vs each other group only. Fewer comparisons than all pairs, so more power after correction.'},
   cmode:{allpairs:'Every pair of columns, corrected for multiple comparisons.',ctrl:'Control column vs each other column only (fewer comparisons, more power).'},
-  actrl:{'':'Post-hoc tests on every pair of groups.','*':'Post-hoc tests only for the control vs each other group (fewer comparisons, more power).'},
+  rpcomp:{delta:'Use for log-transformed values (log2 CPM, Ct, log intensities). Up = higher in Group B.',ratio:'Use for positive linear-scale values; ranks log2(B/A). Up = higher in Group B.'},
+  a2ph:{simpleB:'e.g. Vehicle vs Drug separately in WT and in KO: answers "does the drug work in each genotype?". Brackets are drawn on the bar chart.',simpleA:'e.g. WT vs KO separately under Vehicle and under Drug.',cells:'Every cell mean against every other (most comparisons, least power).',A:'Factor A levels compared after averaging over B. Only meaningful when the interaction is small.',B:'Factor B levels compared after averaging over A. Only meaningful when the interaction is small.',none:'ANOVA table only.'},
+  ksmode:{two:'Are two groups drawn from the same distribution? Sensitive to any difference in location, spread or shape.',normal:'Lilliefors-corrected KS test of each group against a normal curve with the group\'s own mean and SD (p by simulation).'},
+  acmp:{all:'Post-hoc tests on every pair of groups (Tukey is the standard choice).',ctrl:'Only comparisons that involve a ticked control (fewer comparisons, more power). One control: Dunnett. Several controls (e.g. vehicle and untreated): each control vs every other group, corrected together.'},
   rmodel:{linear:'Straight line, Y = a + bX.',poly2:'Quadratic curve (one bend).',poly3:'Cubic curve (two bends).',poly4:'Quartic curve; risk of over-fitting with few points.',log:'Y = a + b·ln(X): fast rise that levels off; X must be > 0.',exp:'Y = a·e^(bX): growth or decay at a constant rate.',power:'Y = a·X^b: scaling relationships; X, Y > 0.','4pl':'Symmetric sigmoidal dose–response (bottom, top, EC50, Hill slope).','5pl':'Sigmoidal dose–response with an extra asymmetry parameter; needs more points than 4PL.'},
   dispmode:{both:'Bars/boxes with the individual points on top (recommended for small n).',mean:'Summary only.',reps:'Individual points only.'},
   dottype:{raw:'Every replicate value as a dot.',groupmean:'One dot per sample row (mean of its replicates).'},
   groupby:{group:'One bar/box per group, all rows pooled.',sample:'Bars/boxes grouped by sample row, one per group.'},
   pcmode:{mean:'One point per group (replicates averaged).',reps:'One point per replicate column, to see within-group spread.'},
+  htop:{'*':'Maximum rows drawn. Most variable: the top rows by variance. Significant genes: half the rows for the strongest up genes, half for down.'},
+  hrows:{var:'Rows with the largest variance across columns, clustered (UPGMA).',sig:'Up genes (red bar) then down genes (blue bar) from the last gene-level test (Rank Product, per-row t-test), most significant first. Falls back to most variable rows if there is no linked gene list.'},
+  hcols:{mean:'One column per group (replicates averaged); columns are clustered.',reps:'One column per replicate, grouped by group, to show how consistent each gene is.'},
   hnorm:{zscore:'Each row scaled to mean 0, SD 1: compares patterns, not magnitudes.',minmax:'Each row rescaled to 0–1.',none:'Raw values; rows with large values dominate the colours.'}
 };
 function wireOptHints(root){
@@ -597,62 +644,36 @@ function rankSumTest(a, b, mode='delta'){
 // Operates per-row; requires nRows >= 3
 // Groups: a[row] = array of replicate values, b[row] = array of replicate values
 // Returns per-row {rp, p, direction}
-function rankProductTest(aRows, bRows, mode='ratio'){
-  const nRows=aRows.length;
-  const nReps=aRows[0]?.length||1;
-  // For each row, compute fold-changes for each replicate pair
-  const fcs=aRows.map((aRep,r)=>{
-    const bRep=bRows[r]||[];
-    return aRep.map((av,ri)=>{
-      const bv=bRep[ri]??mean(bRep.filter(isFinite));
-      if(mode==='ratio') return bv!==0?av/bv:NaN;
-      return av-bv;
-    }).filter(isFinite);
+// Rank Product (Breitling et al. 2004), run twice: once ranking the largest increases first (up in B),
+// once the largest decreases first (down in B). Replicate i of A is paired with replicate i of B.
+// Under H0 each rank fraction is ~Uniform(0,1), so P(product of k fractions <= x) = x * sum_{j<k} (-ln x)^j / j!
+function rankProductTest(aRows,bRows,mode='delta'){
+  const nRows=aRows.length,k=Math.max(0,...aRows.map((r,i)=>Math.min(r.length,(bRows[i]||[]).length)));
+  const eff=aRows.map((a,r)=>{const b=bRows[r]||[];return Array.from({length:k},(_,i)=>{const av=a[i],bv=b[i];if(!isFinite(av)||!isFinite(bv))return NaN;return mode==='ratio'?(av>0&&bv>0?Math.log2(bv/av):NaN):bv-av;});});
+  const rankUp=[],rankDn=[];
+  for(let i=0;i<k;i++){
+    const idx=[];for(let r=0;r<nRows;r++)if(isFinite(eff[r][i]))idx.push(r);
+    const n=idx.length;
+    const up=[...idx].sort((x,y)=>eff[y][i]-eff[x][i]),dn=[...idx].sort((x,y)=>eff[x][i]-eff[y][i]);
+    const ru=new Float64Array(nRows).fill(NaN),rd=new Float64Array(nRows).fill(NaN);
+    up.forEach((r,j)=>ru[r]=(j+1)/n);dn.forEach((r,j)=>rd[r]=(j+1)/n);
+    rankUp.push(ru);rankDn.push(rd);
+  }
+  const pOf=(x,m)=>{if(!(x>0))return 0;if(x>=1)return 1;const L=-Math.log(x);let t=1,acc=1;for(let j=1;j<m;j++){t*=L/j;acc+=t;}return Math.min(1,x*acc);};
+  const res=eff.map((e,r)=>{
+    const fu=rankUp.map(x=>x[r]).filter(isFinite),fd=rankDn.map(x=>x[r]).filter(isFinite);const m=fu.length;
+    if(!m)return{row:r,n:0,effect:NaN,rpUp:NaN,rpDown:NaN,pUp:NaN,pDown:NaN};
+    const lu=fu.reduce((s,v)=>s+Math.log(v),0),ld=fd.reduce((s,v)=>s+Math.log(v),0);
+    return{row:r,n:m,effect:mean(e.filter(isFinite)),rpUp:Math.exp(lu/m),rpDown:Math.exp(ld/m),pUp:pOf(Math.exp(lu),m),pDown:pOf(Math.exp(ld),m)};
   });
-  // For each replicate, rank all rows by absolute fold-change
-  const nRP=fcs[0]?.length||1;
-  const perRepRanks=Array.from({length:nRP},(_,ri)=>{
-    const vals=fcs.map(r=>r[ri]??NaN);
-    const absVals=vals.map(Math.abs);
-    const sorted=[...absVals.map((v,i)=>({v,i}))].sort((a,b)=>b.v-a.v);
-    const rnk=Array(nRows).fill(0);
-    sorted.forEach((s,rank)=>{rnk[s.i]=rank+1;});
-    return rnk;
-  });
-  // Rank product = geometric mean of ranks
-  const rps=fcs.map((f,r)=>{
-    const ranks=perRepRanks.map(rr=>rr[r]);
-    const logSum=ranks.reduce((s,rk)=>s+Math.log(rk/nRows),0);
-    const rp=Math.exp(logSum/ranks.length);
-    const meanFC=f.length?mean(f):0;
-    return{rp,direction:meanFC>=0?'up':'down',meanFC};
-  });
-  // Approximate p-value: for n uniform[0,1] random variables, P(product ≤ x) ≈ x(-ln x)^(n-1)/(n-1)!
-  rps.forEach(r=>{
-    const x=r.rp;
-    const n=nRP;
-    // CDF of product of n uniform randoms at x (Irwin-Hall approximation)
-    let p=0;
-    if(x<=0||x>=1){p=x<=0?0:1;}
-    else{
-      let term=Math.pow(x,n);
-      let fact=1;for(let k=1;k<=n;k++)fact*=k;
-      // P(U1*U2*...*Un <= x) sum formula
-      for(let k=0;k<=n;k++){
-        const c=Math.pow(-1,k)*binomCoeff(n,k)*Math.pow(Math.max(0,Math.log(x)-Math.log(1)*k),n);
-        // Simpler: use the exact formula for product of uniforms
-      }
-      // Use simpler approximation: p = x * (-ln x)^(n-1) / (n-1)!
-      let lnx=-Math.log(x);let fn=1;for(let k=1;k<n;k++)fn*=k;
-      p=Math.min(1,x*Math.pow(lnx,n-1)/fn);
-    }
-    r.p=Math.max(0,Math.min(1,p*2)); // two-sided
-  });
-  return rps;
+  const qu=adjustP(res.map(r=>r.pUp),'fdr'),qd=adjustP(res.map(r=>r.pDown),'fdr');
+  res.forEach((r,i)=>{r.qUp=qu[i];r.qDown=qd[i];});
+  return res;
 }
 function binomCoeff(n,k){if(k<0||k>n)return 0;let r=1;for(let i=0;i<k;i++){r=r*(n-i)/(i+1);}return Math.round(r);}
 
-function onewayANOVA(groups, posthocMethod='tukey', ctrlI=-1){
+function onewayANOVA(groups, posthocMethod='tukey', ctrls=[]){
+  if(typeof ctrls==='number')ctrls=ctrls>=0?[ctrls]:[];
   const k=groups.length,N=sum(groups.map(g=>g.length));
   if(k<2||N<k+1)return{error:'Need ≥ 2 groups with ≥ 2 total observations'};
   const grand=sum(groups.flat())/N;
@@ -662,25 +683,30 @@ function onewayANOVA(groups, posthocMethod='tukey', ctrlI=-1){
   if(dfW<=0||SSW===0)return{F:Infinity,dfB,dfW,p:0,posthoc:[]};
   const MSB=SSB/dfB,MSW=SSW/dfW,F=MSB/MSW;
   const p=1-jStat.centralF.cdf(F,dfB,dfW);
-  // Family of comparisons: all pairs, or control vs each other group
+  // Family: all pairs, or every pair that involves at least one control
   const posthoc=[];
   for(let i=0;i<k-1;i++)for(let j=i+1;j<k;j++){
-    if(ctrlI>=0&&i!==ctrlI&&j!==ctrlI)continue;
+    if(ctrls.length&&!ctrls.includes(i)&&!ctrls.includes(j))continue;
     const ni=groups[i].length,nj=groups[j].length;
     const se=Math.sqrt(MSW*(1/ni+1/nj));
     if(se===0){posthoc.push({i,j,t:NaN,p_raw:NaN,p_adj:NaN,df:dfW});continue}
     const t=(mean(groups[i])-mean(groups[j]))/se;
     const p_raw=2*(1-jStat.studentt.cdf(Math.abs(t),dfW));
-    const q=Math.abs(t)*Math.SQRT2; // Tukey–Kramer studentised range statistic
-    posthoc.push({i,j,t,q,p_raw,df:dfW});
+    posthoc.push({i,j,t,q:Math.abs(t)*Math.SQRT2,p_raw,df:dfW});
   }
-  if(posthocMethod==='tukey'){
+  let method=posthocMethod;
+  if(method==='dunnett'&&ctrls.length!==1)method='holm_sidak';
+  if(method==='tukey'){
     posthoc.forEach(ph=>{ph.p_adj=isFinite(ph.q)?Math.min(1,Math.max(0,1-jStat.tukey.cdf(ph.q,k,dfW))):NaN;});
+  } else if(method==='dunnett'){
+    const c=ctrls[0];
+    const adj=dunnettP(posthoc.map(ph=>ph.t),groups[c].length,posthoc.map(ph=>groups[ph.i===c?ph.j:ph.i].length),dfW);
+    posthoc.forEach((ph,n)=>ph.p_adj=adj[n]);
   } else {
-    const adj=adjustP(posthoc.map(ph=>ph.p_raw),posthocMethod);
+    const adj=adjustP(posthoc.map(ph=>ph.p_raw),method);
     posthoc.forEach((ph,n)=>ph.p_adj=adj[n]);
   }
-  return{F,dfB,dfW,p,SSB,SSW,MSB,MSW,grand,posthoc,posthocMethod};
+  return{F,dfB,dfW,p,SSB,SSW,MSB,MSW,grand,posthoc,posthocMethod:method};
 }
 
 function kruskalWallis(groups){
@@ -797,6 +823,19 @@ function normalityJB(arr){
 }
 
 // Kaplan–Meier product-limit estimate. Subjects censored at time t stay in the risk set for events at t.
+function kmGroups(timeCol=0){
+  const cell=(g,r)=>{const row=G.groups[g]?.data[r]||[];for(const v of row){if(v!==''&&v!==null&&isFinite(v))return Number(v);}return NaN;};
+  const others=G.groups.map((_,i)=>i).filter(i=>i!==timeCol);
+  if(!others.length)return{error:'Need a time column and at least one event column'};
+  const groups=others.map(g=>({name:G.groups[g].name,t:[],e:[]}));
+  for(let r=0;r<G.nRows;r++){
+    const t=cell(timeCol,r);if(!isFinite(t))continue;
+    others.forEach((g,k)=>{const v=cell(g,r);if(isFinite(v)){groups[k].t.push(t);groups[k].e.push(v===1?1:0);}});
+  }
+  const used=groups.filter(g=>g.t.length);
+  if(!used.length)return{error:'No subjects found: each row needs a time and a 1/0 in one group column'};
+  return{groups:used,timeName:G.groups[timeCol].name};
+}
 function kaplanMeier(times,events){
   const obs=times.map((t,i)=>({t:+t,e:Number(events[i])===1?1:0})).filter(o=>isFinite(o.t)).sort((a,b)=>a.t-b.t);
   let n=obs.length,surv=1;
@@ -824,37 +863,55 @@ function logRankTest(grps_t, grps_e){
   return{chi,df:grps_t.length-1,p:1-jStat.chisquare.cdf(chi,grps_t.length-1),O,E};
 }
 
+// Symmetric eigen-decomposition (cyclic Jacobi) for small matrices
+function _jacobiEig(A){
+  const n=A.length;const a=A.map(r=>Float64Array.from(r));const V=Array.from({length:n},(_,i)=>{const r=new Float64Array(n);r[i]=1;return r;});
+  for(let sweep=0;sweep<100;sweep++){
+    let off=0;for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)off+=a[i][j]*a[i][j];
+    if(off<1e-22)break;
+    for(let p=0;p<n;p++)for(let q=p+1;q<n;q++){
+      if(Math.abs(a[p][q])<1e-300)continue;
+      const th=(a[q][q]-a[p][p])/(2*a[p][q]);const t=Math.sign(th||1)/(Math.abs(th)+Math.sqrt(th*th+1));const c=1/Math.sqrt(t*t+1),sn=t*c;
+      for(let k=0;k<n;k++){const akp=a[k][p],akq=a[k][q];a[k][p]=c*akp-sn*akq;a[k][q]=sn*akp+c*akq;}
+      for(let k=0;k<n;k++){const apk=a[p][k],aqk=a[q][k];a[p][k]=c*apk-sn*aqk;a[q][k]=sn*apk+c*aqk;}
+      for(let k=0;k<n;k++){const vkp=V[k][p],vkq=V[k][q];V[k][p]=c*vkp-sn*vkq;V[k][q]=sn*vkp+c*vkq;}
+    }
+  }
+  const vals=Array.from({length:n},(_,i)=>a[i][i]);
+  const order=vals.map((v,i)=>i).sort((x,y)=>vals[y]-vals[x]);
+  return{values:order.map(i=>vals[i]),vectors:order.map(i=>V.map(r=>r[i]))};
+}
+// PCA of samples (rows of X) described by features (columns). Uses the n×n Gram matrix, so it stays fast
+// when there are far more features than samples (e.g. 20,000 genes × 12 samples).
 function pcaCompute(X){
-  const n=X.length,p=X[0].length;
-  const maxPC=Math.min(n-1,p);
-  const means=X[0].map((_,j)=>mean(X.map(r=>r[j])));
-  const Xc=X.map(r=>r.map((v,j)=>v-means[j]));
-  function matmul(A,B){const m=A.length,k=A[0].length,nb=B[0].length;return Array.from({length:m},(_,i)=>Array.from({length:nb},(_,j)=>sum(A[i].map((v,l)=>v*B[l][j]))))}
-  const Xt=X[0].map((_,j)=>Xc.map(r=>r[j]));
-  let C=matmul(Xt,Xc).map(r=>r.map(v=>v/(n-1)));
-  const totalVar=sum(Array.from({length:p},(_,i)=>C[i][i]));
-  function powerIter(M){
-    const dim=M.length;
-    let v=Array.from({length:dim},()=>Math.random()-0.5);
-    const norm=()=>{const l=Math.sqrt(sum(v.map(x=>x**2)));v=v.map(x=>x/l)};
-    norm();
-    for(let i=0;i<300;i++){const nv=M.map(r=>sum(r.map((c,j)=>c*v[j])));const l=Math.sqrt(sum(nv.map(x=>x**2)));if(l<1e-12)break;v=nv.map(x=>x/l)}
-    const eig=sum(M.map((r,i)=>sum(r.map((c,j)=>c*v[i]*v[j]))));
-    return{v,eig:Math.max(0,eig)};
+  const n=X.length,p=X[0]?.length||0;
+  const means=new Float64Array(p);for(const r of X)for(let j=0;j<p;j++)means[j]+=r[j]/n;
+  const Xc=X.map(r=>{const o=new Float64Array(p);for(let j=0;j<p;j++)o[j]=r[j]-means[j];return o;});
+  const K=Array.from({length:n},()=>new Array(n).fill(0));
+  for(let i=0;i<n;i++)for(let k=i;k<n;k++){let s=0;const a=Xc[i],b=Xc[k];for(let j=0;j<p;j++)s+=a[j]*b[j];K[i][k]=K[k][i]=s;}
+  const {values,vectors}=_jacobiEig(K);
+  const total=values.reduce((s,v)=>s+Math.max(0,v),0);
+  const keep=values.map((v,i)=>i).filter(i=>values[i]>1e-10*Math.max(1,total)).slice(0,Math.max(0,n-1));
+  if(keep.length<2)while(keep.length<2)keep.push(-1);
+  const scores=Array.from({length:n},(_,i)=>keep.map(k=>k<0?0:vectors[k][i]*Math.sqrt(Math.max(0,values[k]))));
+  const varExplained=keep.map(k=>k<0||!total?0:values[k]/total*100);
+  // loadings (feature weights) for the first two components
+  const loadings=keep.slice(0,10).map(k=>{if(k<0)return new Float64Array(p);const l=Math.sqrt(values[k]);const v=new Float64Array(p);for(let i=0;i<n;i++){const w=vectors[k][i]/l;const r=Xc[i];for(let j=0;j<p;j++)v[j]+=w*r[j];}return v;});
+  return{scores,varExplained,nPCs:keep.length,loadings,pc1_var:varExplained[0]||0,pc2_var:varExplained[1]||0};
+}
+// Samples × features matrix for PCA: one sample per group (means) or per replicate column
+function buildPCAMatrix(mode,zNorm){
+  const X=[],labels=[],grp=[];
+  if(mode==='reps'){
+    G.groups.forEach((g,gi)=>{for(let ri=0;ri<G.nReps;ri++){X.push(Array.from({length:G.nRows},(_,f)=>{const v=g.data[f]?.[ri];return v!==''&&isFinite(v)?Number(v):NaN;}));labels.push(`${g.name} ${g.reps[ri]||'R'+(ri+1)}`);grp.push(gi);}});
+  } else {
+    G.groups.forEach((g,gi)=>{X.push(Array.from({length:G.nRows},(_,f)=>{const v=g.data[f]?.filter(x=>x!==''&&isFinite(x)).map(Number);return v?.length?mean(v):NaN;}));labels.push(g.name);grp.push(gi);});
   }
-  const pcs=[];
-  for(let k=0;k<maxPC;k++){
-    const pc=powerIter(C);
-    if(pc.eig<1e-10)break;
-    pcs.push(pc);
-    C=C.map((r,i)=>r.map((c,j)=>c-pc.eig*pc.v[i]*pc.v[j]));
-  }
-  if(!pcs.length)pcs.push({v:Array(p).fill(0),eig:0});
-  if(pcs.length<2)pcs.push({v:Array(p).fill(0),eig:0});
-  const scores=Xc.map(r=>pcs.map(pc=>sum(r.map((v,j)=>v*pc.v[j]))));
-  const varExplained=pcs.map(pc=>totalVar>0?pc.eig/totalVar*100:0);
-  return{scores,varExplained,nPCs:pcs.length,loadings:pcs.map(pc=>pc.v),
-    pc1_var:varExplained[0]||0,pc2_var:varExplained[1]||0};
+  // keep features measured in every sample and not constant
+  const feats=[];for(let f=0;f<G.nRows;f++){let ok=true,mn=Infinity,mx=-Infinity;for(const r of X){const v=r[f];if(!isFinite(v)){ok=false;break;}mn=Math.min(mn,v);mx=Math.max(mx,v);}if(ok&&mx>mn)feats.push(f);}
+  let M=X.map(r=>feats.map(f=>r[f]));
+  if(zNorm&&M.length>1){for(let j=0;j<feats.length;j++){const col=M.map(r=>r[j]);const m=mean(col),sd=stddev(col)||1;M.forEach(r=>r[j]=(r[j]-m)/sd);}}
+  return{X:M,labels,grp,feats};
 }
 
 function nelderMead(f,x0,opts={}){
@@ -877,6 +934,91 @@ function nelderMead(f,x0,opts={}){
 }
 
 // 5PL: Y = Bottom + (Top − Bottom) / (1 + (EC50/X)^Hill)^Asym. EC50 fitted on a log scale, Asym kept > 0; several starts.
+// ── Dunnett's test (many-to-one) ─────────────────────────────────────────
+// Two-sided P(max_i |T_i| <= c) for T_i with correlation rho_ij = lam_i*lam_j and df degrees of freedom.
+// The product correlation lets the multivariate t probability be written as a double integral (Dunnett 1955).
+function _simpson(f,a,b,n){if(n%2)n++;const h=(b-a)/n;let s=f(a)+f(b);for(let i=1;i<n;i++)s+=(i%2?4:2)*f(a+i*h);return s*h/3;}
+function _mvtAbsProb(c,lam,df){
+  const Phi=x=>jStat.normal.cdf(x,0,1),phi=x=>Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+  const sq=lam.map(l=>Math.sqrt(Math.max(1e-12,1-l*l)));
+  const inner=cs=>_simpson(z=>{let pr=phi(z);for(let i=0;i<lam.length;i++){pr*=Phi((cs+lam[i]*z)/sq[i])-Phi((-cs+lam[i]*z)/sq[i]);if(pr<1e-300)return 0;}return pr;},-8,8,160);
+  if(!isFinite(df)||df>2000)return inner(c);
+  const lnC=(df/2)*Math.log(df/2)-jStat.gammaln(df/2)+Math.log(2);
+  const sd=1/Math.sqrt(2*df);
+  const lo=Math.max(1e-6,1-12*sd),hi=Math.max(1+12*sd,df<=4?8:3);
+  return _simpson(s=>{const ld=lnC+(df-1)*Math.log(s)-df*s*s/2;return Math.exp(ld)*inner(c*s);},lo,hi,240);
+}
+// Adjusted two-sided Dunnett p-values. t = array of t statistics, nCtrl = control n, nOther = n of each compared group.
+function dunnettP(t,nCtrl,nOther,df){
+  const lam=nOther.map(n=>Math.sqrt(n/(n+nCtrl)));
+  return t.map(ti=>isFinite(ti)?Math.min(1,Math.max(0,1-_mvtAbsProb(Math.abs(ti),lam,df))):NaN);
+}
+
+// ── Kolmogorov–Smirnov ───────────────────────────────────────────────────
+// Exact two-sample P(D < d) (algorithm of R's psmirnov2x)
+function _psmirnov(d,m,n){
+  if(m>n){const t=m;m=n;n=t;}
+  const q=(0.5+Math.floor(d*m*n-1e-7))/(m*n);
+  const u=new Float64Array(n+1);
+  for(let j=0;j<=n;j++)u[j]=(j/n>q)?0:1;
+  for(let i=1;i<=m;i++){
+    const w=i/(i+n);
+    u[0]=(i/m>q)?0:w*u[0];
+    for(let j=1;j<=n;j++)u[j]=(Math.abs(i/m-j/n)>q)?0:w*u[j]+u[j-1];
+  }
+  return u[n];
+}
+function _kolmogorovQ(l){if(l<0.2)return 1;let s=0;for(let k=1;k<=100;k++){const t=2*Math.pow(-1,k-1)*Math.exp(-2*k*k*l*l);s+=t;if(Math.abs(t)<1e-12)break;}return Math.max(0,Math.min(1,s));}
+function ks2Sample(a,b){
+  a=a.filter(isFinite).sort((x,y)=>x-y);b=b.filter(isFinite).sort((x,y)=>x-y);
+  const n1=a.length,n2=b.length;if(n1<2||n2<2)return{error:'Need ≥ 2 values in each group'};
+  let i=0,j=0,D=0;
+  while(i<n1&&j<n2){const v=Math.min(a[i],b[j]);while(i<n1&&a[i]===v)i++;while(j<n2&&b[j]===v)j++;D=Math.max(D,Math.abs(i/n1-j/n2));}
+  let p,method;
+  if(n1*n2<=250000){p=1-_psmirnov(D,n1,n2);method='exact';}
+  else{const ne=n1*n2/(n1+n2);p=_kolmogorovQ((Math.sqrt(ne)+0.12+0.11/Math.sqrt(ne))*D);method='asymptotic';}
+  return{D,p:Math.max(0,Math.min(1,p)),n1,n2,method};
+}
+function _mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function _ksNormStat(x){ // KS distance to a normal with the sample's own mean and SD
+  const n=x.length,m=mean(x),sd=stddev(x);if(!(sd>0))return NaN;
+  const xs=Float64Array.from(x).sort();let D=0;
+  for(let i=0;i<n;i++){const F=jStat.normal.cdf((xs[i]-m)/sd,0,1);D=Math.max(D,(i+1)/n-F,F-i/n);}
+  return D;
+}
+// Lilliefors test: KS against a normal with estimated mean/SD; p-value by seeded Monte Carlo simulation
+function lillieforsTest(x){
+  x=x.filter(isFinite);const n=x.length;if(n<4)return{error:'Need ≥ 4 values'};
+  const D=_ksNormStat(x);if(!isFinite(D))return{error:'All values identical'};
+  const nsim=n<=500?4000:n<=3000?1000:400;const rnd=_mulberry32(12345+n);
+  let ge=0;const buf=new Array(n);
+  for(let s=0;s<nsim;s++){
+    for(let i=0;i<n;i+=2){const u1=Math.max(rnd(),1e-12),u2=rnd(),r=Math.sqrt(-2*Math.log(u1));buf[i]=r*Math.cos(2*Math.PI*u2);if(i+1<n)buf[i+1]=r*Math.sin(2*Math.PI*u2);}
+    if(_ksNormStat(buf)>=D)ge++;
+  }
+  return{D,p:(ge+1)/(nsim+1),n,nsim};
+}
+
+// ── Log-rank test for k groups (with variance–covariance matrix) ─────────
+function _solve(A,b){const n=b.length;const M=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){let pv=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[pv][c]))pv=r;[M[c],M[pv]]=[M[pv],M[c]];if(Math.abs(M[c][c])<1e-14)return null;
+    for(let r=0;r<n;r++){if(r===c)continue;const f=M[r][c]/M[c][c];for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}}
+  return M.map((r,i)=>r[n]/r[i]);}
+// subjects: [{t, e (1/0), g (group index)}], k groups
+function logRankK(subj,k){
+  const times=[...new Set(subj.filter(o=>o.e).map(o=>o.t))].sort((a,b)=>a-b);
+  const O=Array(k).fill(0),E=Array(k).fill(0),V=Array.from({length:k},()=>Array(k).fill(0));
+  for(const t of times){
+    const n=Array(k).fill(0),d=Array(k).fill(0);
+    for(const o of subj){if(o.t>=t)n[o.g]++;if(o.t===t&&o.e)d[o.g]++;}
+    const N=sum(n),D=sum(d);if(N<1||D===0)continue;
+    for(let g=0;g<k;g++){O[g]+=d[g];E[g]+=n[g]*D/N;}
+    if(N>1){const f=D*(N-D)/(N-1);for(let g=0;g<k;g++)for(let h=0;h<k;h++)V[g][h]+=f*(n[g]/N)*((g===h?1:0)-n[h]/N);}
+  }
+  const df=k-1;let chi=NaN;
+  if(df>=1){const u=O.slice(0,df).map((o,g)=>o-E[g]);const Vs=V.slice(0,df).map(r=>r.slice(0,df));const x=_solve(Vs,u);if(x)chi=sum(u.map((v,g)=>v*x[g]));}
+  return{chi,df,p:isFinite(chi)?1-jStat.chisquare.cdf(chi,df):NaN,O,E};
+}
 function fit5PL(x,y){
   const ok=x.map((xi,i)=>[xi,y[i]]).filter(([a,b])=>isFinite(a)&&isFinite(b));
   const X=ok.map(d=>d[0]),Y=ok.map(d=>d[1]);
@@ -974,6 +1116,7 @@ function twowayANOVA(groupData,nA,nB){
   const cells=Array.from({length:nA},(_,a)=>Array.from({length:nB},(_,b)=>groupData[a*nB+b]));
   for(let a=0;a<nA;a++)for(let b=0;b<nB;b++)if(!cells[a][b].length)return{error:`Cell (A${a+1},B${b+1}) has no data`};
   const nRep=cells[0][0].length;
+  if(groupData.some(g=>g.length!==nRep))return{error:`Unbalanced design: every cell needs the same number of values (found ${[...new Set(groupData.map(g=>g.length))].join(', ')})`};
   const grandMean=mean(groupData.flat());
   const cellMeans=cells.map(row=>row.map(c=>mean(c)));
   const aMeans=Array.from({length:nA},(_,a)=>mean(cells[a].flat()));
@@ -989,7 +1132,7 @@ function twowayANOVA(groupData,nA,nB){
   const pA=1-jStat.centralF.cdf(FA,dfA,dfError);
   const pB=1-jStat.centralF.cdf(FB,dfB,dfError);
   const pAB=dfAB>0?1-jStat.centralF.cdf(FAB,dfAB,dfError):1;
-  return{SSA,SSB,SSAB,SSError,dfA,dfB,dfAB,dfError,MSA,MSB,MSAB,MSError,FA,FB,FAB,pA,pB,pAB,cellMeans,aMeans,bMeans};
+  return{SSA,SSB,SSAB,SSError,dfA,dfB,dfAB,dfError,MSA,MSB,MSAB,MSError,FA,FB,FAB,pA,pB,pAB,cellMeans,aMeans,bMeans,nRep};
 }
 
 function volcanoData(names,log2fc,pvals,fc_thresh=1,p_thresh=0.05){
@@ -1097,39 +1240,61 @@ function initData(){
   renderGrid();
 }
 
+// Data grid. Small tables are rendered whole; large ones (RNA-seq etc.) render only the rows in view.
+const VIRT_MIN=300,VBUF=40;
+let _rowH=25,_hdrH=50,_vStart=0,_vEnd=0,_virt=false;
+function _esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function _rowHTML(row){
+  const nG=G.groups.length,nR=G.nReps;
+  let h=`<tr class="dr"><td class="rnum">${row+1}</td><td style="padding:0"><input class="rn" data-row="${row}" value="${_esc(G.rowNames[row])}" onchange="G.rowNames[${row}]=this.value" style="width:80px;border:none;background:transparent;padding:4px 6px"></td>`;
+  for(let g=0;g<nG;g++)for(let r=0;r<nR;r++){
+    const val=G.groups[g].data[row]?.[r]??'';
+    h+=`<td style="padding:0"><input type="text" class="${isCellInSel(g,row,r)?'sel-cell':''}" value="${val}" data-g="${g}" data-row="${row}" data-r="${r}" onchange="onCell(this,${g},${row},${r})" onmousedown="gridSelStart(event,${g},${row},${r})" onmouseover="gridSelMove(event,${g},${row},${r})" style="width:72px"></td>`;
+  }
+  return h+'</tr>';
+}
+function _gridWindow(){
+  const wrap=document.getElementById('tbl-wrap');
+  const top=Math.max(0,(wrap?.scrollTop||0)-_hdrH),vis=Math.ceil((wrap?.clientHeight||400)/_rowH);
+  const start=Math.max(0,Math.floor(top/_rowH)-VBUF);
+  return[start,Math.min(G.nRows,start+vis+2*VBUF)];
+}
 function renderGrid(){
   const tbody=document.getElementById('dtbody');
   const nG=G.groups.length,nR=G.nReps,nRows=G.nRows;
-
-  // Build header rows (2 rows: group names, rep names)
-  let hdr1='<tr><th style="min-width:28px;background:var(--surf)"></th><th style="background:var(--surf);padding:4px 6px;font-size:11px;color:var(--mu)">Row</th>';
-  for(let g=0;g<nG;g++){
-    hdr1+=`<th class="grp-hdr" colspan="${nR}" style="padding:0"><input class="grp" value="${G.groups[g].name}" onchange="G.groups[${g}].name=this.value" style="width:${nR*73}px"></th>`;
-  }
+  let hdr1='<tr class="h1"><th style="min-width:28px;background:var(--surf)"></th><th style="background:var(--surf);padding:4px 6px;font-size:11px;color:var(--mu)">Row</th>';
+  for(let g=0;g<nG;g++)hdr1+=`<th class="grp-hdr" colspan="${nR}" style="padding:0"><input class="grp" value="${_esc(G.groups[g].name)}" onchange="G.groups[${g}].name=this.value" style="width:${nR*73}px"></th>`;
   hdr1+='</tr>';
-
-  let hdr2='<tr><th style="background:var(--surf)"></th><th style="background:var(--surf)"></th>';
-  for(let g=0;g<nG;g++){
-    for(let r=0;r<nR;r++){
-      hdr2+=`<th class="rep-hdr" style="padding:0"><input class="rep" value="${G.groups[g].reps[r]}" onchange="G.groups[${g}].reps[${r}]=this.value" style="width:72px;border:none;background:transparent;color:var(--mu);text-align:center;font-size:11px;padding:3px 4px"></th>`;
-    }
-  }
+  let hdr2='<tr class="h2"><th style="background:var(--surf)"></th><th style="background:var(--surf)"></th>';
+  for(let g=0;g<nG;g++)for(let r=0;r<nR;r++)hdr2+=`<th class="rep-hdr" style="padding:0"><input class="rep" value="${_esc(G.groups[g].reps[r])}" onchange="G.groups[${g}].reps[${r}]=this.value" style="width:72px;border:none;background:transparent;color:var(--mu);text-align:center;font-size:11px;padding:3px 4px"></th>`;
   hdr2+='</tr>';
-
-  // Data rows
-  let rows='';
-  for(let row=0;row<nRows;row++){
-    rows+=`<tr><td class="rnum">${row+1}</td><td style="padding:0"><input class="rn" value="${G.rowNames[row]||''}" onchange="G.rowNames[${row}]=this.value" style="width:80px;border:none;background:transparent;padding:4px 6px"></td>`;
-    for(let g=0;g<nG;g++){
-      for(let r=0;r<nR;r++){
-        const val=G.groups[g].data[row]?.[r]??'';
-        rows+=`<td style="padding:0"><input type="text" value="${val}" data-g="${g}" data-row="${row}" data-r="${r}" onchange="onCell(this,${g},${row},${r})" onmousedown="gridSelStart(event,${g},${row},${r})" onmouseover="gridSelMove(event,${g},${row},${r})" style="width:72px"></td>`;
-      }
-    }
-    rows+='</tr>';
+  _virt=nRows>VIRT_MIN;
+  let body='';
+  if(!_virt){for(let row=0;row<nRows;row++)body+=_rowHTML(row);_vStart=0;_vEnd=nRows;}
+  else{
+    [_vStart,_vEnd]=_gridWindow();
+    const cols=2+nG*nR;
+    body+=`<tr class="vsp"><td colspan="${cols}" style="height:${_vStart*_rowH}px;padding:0;border:none"></td></tr>`;
+    for(let row=_vStart;row<_vEnd;row++)body+=_rowHTML(row);
+    body+=`<tr class="vsp"><td colspan="${cols}" style="height:${(nRows-_vEnd)*_rowH}px;padding:0;border:none"></td></tr>`;
   }
-
-  tbody.innerHTML=hdr1+hdr2+rows;
+  tbody.innerHTML=hdr1+hdr2+body;
+  const fr=tbody.querySelector('tr.dr');if(fr){const h=fr.getBoundingClientRect().height;if(h>10)_rowH=h;}
+  const h1=tbody.querySelector('tr.h1'),h2=tbody.querySelector('tr.h2');if(h1&&h2){const a=h1.getBoundingClientRect().height;_hdrH=a+h2.getBoundingClientRect().height;document.getElementById('dtbl').style.setProperty('--h1h',a+'px');}
+  const info=document.getElementById('grid-info');if(info)info.textContent=nRows>VIRT_MIN?`${nRows.toLocaleString()} rows × ${(nG*nR).toLocaleString()} columns`:'';
+}
+let _scrollRAF=0;
+function onGridScroll(){
+  if(!_virt||_scrollRAF)return;
+  _scrollRAF=requestAnimationFrame(()=>{_scrollRAF=0;const[st,en]=_gridWindow();if(Math.abs(st-_vStart)>VBUF/2||(en!==_vEnd&&en===G.nRows))renderGrid();});
+}
+// Focus a cell, scrolling it into the rendered window first if needed
+function focusCell(g,row,r){
+  let el=document.querySelector(`#dtbl input[data-g="${g}"][data-row="${row}"][data-r="${r}"]`);
+  const wrap=document.getElementById('tbl-wrap');
+  if(!el&&wrap){wrap.scrollTop=Math.max(0,_hdrH+row*_rowH-wrap.clientHeight/2);renderGrid();el=document.querySelector(`#dtbl input[data-g="${g}"][data-row="${row}"][data-r="${r}"]`);}
+  if(el){el.focus();el.select();}
+  return el;
 }
 
 function onCell(el,g,row,r){
@@ -1165,33 +1330,39 @@ function gAddRow(){pushUndo();G.nRows++;G.rowNames.push(`Row ${G.nRows}`);for(co
 function gDelRow(){if(G.nRows>1){pushUndo();G.nRows--;G.rowNames.pop();for(const g of G.groups)g.data.pop();renderGrid()}}
 
 // Multi-cell paste (Excel/Sheets TSV)
-document.addEventListener('paste', e=>{pushUndo();
+document.addEventListener('paste', e=>{
   const active=document.activeElement;
   if(!active||!active.closest('#dtbl'))return;
   const clip=e.clipboardData.getData('text');
   if(!clip.includes('\t')&&!clip.includes('\n'))return;
-  e.preventDefault();
-  const rows=clip.trim().split('\n').map(r=>r.split('\t'));
-  const startG=parseInt(active.dataset.g??0);
+  e.preventDefault();pushUndo();
+  const rows=clip.replace(/\r/g,'').replace(/\n+$/,'').split('\n').map(r=>r.split('\t'));
+  const intoNames=active.classList.contains('rn');
   const startRow=parseInt(active.dataset.row??0);
-  const startR=parseInt(active.dataset.r??0);
+  const startG=intoNames?0:parseInt(active.dataset.g??0),startR=intoNames?0:parseInt(active.dataset.r??0);
   if(isNaN(startG)||isNaN(startRow)||isNaN(startR))return;
+  const dataCols=Math.max(...rows.map(r=>r.length))-(intoNames?1:0);
+  // grow rows / groups so the whole block fits (e.g. pasting 20,000 genes)
+  const needRows=startRow+rows.length;
+  if(needRows>G.nRows){for(let r=G.nRows;r<needRows;r++){G.rowNames.push(`Row ${r+1}`);for(const g of G.groups)g.data.push(Array(G.nReps).fill(''));}G.nRows=needRows;}
+  const needCols=startG*G.nReps+startR+dataCols,needG=Math.ceil(needCols/G.nReps);
+  while(G.groups.length<needG){const i=G.groups.length;G.groups.push({name:`Group${i+1}`,reps:Array.from({length:G.nReps},(_,k)=>`Rep${k+1}`),data:Array.from({length:G.nRows},()=>Array(G.nReps).fill(''))});}
   rows.forEach((row,ri)=>{
-    row.forEach((val,ci)=>{
-      const targetRow=startRow+ri;
-      // figure out which group/rep this column offset lands in
-      const absCol=startG*G.nReps+startR+ci;
-      const tG=Math.floor(absCol/G.nReps);
-      const tR=absCol%G.nReps;
-      if(targetRow<G.nRows&&tG<G.groups.length&&tR<G.nReps){
-        const v=parseFloat(val.replace(',','.'));
-        if(!G.groups[tG].data[targetRow]) G.groups[tG].data[targetRow]=Array(G.nReps).fill('');
-        G.groups[tG].data[targetRow][tR]=isNaN(v)?'':v;
-      }
+    const targetRow=startRow+ri;
+    if(intoNames&&row.length)G.rowNames[targetRow]=row[0].trim();
+    row.slice(intoNames?1:0).forEach((val,ci)=>{
+      const absCol=startG*G.nReps+startR+ci,tG=Math.floor(absCol/G.nReps),tR=absCol%G.nReps;
+      const v=parseFloat(String(val).trim().replace(',','.'));
+      if(!G.groups[tG].data[targetRow])G.groups[tG].data[targetRow]=Array(G.nReps).fill('');
+      G.groups[tG].data[targetRow][tR]=isNaN(v)?'':v;
     });
   });
+  document.getElementById('n-grps').value=G.groups.length;
   renderGrid();
+  if(rows.length>50)showDataNote(`Pasted ${rows.length.toLocaleString()} rows × ${dataCols} columns${intoNames?' (first column used as row names)':''}`);
+  onTypeChange();onPlotTypeChange();
 });
+
 
 // ── Grid selection / copy / cut ──────────────────────────────────────
 function gridSelStart(e,g,row,r){
@@ -1297,8 +1468,7 @@ document.addEventListener('keydown',e=>{
     else if(e.key==='ArrowDown')nrow=Math.min(G.nRows-1,row+1);
     else if(e.key==='ArrowLeft'){nr--;if(nr<0){ng=Math.max(0,g-1);nr=G.nReps-1;}}
     else if(e.key==='ArrowRight'){nr++;if(nr>=G.nReps){ng=Math.min(G.groups.length-1,g+1);nr=0;}}
-    const next=document.querySelector(`#dtbl input[data-g="${ng}"][data-row="${nrow}"][data-r="${nr}"]`);
-    if(next){next.focus();next.select();e.preventDefault();}
+    if(focusCell(ng,nrow,nr))e.preventDefault();
   }
 });
 
@@ -1307,6 +1477,7 @@ function getGroupVals(g){return G.groups[g].data.flatMap(row=>row.filter(v=>v!==
 // Get column of values for group g, only first rep of each row
 function getGroupCol(g,repIdx=0){return G.groups[g].data.map(row=>{const v=row[repIdx];return v===''||!isFinite(v)?NaN:parseFloat(v)}).filter(isFinite)}
 // Get pooled values for one group, all reps
+function rowsOf(g,row){return(G.groups[g]?.data[row]||[]).filter(v=>v!==''&&isFinite(v)).map(Number);}
 function getGroupPooled(g){
   const vals=[];
   for(const row of G.groups[g].data){
@@ -1326,6 +1497,22 @@ function onTypeChange(){
   renderAnalysisOpts(t);
 }
 
+// One-way ANOVA: keep the correction menu consistent with the comparison family
+function anovaCmpChange(){
+  const cmp=document.getElementById('opt-cmp')?.value||'all';
+  const wrap=document.getElementById('ctrl-list-wrap');if(wrap)wrap.style.display=cmp==='ctrl'?'block':'none';
+  const cbs=[...document.querySelectorAll('#aopts .ctrl-cb')];
+  const ctrls=cbs.filter(c=>c.checked).map(c=>parseInt(c.id.split('-').pop()));
+  const hid=document.getElementById('opt-ctrls');if(hid)hid.value=cmp==='ctrl'?ctrls.map(i=>G.groups[i]?.name).join(', '):'';
+  const sel=document.getElementById('opt-ph');if(!sel)return;
+  const dOpt=[...sel.options].find(o=>o.value==='dunnett'),tOpt=[...sel.options].find(o=>o.value==='tukey');
+  const dunnettOK=cmp==='ctrl'&&ctrls.length===1;
+  if(dOpt){dOpt.disabled=!dunnettOK;dOpt.textContent=CORR_LABEL.dunnett+(dunnettOK?'':(cmp==='ctrl'?' — needs exactly one control':' — choose vs control'));}
+  if(sel.value==='dunnett'&&!dunnettOK)sel.value=cmp==='all'?'tukey':'holm_sidak';
+  if(cmp==='ctrl'&&dunnettOK&&sel.dataset.auto!=='0'&&(sel.value==='tukey'))sel.value='dunnett';
+  if(cmp==='all'&&sel.value!=='tukey'&&sel.dataset.auto!=='0')sel.value='tukey';
+  sel.dispatchEvent(new Event('change'));
+}
 function npModeChange(){
   const mode=document.getElementById('opt-np-mode')?.value||'pair';
   const pairWrap=document.getElementById('np-pair-wrap');
@@ -1341,7 +1528,7 @@ function npModeChange(){
   const cw=document.getElementById('np-corr-wrap');if(cw)cw.style.display=(mode==='pair')?'none':'block';
 }
 
-const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'bar_sd',mw:'bar_sd',wilcoxon:'bar_sd',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',ranksum:'bar_sd',rankprod:'bar_sd',heatmap:'heatmap',mtc:'mtc',km:'km',volcano:'volcano'};
+const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'bar_sd',mw:'bar_sd',wilcoxon:'bar_sd',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',ranksum:'bar_sd',rankprod:'heatmap',heatmap:'heatmap',mtc:'mtc',km:'km',volcano:'volcano',ks:'ecdf'};
 
 function renderAnalysisOpts(t){
   const el=document.getElementById('aopts');
@@ -1380,15 +1567,20 @@ function renderAnalysisOpts(t){
     el.innerHTML=`<div class="opts-grid">
       <div>
         <div class="opt-lbl">Comparisons</div>
-        <select id="opt-ctrl" data-hint="actrl"><option value="">All pairs</option>${G.groups.map((g,i)=>`<option value="${i}">vs control: ${g.name}</option>`).join('')}</select>
+        <select id="opt-cmp" data-hint="acmp" onchange="anovaCmpChange()"><option value="all">All pairs</option><option value="ctrl">vs control group(s)</option></select>
       </div>
       <div>
         <div class="opt-lbl">Normalization</div>
         <select id="opt-norm" data-hint="norm"><option value="none">None</option><option value="log2">log2</option><option value="log10">log10</option><option value="zscore">Z-score</option></select>
       </div>
+      <div class="full-col" id="ctrl-list-wrap" style="display:none">
+        <div class="opt-lbl">Control group(s): each ticked group is compared with every other group</div>
+        <div class="ctrl-list">${G.groups.map((g,i)=>`<label class="check-row"><input type="checkbox" class="ctrl-cb" id="opt-ctl-${i}" ${i===0?'checked':''} onchange="anovaCmpChange()"> ${g.name}</label>`).join('')}</div>
+        <input type="hidden" id="opt-ctrls" data-label="Control group(s)" value="">
+      </div>
       <div class="full-col">
         <div class="opt-lbl">Post-hoc correction</div>
-        ${corrSelect('opt-ph',{def:'tukey',tukey:true})}
+        ${corrSelect('opt-ph',{def:'tukey',tukey:true,dunnett:true})}
       </div>
       ${autoPlotHint}
     </div>`;
@@ -1412,8 +1604,21 @@ function renderAnalysisOpts(t){
     el.innerHTML=`<div class="opts-grid">
       <div><div class="opt-lbl">Factor A levels (nA)</div><input type="number" id="opt-nA" value="2" min="2" max="20"></div>
       <div><div class="opt-lbl">Factor B levels (nB)</div><input type="number" id="opt-nB" value="2" min="2" max="20"></div>
+      <div class="full-col"><div class="opt-lbl">Post-hoc comparisons</div><select id="opt-2ph" data-hint="a2ph"><option value="simpleB">B levels within each A level (simple effects)</option><option value="simpleA">A levels within each B level (simple effects)</option><option value="cells">All cell means</option><option value="A">Factor A main effect</option><option value="B">Factor B main effect</option><option value="none">None</option></select></div>
+      <div class="full-col"><div class="opt-lbl">Post-hoc correction</div>${corrSelect('opt-2corr',{tukey:true})}</div>
       ${autoPlotHint}
     </div>`;
+  } else if(t==='pca'){
+    el.innerHTML=`<div class="opts-grid"><div><div class="opt-lbl">Samples</div><select id="opt-pcmode" data-hint="pcmode"><option value="mean">Group means</option><option value="reps">Every replicate column</option></select></div><div style="align-self:end"><label class="check-row"><input type="checkbox" id="opt-pcnorm"> Z-score each feature</label></div>${autoPlotHint}</div>`;
+  } else if(t==='km'){
+    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Pairwise log-rank correction (3+ groups)</div>${corrSelect('opt-kmcorr')}</div>${autoPlotHint}</div>`;
+  } else if(t==='ks'){
+    const go=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
+    const go1=G.groups.map((g,i)=>`<option value="${i}" ${i===1?'selected':''}>${g.name}</option>`).join('');
+    el.innerHTML=`<div class="opts-grid">
+      <div class="full-col"><div class="opt-lbl">Mode</div><select id="opt-ks-mode" data-hint="ksmode" onchange="document.getElementById('ks-pair').style.display=this.value==='two'?'flex':'none'"><option value="two">Two-sample (compare distributions)</option><option value="normal">One-sample vs normal (Lilliefors)</option></select></div>
+      <div id="ks-pair" style="display:flex;gap:7px;grid-column:1/-1"><div style="flex:1"><div class="opt-lbl">Group A</div><select id="opt-ks-g1">${go}</select></div><div style="flex:1"><div class="opt-lbl">Group B</div><select id="opt-ks-g2">${go1}</select></div></div>
+      ${autoPlotHint}</div>`;
   } else if(t==='regress'){
     const colOpts=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
     el.innerHTML=`<div class="opts-grid">
@@ -1430,7 +1635,7 @@ function renderAnalysisOpts(t){
     const modeOpts=(nG>2&&t!=='rankprod')?`<div class="full-col"><div class="opt-lbl">Mode</div><select id="opt-np-mode" data-hint="npmode" onchange="npModeChange()"><option value="pair">Single pair</option><option value="allpairs">All pairs</option><option value="vsctrl">vs Control</option></select></div><div class="full-col" id="np-corr-wrap" style="display:none"><div class="opt-lbl">Multiple-comparison correction</div>${corrSelect('opt-npcorr')}</div>`:'';
     const ctrlWrap=(nG>2&&t!=='rankprod')?`<div id="np-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-np-ctrl">${ctrlOpts}</select></div>`:'';
     const pairOpts=`<div id="np-pair-wrap" style="display:flex;gap:7px;grid-column:1/-1"><div style="flex:1"><div class="opt-lbl">Group A</div><select id="opt-np-g1">${grpOpts2}</select></div><div style="flex:1"><div class="opt-lbl">Group B</div><select id="opt-np-g2">${grpOpts2b}</select></div></div>`;
-    const compOpts=(t==='wilcoxon'||t==='ranksum')?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
+    const compOpts=t==='rankprod'?`<div class="full-col"><div class="opt-lbl">Effect per replicate pair</div><select id="opt-rp-comp" data-hint="rpcomp"><option value="delta">Difference B − A (data already on a log scale)</option><option value="ratio">log2 ratio B / A (linear-scale data, e.g. normalised counts)</option></select></div>`:(t==='wilcoxon'||t==='ranksum')?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
     el.innerHTML=`<div class="opts-grid">${modeOpts}${ctrlWrap}${pairOpts}${compOpts}${autoPlotHint}</div>`;
     if(nG>2)setTimeout(npModeChange,10);
   } else if(t==='mtc'){
@@ -1446,6 +1651,7 @@ function renderAnalysisOpts(t){
   } else {
     el.innerHTML='';
   }
+  if(t==='anova')setTimeout(()=>{const sel=document.getElementById('opt-ph');if(sel)sel.addEventListener('change',e=>{if(e.isTrusted)sel.dataset.auto='0';});anovaCmpChange();},0);
   wireOptHints(document.getElementById('aopts'));
 }
 
@@ -1484,7 +1690,7 @@ function renderPlotOpts(t){
       <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-pts"> Show individual data points</label></div>
     </div>`;
   } else if(t==='heatmap'){
-    el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">Row normalisation</div><select id="popt-hnorm" data-hint="hnorm"><option value="zscore">Z-score (default)</option><option value="minmax">Min-Max</option><option value="none">None (raw values)</option></select></div></div>`;
+    el.innerHTML=`<div class="opts-grid"><div><div class="opt-lbl">Rows</div><select id="popt-hrows" data-hint="hrows"><option value="var">Most variable</option><option value="sig">Significant genes from the linked test</option></select></div><div><div class="opt-lbl">How many</div><select id="popt-htop" data-hint="htop"><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="200">200</option><option value="500">500</option></select></div><div class="full-col"><div class="opt-lbl">Columns</div><select id="popt-hcols" data-hint="hcols"><option value="mean">Group means</option><option value="reps">Every replicate column</option></select></div><div class="full-col"><div class="opt-lbl">Row normalisation</div><select id="popt-hnorm" data-hint="hnorm"><option value="zscore">Z-score (default)</option><option value="minmax">Min-Max</option><option value="none">None (raw values)</option></select></div></div>`;
   } else if(t==='volcano'){
     el.innerHTML=`<div class="opts-grid">
       <div><div class="opt-lbl">|log2FC| cutoff</div><input type="number" id="popt-fc" value="1" step="0.1" min="0"></div>
@@ -1496,12 +1702,20 @@ function renderPlotOpts(t){
     el.innerHTML=`<div class="opts-grid">
       <div><div class="opt-lbl">Points show</div><select id="popt-pcmode" data-hint="pcmode"><option value="mean">Group means</option><option value="reps">All replicates</option></select></div>
       <div><div class="opt-lbl">Color by</div><select id="popt-pccol"><option value="group">Group</option><option value="rep">Replicate</option></select></div>
+      <div><div class="opt-lbl">X axis (PC)</div><select id="popt-pcx">${[1,2,3,4,5,6,7,8,9,10].map(i=>`<option value="${i-1}" ${i===1?'selected':''}>PC${i}</option>`).join('')}</select></div>
+      <div><div class="opt-lbl">Y axis (PC)</div><select id="popt-pcy">${[1,2,3,4,5,6,7,8,9,10].map(i=>`<option value="${i-1}" ${i===2?'selected':''}>PC${i}</option>`).join('')}</select></div>
       <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-pcnorm"> Normalise per feature (Z-score)</label></div>
     </div>`;
   } else if(t==='km'){
     el.innerHTML=`<div class="opts-grid">
       <div><div class="opt-lbl">Time column</div><select id="popt-tg">${grpOpts}</select></div>
-      <div><div class="opt-lbl">Event column (1=event, 0=censored)</div><select id="popt-eg">${grpOpts1}</select></div>
+      <div class="full-col opt-hint">Every other column is one group: 1 = event, 0 = censored, blank = subject not in that group.</div>
+    </div>`;
+  } else if(t==='ecdf'){
+    el.innerHTML=`<div class="opts-grid">
+      <div><div class="opt-lbl">Groups</div><select id="popt-ecg"><option value="all">All groups</option>${grpOpts}</select></div>
+      <div><div class="opt-lbl">Normalization</div><select id="popt-norm" data-hint="norm">${normOpts}</select></div>
+      <div class="full-col"><label class="check-row"><input type="checkbox" id="popt-ecnorm"> Overlay fitted normal CDF (dashed)</label></div>
     </div>`;
   } else if(t==='dose'){
     el.innerHTML=`<div class="opts-grid">
@@ -1558,6 +1772,9 @@ function restoreOptState(state){
         if(el){if(el.type==='checkbox')el.checked=v;else el.value=v;}
       }
     });
+    const ph=document.getElementById('opt-ph');if(ph)ph.dataset.auto='0';
+    ['opt-perrow','opt-cmp','opt-np-mode','opt-corr-mode','opt-ks-mode'].forEach(id=>{const el=document.getElementById(id);if(el)el.dispatchEvent(new Event('change'));});
+    document.querySelectorAll('#aopts select[data-hint],#popts select[data-hint]').forEach(el=>el.dispatchEvent(new Event('change')));
   },50);
 }
 
@@ -1585,7 +1802,8 @@ function runOptionsSummary(){
   const asel=document.getElementById('asel');
   if(asel)parts.push(`<b>${asel.options[asel.selectedIndex]?.text||asel.value}</b>`);
   document.querySelectorAll('#aopts select,#aopts input').forEach(el=>{
-    if(!el.id||el.id==='opt-autoplot'||el.disabled)return;
+    if(!el.id||el.id==='opt-autoplot'||el.disabled||el.classList.contains('ctrl-cb'))return;
+    if(el.type==='hidden'){if(el.dataset.label&&el.value&&!el.closest('[style*="display:none"]'))parts.push(`${el.dataset.label}: ${el.value}`);return;}
     if(el.closest('[style*="display:none"]')||el.closest('[style*="display: none"]'))return;
     let lbl='';
     if(el.type==='checkbox'){lbl=(el.closest('label')?.textContent||el.id).replace(/\s*\(.*\)\s*$/,'').trim();parts.push(`${lbl}: ${el.checked?'yes':'no'}`);return;}
@@ -1684,7 +1902,7 @@ function renderStatStrip(){
     if(!document.getElementById(t.id)){
       const page=document.createElement('div');
       page.id=t.id;page.className='tab-page';
-      page.innerHTML=`<div class="stat-scroll">${t.html}</div>`;
+      page.innerHTML=`<div class="stat-scroll"><div class="stat-tools"><button class="btn-sm" onclick="exportStatTables('${t.id}')" title="All tables shown in this result as one CSV file">⬇ Tables (CSV)</button></div>${t.html}</div>`;
       content.appendChild(page);
     }
     // Hide pages from other datasets
@@ -1724,7 +1942,8 @@ function goLinkedPlot(statId){
   setTimeout(()=>{
     lastStatPairs=st.sigPairs?JSON.parse(JSON.stringify(st.sigPairs)):null;
     lastStatRowPairs=st.rowPairs?JSON.parse(JSON.stringify(st.rowPairs)):null;
-    runPlot();
+    lastStatGeneSet=st.geneSet?JSON.parse(JSON.stringify(st.geneSet)):null;
+    _linkedPlotCtx=true;runPlot();_linkedPlotCtx=false;
     if(lastPlotTabId)linkTabs(st.id,lastPlotTabId);
   },90);
 }
@@ -1869,6 +2088,10 @@ const sigBracketPlugin={id:'sigBrackets',afterDraw(chart){
 }};
 
 function runPlot(){
+  { // significance marks / gene lists belong only to the figure made for that run of the test
+    const lk=_linkedPlotCtx;_linkedPlotCtx=false;
+    if(!lk){lastStatPairs=null;lastStatRowPairs=null;lastStatGeneSet=null;}
+  }
   const ptype=document.getElementById('psel').value;
   const normMethod=document.getElementById('popt-norm')?.value||'none';
   const title=PLOT_TYPES.find(p=>p.v===ptype)?.l||ptype;
@@ -1886,6 +2109,7 @@ function runPlot(){
   else if(ptype==='qq') plotQQ2(title);
   else if(ptype==='histogram') plotHistogram(title);
   else if(ptype==='mtc') plotMTCCustom(title);
+  else if(ptype==='ecdf') plotECDF(title);
 }
 
 function chartTab(title, chartFn){
@@ -2149,7 +2373,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.7.0';
+const APP_VERSION='0.8.2';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -2210,7 +2434,8 @@ function plotBarSD(normMethod, title){
       const ctx=canvas.getContext('2d');
       const bg=bgCol(),axc=axCol(),txc=txCol(),gc=gridColor(),bdc=bdColorStr();
       ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-      const nG=G.groups.length,nR=G.nRows;
+      const nG=G.groups.length,nR=Math.min(G.nRows,MAX_SAMPLE_ROWS);
+      if(G.nRows>MAX_SAMPLE_ROWS){ctx.fillStyle=txCol();ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillText(`Showing the first ${MAX_SAMPLE_ROWS} of ${G.nRows.toLocaleString()} rows`,W-8,12);}
       // Collect per-row per-group means and optionally raw values
       const rowData=Array.from({length:nR},(_,row)=>
         G.groups.map((g,gi)=>{
@@ -2395,7 +2620,8 @@ function plotBoxplot(normMethod, title){
 
     if(groupBy==='sample'){
       // ── By-sample: one box cluster per row, one box per group ──
-      const nR=G.nRows,nG=G.groups.length;
+      const nR=Math.min(G.nRows,MAX_SAMPLE_ROWS),nG=G.groups.length;
+      if(G.nRows>MAX_SAMPLE_ROWS){ctx.fillStyle=txCol();ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillText(`Showing the first ${MAX_SAMPLE_ROWS} of ${G.nRows.toLocaleString()} rows`,W-8,12);}
       const rowData=Array.from({length:nR},(_,row)=>
         G.groups.map((g,gi)=>normalize(g.data[row]?.filter(x=>x!==''&&isFinite(x)).map(Number)||[],normMethod))
       );
@@ -2734,117 +2960,86 @@ function drawDendrogram(ctx,links,nLeaves,leafOrder,leafPos,maxDist,region,axis,
 
 function plotHeatmapCustom(title){
   const normMode=document.getElementById('popt-hnorm')?.value||'zscore';
+  const topN=parseInt(document.getElementById('popt-htop')?.value||50);
+  const rowMode=document.getElementById('popt-hrows')?.value||'var';
+  const colMode=document.getElementById('popt-hcols')?.value||'mean';
+  const gs=lastStatGeneSet?JSON.parse(JSON.stringify(lastStatGeneSet)):null;
+  const useSig=rowMode==='sig'&&gs&&(gs.up.length+gs.down.length)>0;
+  // Columns: group means, or every replicate column (of the test's groups when a gene list is shown)
+  const colGroups=useSig&&gs.groups?.length?gs.groups:G.groups.map((_,i)=>i);
+  const cols=[];
+  if(colMode==='reps')colGroups.forEach(g=>{for(let r=0;r<G.nReps;r++)cols.push({label:`${G.groups[g].name} ${G.groups[g].reps[r]||'R'+(r+1)}`,g,get:row=>{const v=G.groups[g].data[row]?.[r];return v!==''&&isFinite(v)?Number(v):NaN;}});});
+  else colGroups.forEach(g=>cols.push({label:G.groups[g].name,g,get:row=>{const v=rowsOf(g,row);return v.length?mean(v):NaN;}}));
+  // Rows
+  let hIdx,tag={},sigNote='';
+  if(useSig){
+    const half=Math.max(1,Math.floor(topN/2));
+    let up=gs.up.slice(0,half),dn=gs.down.slice(0,half);
+    if(up.length<half)dn=gs.down.slice(0,topN-up.length);else if(dn.length<half)up=gs.up.slice(0,topN-dn.length);
+    hIdx=[...up.map(x=>x.row),...dn.map(x=>x.row)];up.forEach(x=>tag[x.row]='up');dn.forEach(x=>tag[x.row]='down');
+    sigNote=gs.sig===false?`${gs.label}: no gene passes the cutoff; ${up.length} up and ${dn.length} down top-ranked genes shown`:`${gs.label}: ${up.length} of ${gs.up.length} up, ${dn.length} of ${gs.down.length} down (significant)`;
+  } else {
+    const M=Array.from({length:G.nRows},(_,r)=>cols.map(c=>c.get(r)));
+    hIdx=M.map((m,r)=>r).filter(r=>M[r].every(isFinite));
+    if(hIdx.length>topN){const vr=r=>{const m=M[r],mu=mean(m);return m.reduce((s,v)=>s+(v-mu)**2,0);};hIdx=hIdx.map(r=>[r,vr(r)]).sort((x,y)=>y[1]-x[1]).slice(0,topN).map(x=>x[0]).sort((x,y)=>x-y);}
+    if(rowMode==='sig')sigNote='No linked gene list: showing most variable rows';
+  }
   canvasTab(title,(canvas,pa)=>{
-    const nR=G.nRows,nC=G.groups.length;
+    const nR=hIdx.length,nC=cols.length;
     const W=Math.max(420,pa.clientWidth||520),H=Math.max(320,pa.clientHeight||420);
     canvas.width=W;canvas.height=H;
     const ctx=canvas.getContext('2d');
     const bg=bgCol(),axc=axCol(),txc=txCol();
     ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-
-    // Padding: left = row labels + row dendrogram; top = col dendrogram; bottom = col labels + legend
-    const rowDendW=50, colDendH=50;
-    const rowLabelW=70;
-    const pad={l:rowLabelW+rowDendW+8,r:20,t:colDendH+8,b:90};
+    if(!nR){ctx.fillStyle=txc;ctx.font='12px system-ui';ctx.fillText('No complete rows to draw',20,30);return;}
+    const rows=hIdx.map(r=>cols.map(c=>c.get(r)));
+    const clusterRows=!useSig&&nR>=3,clusterCols=colMode==='mean'&&!useSig&&nC>=3;
+    ctx.font='10px system-ui';
+    const labW=Math.min(150,Math.max(40,...hIdx.map(r=>ctx.measureText(G.rowNames[r]||`Row ${r+1}`).width)))+(useSig?10:0)+8;
+    const rowDendW=clusterRows?50:0,colDendH=clusterCols?50:(colMode==='reps'?14:0);
+    ctx.font=(nC>16?'9px':'11px')+' system-ui';const colLabW=Math.max(...cols.map(c=>ctx.measureText(c.label).width));
+    const labH=colLabW*Math.sin(0.6)+16;
+    const pad={l:labW+rowDendW+8,r:20,t:colDendH+(sigNote?22:8),b:Math.round(labH+44)};
     const cw=(W-pad.l-pad.r)/nC,ch=(H-pad.t-pad.b)/nR;
-
-    // Build row-wise data matrix (rows × groups, using group mean per row)
-    const rows=Array.from({length:nR},(_,r)=>G.groups.map((g)=>{
-      const v=g.data[r]?.filter(x=>x!==''&&isFinite(x)).map(Number);return v?.length?mean(v):0;
-    }));
-    // Normalise
-    let normRows;
-    if(normMode==='zscore'){
-      normRows=rows.map(r=>{const m=mean(r),s=stddev(r,0);return r.map(v=>s>0?(v-m)/s:0);});
-    } else if(normMode==='minmax'){
-      normRows=rows.map(r=>{const mn=Math.min(...r),mx=Math.max(...r),range=mx-mn||1;return r.map(v=>(v-mn)/range);});
-    } else { normRows=rows; }
-
-    const allV=normRows.flat();
+    // normalise each row (missing values ignored)
+    const normRows=rows.map(r=>{const f=r.filter(isFinite);
+      if(normMode==='zscore'){const m=mean(f),s=f.length>1?stddev(f,0):0;return r.map(v=>isFinite(v)?(s>0?(v-m)/s:0):NaN);}
+      if(normMode==='minmax'){const mn=Math.min(...f),mx=Math.max(...f),rg=mx-mn||1;return r.map(v=>isFinite(v)?(v-mn)/rg:NaN);}
+      return r;});
+    const allV=normRows.flat().filter(isFinite);
     const minV=Math.min(...allV),maxV=Math.max(...allV);
-    function cellColor(v){
-      const t=(v-minV)/(maxV-minV||1);
+    const cellColor=v=>{if(!isFinite(v))return bg;const t=(v-minV)/(maxV-minV||1);
       if(t<0.5){const s=t*2;return`rgb(${Math.round(s*215)},${Math.round(s*215)},215)`;}
-      else{const s=(t-0.5)*2;return`rgb(215,${Math.round((1-s)*215)},${Math.round((1-s)*215)})`;}
+      const s=(t-0.5)*2;return`rgb(215,${Math.round((1-s)*215)},${Math.round((1-s)*215)})`;};
+    const dist=(a,b)=>{let s=0;for(let k=0;k<a.length;k++){const d=(isFinite(a[k])?a[k]:0)-(isFinite(b[k])?b[k]:0);s+=d*d;}return Math.sqrt(s);};
+    let rowOrder=Array.from({length:nR},(_,i)=>i),rowLinks=[],rowMaxD=1;
+    if(clusterRows){try{const cl=upgmaClustering((i,j)=>dist(normRows[i],normRows[j]),nR);rowOrder=cl.leafOrder.filter(i=>i<nR);rowLinks=cl.links;rowMaxD=cl.maxDist||1;}catch(e){}}
+    let colOrder=Array.from({length:nC},(_,i)=>i),colLinks=[],colMaxD=1;
+    if(clusterCols){try{const cv=Array.from({length:nC},(_,c)=>normRows.map(r=>r[c]));const cl=upgmaClustering((i,j)=>dist(cv[i],cv[j]),nC);colOrder=cl.leafOrder.filter(i=>i<nC);colLinks=cl.links;colMaxD=cl.maxDist||1;}catch(e){}}
+    rowOrder.forEach((o,ri)=>colOrder.forEach((c,ci)=>{ctx.fillStyle=cellColor(normRows[o][c]);ctx.fillRect(pad.l+ci*cw,pad.t+ri*ch,Math.max(1,cw-1),Math.max(1,ch-(ch>4?1:0)));}));
+    if(rowLinks.length){const lp=rowOrder.map((_,pos)=>pad.t+pos*ch+ch/2);drawDendrogram(ctx,rowLinks,nR,rowOrder,lp,rowMaxD,{x0:pad.l-rowDendW,y0:pad.t,w:rowDendW,h:H-pad.t-pad.b},'y',axc);}
+    if(colLinks.length){const lp=colOrder.map((_,pos)=>pad.l+pos*cw+cw/2);drawDendrogram(ctx,colLinks,nC,colOrder,lp,colMaxD,{x0:pad.l,y0:pad.t-colDendH-6,w:W-pad.l-pad.r,h:colDendH},'x',axc);}
+    // group colour strip above replicate columns
+    if(colMode==='reps')colOrder.forEach((c,ci)=>{ctx.fillStyle=['#9ca3af','#4b5563','#d1d5db','#1f2937','#6b7280','#e5e7eb'][cols[c].g%6];ctx.fillRect(pad.l+ci*cw,pad.t-10,Math.max(1,cw-1),7);});
+    // up/down annotation bar + divider between the two blocks
+    if(useSig){
+      rowOrder.forEach((o,ri)=>{const t=tag[hIdx[o]];ctx.fillStyle=t==='up'?'#dc2626':'#2563eb';ctx.fillRect(pad.l-8,pad.t+ri*ch,5,Math.max(1,ch-(ch>4?1:0)));});
+      const nUp=hIdx.filter(r=>tag[r]==='up').length;
+      if(nUp&&nUp<nR){ctx.strokeStyle=txc;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(pad.l-8,pad.t+nUp*ch);ctx.lineTo(W-pad.r,pad.t+nUp*ch);ctx.stroke();}
     }
-
-    // ── Row clustering (UPGMA on rows, distance = Euclidean on normalised row vectors)
-    let rowOrder=Array.from({length:nR},(_,i)=>i);
-    let rowLinks=[],rowMaxD=1;
-    if(nR>=3){
-      try{
-        const cl=upgmaClustering((i,j)=>{
-          const a=normRows[i],b=normRows[j];
-          return Math.sqrt(a.reduce((s,v,k)=>s+(v-b[k])**2,0));
-        },nR);
-        rowOrder=cl.leafOrder.filter(i=>i<nR);
-        rowLinks=cl.links;rowMaxD=cl.maxDist||1;
-      }catch(e){console.warn('Row clustering',e);}
-    }
-
-    // ── Col clustering (UPGMA on cols, distance = Euclidean on normalised col vectors)
-    let colOrder=Array.from({length:nC},(_,i)=>i);
-    let colLinks=[],colMaxD=1;
-    if(nC>=3){
-      try{
-        // col vector = normRows[:][col]
-        const colVecs=Array.from({length:nC},(_,c)=>normRows.map(r=>r[c]));
-        const cl=upgmaClustering((i,j)=>{
-          const a=colVecs[i],b=colVecs[j];
-          return Math.sqrt(a.reduce((s,v,k)=>s+(v-b[k])**2,0));
-        },nC);
-        colOrder=cl.leafOrder.filter(i=>i<nC);
-        colLinks=cl.links;colMaxD=cl.maxDist||1;
-      }catch(e){console.warn('Col clustering',e);}
-    }
-
-    // ── Draw heatmap cells (reordered)
-    rowOrder.forEach((origRow,ri)=>{
-      colOrder.forEach((origCol,ci)=>{
-        ctx.fillStyle=cellColor(normRows[origRow][origCol]);
-        ctx.fillRect(pad.l+ci*cw,pad.t+ri*ch,cw-1,ch-1);
-      });
-    });
-
-    // ── Row dendrogram (right of labels, touching heatmap left edge)
-    if(rowLinks.length){
-      const leafPos=rowOrder.map((_,pos)=>pad.t+pos*ch+ch/2);
-      drawDendrogram(ctx,rowLinks,nR,rowOrder,leafPos,rowMaxD,
-        {x0:pad.l-rowDendW,y0:pad.t,w:rowDendW,h:H-pad.t-pad.b},
-        'y',axc);
-    }
-
-    // ── Col dendrogram (top, bracket style growing upward)
-    if(colLinks.length){
-      const leafPos=colOrder.map((_,pos)=>pad.l+pos*cw+cw/2);
-      drawDendrogram(ctx,colLinks,nC,colOrder,leafPos,colMaxD,
-        {x0:pad.l,y0:pad.t-colDendH-6,w:W-pad.l-pad.r,h:colDendH},
-        'x',axc);
-    }
-
-    // ── Row labels
-    rowOrder.forEach((origRow,ri)=>{
-      ctx.fillStyle=axc;ctx.font='10px system-ui';ctx.textAlign='right';
-      ctx.fillText(G.rowNames[origRow]||`Row ${origRow+1}`,pad.l-rowDendW-10,pad.t+ri*ch+ch/2+4);
-    });
-
-    // ── Col labels (rotated)
-    colOrder.forEach((origCol,ci)=>{
-      ctx.save();ctx.translate(pad.l+ci*cw+cw/2,H-pad.b+8);ctx.rotate(-0.6);
-      ctx.fillStyle=txc;ctx.font='11px system-ui';ctx.textAlign='right';
-      ctx.fillText(G.groups[origCol].name,0,0);ctx.restore();
-    });
-
-    // ── Colour legend
-    const lx=pad.l,ly=H-pad.b+55,lw=Math.min(140,W-pad.l-pad.r),lh=12;
+    if(ch>=6)rowOrder.forEach((o,ri)=>{const r=hIdx[o];ctx.fillStyle=useSig?(tag[r]==='up'?'#dc2626':'#2563eb'):axc;ctx.font=`${Math.min(10,Math.max(7,ch-2))}px system-ui`;ctx.textAlign='right';
+      ctx.fillText(G.rowNames[r]||`Row ${r+1}`,pad.l-rowDendW-(useSig?12:10),pad.t+ri*ch+ch/2+3.5);});
+    else{ctx.fillStyle=txc;ctx.font='10px system-ui';ctx.textAlign='right';ctx.fillText(`${nR} rows`,pad.l-12,pad.t+12);}
+    colOrder.forEach((c,ci)=>{ctx.save();ctx.translate(pad.l+ci*cw+cw/2,H-pad.b+8);ctx.rotate(-0.6);ctx.fillStyle=txc;ctx.font=(nC>16?'9px':'11px')+' system-ui';ctx.textAlign='right';ctx.fillText(cols[c].label,0,0);ctx.restore();});
+    if(sigNote){ctx.fillStyle=txc;ctx.font='11px system-ui';ctx.textAlign='left';ctx.fillText(sigNote,pad.l,14);}
+    const lx=pad.l,ly=H-30,lw=Math.min(140,W-pad.l-pad.r),lh=12;
     const grad=ctx.createLinearGradient(lx,0,lx+lw,0);
     grad.addColorStop(0,'rgb(0,0,215)');grad.addColorStop(0.5,'rgb(215,215,215)');grad.addColorStop(1,'rgb(215,0,0)');
-    ctx.fillStyle=grad;ctx.fillRect(lx,ly,lw,lh);
-    ctx.strokeStyle=axc;ctx.lineWidth=0.5;ctx.strokeRect(lx,ly,lw,lh);
-    ctx.fillStyle=axc;ctx.font='9px system-ui';
-    ctx.textAlign='center';ctx.fillText(normMode==='none'?'Value':normMode==='zscore'?'Z-score':'Scaled',lx+lw/2,ly-3);
-    ctx.textAlign='left'; ctx.fillText(normMode==='none'?minV.toFixed(1):'low',lx,ly+lh+11);
+    ctx.fillStyle=grad;ctx.fillRect(lx,ly,lw,lh);ctx.strokeStyle=axc;ctx.lineWidth=0.5;ctx.strokeRect(lx,ly,lw,lh);
+    ctx.fillStyle=axc;ctx.font='9px system-ui';ctx.textAlign='center';ctx.fillText(normMode==='none'?'Value':normMode==='zscore'?'Row Z-score':'Row-scaled',lx+lw/2,ly-3);
+    ctx.textAlign='left';ctx.fillText(normMode==='none'?minV.toFixed(1):'low',lx,ly+lh+11);
     ctx.textAlign='right';ctx.fillText(normMode==='none'?maxV.toFixed(1):'high',lx+lw,ly+lh+11);
+    if(useSig){ctx.textAlign='left';ctx.fillStyle='#dc2626';ctx.fillRect(lx+lw+20,ly+1,8,10);ctx.fillStyle=axc;ctx.fillText('Up',lx+lw+32,ly+10);ctx.fillStyle='#2563eb';ctx.fillRect(lx+lw+58,ly+1,8,10);ctx.fillStyle=axc;ctx.fillText('Down',lx+lw+70,ly+10);}
   });
 }
 
@@ -2877,35 +3072,17 @@ function plotPCACustom(title){
   const doNorm=document.getElementById('popt-pcnorm')?.checked||false;
   const pcMode=document.getElementById('popt-pcmode')?.value||'mean';
   const colBy=document.getElementById('popt-pccol')?.value||'group';
+  const pcx0=parseInt(document.getElementById('popt-pcx')?.value||0),pcy0=parseInt(document.getElementById('popt-pcy')?.value||1);
   addPlotTab(title, page=>{
-    // Build PCA matrix: rows = samples, cols = features
-    let X=[],pointLabels=[],pointGroupIdx=[];
-    if(pcMode==='reps'){
-      const nReps=G.nReps||1;
-      G.groups.forEach((g,gi)=>{
-        for(let ri=0;ri<nReps;ri++){
-          const row=Array.from({length:G.nRows},(_,f)=>{const v=G.groups[gi].data[f];return (v&&Array.isArray(v)&&isFinite(v[ri]))?Number(v[ri]):0;});
-          X.push(row);pointLabels.push(`${g.name} R${ri+1}`);pointGroupIdx.push(gi);
-        }
-      });
-    } else {
-      // Group means: X[g][f] = mean of group g at feature f
-      G.groups.forEach((g,gi)=>{
-        const row=G.groups[0].data.map((_,f)=>{const v=G.groups[gi].data[f]?.filter(x=>x!==''&&isFinite(x)).map(Number);return v?.length?mean(v):0;});
-        X.push(row);pointLabels.push(g.name);pointGroupIdx.push(gi);
-      });
-    }
-    if(doNorm){
-      const nFeat=X[0]?.length||0;
-      for(let f=0;f<nFeat;f++){const col=X.map(r=>r[f]);const m=mean(col),s=stddev(col)||1;X.forEach(r=>r[f]=(r[f]-m)/s);}
-    }
+    const {X,labels:pointLabels,grp:pointGroupIdx}=buildPCAMatrix(pcMode,doNorm);
+    if(X.length<3||!X[0]?.length){page.innerHTML='<div class="ph">PCA needs at least 3 samples and 2 complete rows</div>';return;}
     const res=pcaCompute(X);
     // Attach extra info for replicate coloring
     res._pointLabels=pointLabels;res._pointGroupIdx=pointGroupIdx;res._colBy=colBy;res._pcMode=pcMode;
     page._pcaData=res;
     const nPC=res.nPCs;
-    const pcOpts=Array.from({length:nPC},(_,i)=>`<option value="${i}" ${i===0?'selected':''}>PC${i+1} (${res.varExplained[i].toFixed(1)}%)</option>`).join('');
-    const pcOpts2=Array.from({length:nPC},(_,i)=>`<option value="${i}" ${i===1?'selected':''}>PC${i+1} (${res.varExplained[i].toFixed(1)}%)</option>`).join('');
+    const pcOpts=Array.from({length:nPC},(_,i)=>`<option value="${i}" ${i===(pcx0<nPC?pcx0:0)?'selected':''}>PC${i+1} (${res.varExplained[i].toFixed(1)}%)</option>`).join('');
+    const pcOpts2=Array.from({length:nPC},(_,i)=>`<option value="${i}" ${i===(pcy0<nPC?pcy0:Math.min(1,nPC-1))?'selected':''}>PC${i+1} (${res.varExplained[i].toFixed(1)}%)</option>`).join('');
     let cumVar90Marked=false;
     const varRows=Array.from({length:nPC},(_,i)=>{
       const cumV=res.varExplained.slice(0,i+1).reduce((s,v)=>s+v,0);
@@ -2988,22 +3165,45 @@ function pcaReplot(pid){
 function plotKMCustom(title){
   chartTab(title, canvas=>{
     const ti=parseInt(document.getElementById('popt-tg')?.value||0);
-    const ei=parseInt(document.getElementById('popt-eg')?.value||Math.min(1,G.groups.length-1));
-    const times=getGroupPooled(ti),events=getGroupPooled(ei);
-    const km=kaplanMeier(times,events);
-    const pts=km.map(p=>({x:p.t,y:p.s}));
-    const cens=km.filter(p=>p.c>0).map(p=>({x:p.t,y:p.s}));
+    const kmd=kmGroups(ti);
     const cfg={...chartCfgDefaults()};
     const ac=axCol();
     cfg.scales.x={...cfg.scales.x,type:'linear',min:0,title:{display:true,text:G.groups[ti]?.name||'Time',color:ac}};
     cfg.scales.y.title={display:true,text:'Survival probability',color:ac};
     cfg.scales.y.min=0;cfg.scales.y.max=1;
-    return new Chart(canvas,{type:'scatter',
-      data:{datasets:[
-        {type:'line',label:'Survival',data:pts,borderColor:COLORS[0],backgroundColor:COLORS[0]+'22',stepped:'after',fill:true,pointRadius:0,borderWidth:2},
-        {label:'Censored',data:cens,pointStyle:'line',rotation:90,pointRadius:6,borderColor:COLORS[0],backgroundColor:COLORS[0],borderWidth:2}
-      ]},
-      options:cfg});
+    if(kmd.error)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:cfg});
+    const multi=kmd.groups.length>1;
+    cfg.plugins={...cfg.plugins,legend:{display:true,labels:{color:txCol(),filter:it=>!/censored/.test(it.text)}}};
+    const datasets=[];
+    kmd.groups.forEach((g,gi)=>{
+      const km=kaplanMeier(g.t,g.e);const col=COLORS[gi%COLORS.length];
+      datasets.push({type:'line',label:g.name,data:km.map(p=>({x:p.t,y:p.s})),borderColor:col,backgroundColor:col+'22',stepped:'after',fill:!multi,pointRadius:0,borderWidth:2});
+      datasets.push({label:g.name+' censored',data:km.filter(p=>p.c>0).map(p=>({x:p.t,y:p.s})),pointStyle:'line',rotation:90,pointRadius:6,borderColor:col,backgroundColor:col,borderWidth:2});
+    });
+    return new Chart(canvas,{type:'scatter',data:{datasets},options:cfg});
+  });
+}
+// Empirical cumulative distribution, one step curve per group (pairs with the Kolmogorov–Smirnov test)
+function plotECDF(title){
+  const sel=document.getElementById('popt-ecg')?.value||'all';
+  const normMethod=document.getElementById('popt-norm')?.value||'none';
+  const overlay=document.getElementById('popt-ecnorm')?.checked||false;
+  chartTab(title, canvas=>{
+    const idx=sel==='all'?G.groups.map((_,i)=>i):[parseInt(sel)];
+    const cfg={...chartCfgDefaults()};const ac=axCol();
+    cfg.scales.x={...cfg.scales.x,type:'linear',title:{display:true,text:'Value',color:ac}};
+    cfg.scales.y.min=0;cfg.scales.y.max=1;cfg.scales.y.title={display:true,text:'Cumulative fraction',color:ac};
+    cfg.plugins={...cfg.plugins,legend:{display:true,labels:{color:txCol()}}};
+    const datasets=[];
+    idx.forEach((g,k)=>{
+      const v=normalize(getGroupPooled(g),normMethod).filter(isFinite).sort((a,b)=>a-b);if(!v.length)return;
+      const col=COLORS[g%COLORS.length];
+      const pts=[{x:v[0],y:0},...v.map((x,i)=>({x,y:(i+1)/v.length}))];
+      datasets.push({type:'line',label:G.groups[g].name,data:pts,borderColor:col,backgroundColor:col,stepped:'after',pointRadius:0,borderWidth:2,fill:false});
+      if(overlay){const m=mean(v),sd=stddev(v);if(sd>0){const lo=v[0],hi=v[v.length-1];const c=Array.from({length:80},(_,i)=>{const x=lo+(hi-lo)*i/79;return{x,y:jStat.normal.cdf((x-m)/sd,0,1)};});
+        datasets.push({type:'line',label:G.groups[g].name+' (normal fit)',data:c,borderColor:col,borderDash:[5,4],pointRadius:0,borderWidth:1.5,fill:false});}}
+    });
+    return new Chart(canvas,{type:'scatter',data:{datasets},options:cfg});
   });
 }
 
@@ -3108,7 +3308,7 @@ function plotMTCCustom(title){
 function runAnalysis(){
   const atype=document.getElementById('asel').value;
   const normMethod=document.getElementById('opt-norm')?.value||'none';
-  lastStatPairs=null;lastStatRowPairs=null;_autoPlotGroupBy=null; // reset significance pairs
+  lastStatPairs=null;lastStatRowPairs=null;lastStatGeneSet=null;_autoPlotGroupBy=null; // reset significance pairs
 
   function getG(i){ return normalize(getGroupPooled(i),normMethod) }
   function grpNames(){ return G.groups.map(g=>g.name) }
@@ -3122,7 +3322,7 @@ function runAnalysis(){
         html+=`<tr><td>${g.name}</td><td>${d.n}</td><td>${fmtF(d.mean)}</td><td>${fmtF(d.sd)}</td><td>${fmtF(d.sem)}</td><td>${fmtF(d.median)}</td><td>${fmtF(d.min)}</td><td>${fmtF(d.max)}</td><td>[${fmtF(d.ci95lo,2)}, ${fmtF(d.ci95hi,2)}]</td></tr>`;
       });
       html+='</tbody></table></div>';
-      addStatTab('Descriptive', html);
+      addStatTab('Descriptive statistics', html);
 
     } else if(atype==='ttest_ind'||atype==='ttest_rel'){
       const ctrl=parseInt(document.getElementById('opt-ctrl')?.value||0);
@@ -3157,16 +3357,23 @@ function runAnalysis(){
 
         const cols=rowResults[0].labels;
         let html=`<div class="scard"><h3>Per-Row ${atype==='ttest_ind'?'Unpaired':'Paired'} t-test (correction: ${CORR_SHORT[corr]||corr}, ${allP.filter(isFinite).length} tests)</h3>
+          ${rowResults.length>SHOW_ROWS?`<div class="opt-hint" style="font-style:normal;margin-bottom:6px">Showing the ${SHOW_ROWS} rows with the smallest adjusted p of ${rowResults.length.toLocaleString()}. ${csvButton('per_row_ttest.csv',['Row',...cols.flatMap(c=>[c+' p-raw',c+' p-adj'])],rowResults.map(r=>[r.name,...r.pvals.flatMap((pv,i)=>[pv,r.adjPvals[i]])]))}</div>`:''}
           <table class="rtbl"><thead><tr><th>Row</th>${cols.map(c=>`<th>${c} p-raw</th><th>${c} p-adj</th>`).join('')}</tr></thead><tbody>`;
-        rowResults.forEach(r=>{
-          html+=`<tr><td>${r.name}</td>${r.labels.map((_,i)=>`<td>${pRow(r.pvals[i])}</td><td>${pRow(r.adjPvals[i])}</td>`).join('')}</tr>`;
-        });
+        const shown=rowResults.length>SHOW_ROWS?[...rowResults].sort((a,b)=>Math.min(...a.adjPvals.map(v=>isFinite(v)?v:2))-Math.min(...b.adjPvals.map(v=>isFinite(v)?v:2))).slice(0,SHOW_ROWS):rowResults;
+        html+=shown.map(r=>`<tr><td>${r.name}</td>${r.labels.map((_,i)=>`<td>${pRow(r.pvals[i])}</td><td>${pRow(r.adjPvals[i])}</td>`).join('')}</tr>`).join('');
         html+='</tbody></table></div>';
-        addStatTab(`Per-Row ${atype==='ttest_ind'?'t-ind':'t-rel'}`,html);
+        addStatTab(`Per-row ${atype==='ttest_ind'?'unpaired':'paired'} t-tests`,html);
         const others=G.groups.map((_,i)=>i).filter(i=>i!==ctrl);
         lastStatRowPairs=[];
         rowResults.forEach(r=>r.adjPvals.forEach((pa,k)=>{const st=sigStars(pa);if(st!=='ns'&&isFinite(pa))lastStatRowPairs.push({row:r.row,i:ctrl,j:others[k],stars:st});}));
-        _autoPlotGroupBy='sample';
+        {const up=[],down=[];rowResults.forEach(r=>{let best=-1;r.adjPvals.forEach((pa,k)=>{if(isFinite(pa)&&pa<0.05&&(best<0||pa<r.adjPvals[best]))best=k;});if(best<0)return;
+          const g=others[best];const d=mean(normalize(rowsOf(g,r.row),normMethod))-mean(normalize(rowsOf(ctrl,r.row),normMethod));(d>=0?up:down).push({row:r.row,p:r.adjPvals[best]});});
+          up.sort((a,b)=>a.p-b.p);down.sort((a,b)=>a.p-b.p);
+          let sig=true;
+          if(!up.length&&!down.length){sig=false;rowResults.forEach(r=>{let best=-1;r.adjPvals.forEach((pa,k)=>{if(isFinite(pa)&&(best<0||pa<r.adjPvals[best]))best=k;});if(best<0)return;const g=others[best];const d=mean(rowsOf(g,r.row))-mean(rowsOf(ctrl,r.row));(d>=0?up:down).push({row:r.row,p:r.adjPvals[best]});});
+            up.sort((a,b)=>a.p-b.p);down.sort((a,b)=>a.p-b.p);up.splice(25);down.splice(25);}
+          lastStatGeneSet={label:'Per-row t-test',sig,groups:G.groups.map((_,i)=>i),up,down};}
+        _autoPlotGroupBy=G.nRows>MAX_SAMPLE_ROWS?'geneset':'sample';
       } else {
       // Standard: ctrl vs each other group
       const other=G.groups.map((_,i)=>i).filter(i=>i!==ctrl);
@@ -3193,7 +3400,7 @@ function runAnalysis(){
           </tbody></table></div>`;
       });
       lastStatPairs=tSigPairs;
-      addStatTab(atype==='ttest_ind'?'t-ind':'t-rel',html||'<div class="ebox">No groups to compare</div>');
+      addStatTab(atype==='ttest_ind'?'Unpaired t-test (Welch)':'Paired t-test',html||'<div class="ebox">No groups to compare</div>');
       }
 
     } else if(atype==='mw'){
@@ -3216,7 +3423,7 @@ function runAnalysis(){
           <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
           ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
-        addStatTab(npMode==='vsctrl'?'MW vs Control':'MW All-Pairs',html);
+        addStatTab(npMode==='vsctrl'?'Mann–Whitney U (vs control)':'Mann–Whitney U (all pairs)',html);
       } else {
         const a=getG(g1i),b=getG(g2i);
         const res=mannWhitneyU(a,b);
@@ -3230,7 +3437,7 @@ function runAnalysis(){
           <tr><td>n1 (${names[g1i]})</td><td>${res.n1}</td></tr>
           <tr><td>n2 (${names[g2i]})</td><td>${res.n2}</td></tr>
           </tbody></table></div>`;
-        addStatTab('Mann-Whitney',html);
+        addStatTab('Mann–Whitney U',html);
       }
 
     } else if(atype==='wilcoxon'){
@@ -3254,7 +3461,7 @@ function runAnalysis(){
           <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>W</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
           ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.W,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
-        addStatTab(npMode==='vsctrl'?'Wilcoxon vs Control':'Wilcoxon All-Pairs',html);
+        addStatTab(npMode==='vsctrl'?'Wilcoxon signed-rank (vs control)':'Wilcoxon signed-rank (all pairs)',html);
       } else {
         let a=getG(g1i),b=getG(g2i);
         if(npComp==='ratio'){const mn=Math.min(a.length,b.length);a=a.slice(0,mn).map((v,k)=>b[k]!==0?v/b[k]:NaN).filter(isFinite);b=Array(a.length).fill(1);}
@@ -3268,7 +3475,7 @@ function runAnalysis(){
           <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
           <tr><td>n (non-zero diffs)</td><td>${res.n}</td></tr>
           </tbody></table></div>`;
-        addStatTab('Wilcoxon',html);
+        addStatTab('Wilcoxon signed-rank',html);
       }
 
     } else if(atype==='ranksum'){
@@ -3290,7 +3497,7 @@ function runAnalysis(){
           <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
           ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
-        addStatTab(npMode==='vsctrl'?'Rank Sum vs Control':'Rank Sum All',html);
+        addStatTab(npMode==='vsctrl'?'Paired rank sum (vs control)':'Paired rank sum (all pairs)',html);
       } else {
         const res=rankSumTest(getG(g1i),getG(g2i),npComp);
         if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
@@ -3301,38 +3508,45 @@ function runAnalysis(){
           <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
           <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
           </tbody></table></div>`;
-        addStatTab('Rank Sum',html);
+        addStatTab('Paired rank sum',html);
       }
 
     } else if(atype==='rankprod'){
       const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
       const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
-      const npComp=document.getElementById('opt-np-comp')?.value||'ratio';
+      const rpMode=document.getElementById('opt-rp-comp')?.value||'delta';
+      const qCut=0.05;
       const names=grpNames();
-      // Build per-row replicate arrays
-      const aRows=G.groups[g1i].data.map(repArr=>repArr.filter(x=>x!==''&&isFinite(x)).map(Number));
-      const bRows=G.groups[g2i].data.map(repArr=>repArr.filter(x=>x!==''&&isFinite(x)).map(Number));
-      const results=rankProductTest(aRows,bRows,npComp);
-      // BH FDR on p values
-      const sorted=[...results.map((r,i)=>({...r,row:i}))].sort((a,b)=>a.p-b.p);
-      {const adj=adjustP(sorted.map(r=>r.p),'fdr');sorted.forEach((r,k)=>{r.p_adj=adj[k];});}
-      sorted.sort((a,b)=>a.rp-b.rp); // sort by rank product
-      const topN=Math.min(sorted.length,30);
-      const html=`<div class="scard"><h3>Rank Product (${npComp})</h3>
-        <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong> — showing top ${topN} rows by rank product</div>
-        <table class="rtbl"><thead><tr><th>Row</th><th>Mean FC</th><th>RP</th><th>Direction</th><th>p</th><th>p adj (FDR)</th></tr></thead><tbody>
-        ${sorted.slice(0,topN).map(r=>`<tr><td>${G.rowNames[r.row]||'Row '+(r.row+1)}</td><td>${fmtF(r.meanFC)}</td><td>${fmtF(r.rp,4)}</td><td>${r.direction}</td><td>${pRow(r.p)}</td><td>${pRow(r.p_adj)}</td></tr>`).join('')}
-        </tbody></table></div>`;
-      addStatTab('Rank Product',html);
+      const toNum=g=>G.groups[g].data.map(r=>(r||[]).map(v=>v!==''&&isFinite(v)?Number(v):NaN));
+      const res=rankProductTest(toNum(g1i),toNum(g2i),rpMode);
+      const ok=res.filter(r=>r.n>0);
+      const up=ok.filter(r=>r.qUp<qCut).sort((x,y)=>x.pUp-y.pUp),dn=ok.filter(r=>r.qDown<qCut).sort((x,y)=>x.pDown-y.pDown);
+      const eLab=rpMode==='ratio'?'log2 FC':'Mean diff';
+      const rowName=r=>G.rowNames[r.row]||'Row '+(r.row+1);
+      const topTbl=(list,dir)=>{const sorted=list.length?list:[...ok].sort((x,y)=>dir==='up'?x.pUp-y.pUp:x.pDown-y.pDown).slice(0,10);
+        return `${list.length?'':'<div class="opt-hint">None pass the cutoff; the 10 best-ranked are shown.</div>'}<table class="rtbl"><thead><tr><th>Row</th><th>${eLab} (${names[g2i]} vs ${names[g1i]})</th><th>RP</th><th>p</th><th>q (FDR)</th></tr></thead><tbody>
+        ${sorted.slice(0,30).map(r=>`<tr><td>${rowName(r)}</td><td>${fmtF(r.effect)}</td><td>${fmtF(dir==='up'?r.rpUp:r.rpDown,4)}</td><td>${pRow(dir==='up'?r.pUp:r.pDown)}</td><td>${pRow(dir==='up'?r.qUp:r.qDown)}</td></tr>`).join('')}</tbody></table>`;};
+      const csv=csvButton(`rank_product_${names[g2i]}_vs_${names[g1i]}.csv`.replace(/\s+/g,'_'),['Row',`${eLab} (${names[g2i]} vs ${names[g1i]})`,'Replicate pairs','RP up','p up','q up (FDR)','RP down','p down','q down (FDR)','Call'],
+        res.map(r=>[rowName(r),r.effect,r.n,r.rpUp,r.pUp,r.qUp,r.rpDown,r.pDown,r.qDown,r.qUp<qCut?'Up':r.qDown<qCut?'Down':'NS']));
+      {const sig=up.length+dn.length>0;const U=sig?up:[...ok].sort((x,y)=>x.pUp-y.pUp).slice(0,25),D=sig?dn:[...ok].sort((x,y)=>x.pDown-y.pDown).slice(0,25);
+      lastStatGeneSet={label:'Rank Product',sig,groups:[g1i,g2i],up:U.map(r=>({row:r.row,p:r.pUp})),down:D.map(r=>({row:r.row,p:r.pDown}))};}
+      const html=`<div class="scard"><h3>Rank Product: ${names[g2i]} vs ${names[g1i]}</h3>
+        <div class="rh"><span class="rt">${up.length.toLocaleString()} up · ${dn.length.toLocaleString()} down</span><span class="rp">q &lt; ${qCut} (FDR), ${ok.length.toLocaleString()} rows, ${Math.max(0,...ok.map(r=>r.n))} replicate pairs</span></div>
+        <div class="opt-hint" style="font-style:normal;margin-bottom:6px">Each direction is ranked separately: "Up" = higher in ${names[g2i]}, "Down" = lower in ${names[g2i]}. ${csv}</div>
+        <div class="sdiv"><h4>Up in ${names[g2i]} (top 30)</h4>${topTbl(up,'up')}</div>
+        <div class="sdiv"><h4>Down in ${names[g2i]} (top 30)</h4>${topTbl(dn,'down')}</div></div>`;
+      addStatTab('Rank Product (up and down)',html);
 
     } else if(atype==='anova'){
-      const ph=document.getElementById('opt-ph')?.value||'tukey';
-      const ctrl=document.getElementById('opt-ctrl')?.value;
+      let ph=document.getElementById('opt-ph')?.value||'tukey';
+      const cmp=document.getElementById('opt-cmp')?.value||'all';
+      const ctrls=cmp==='ctrl'?G.groups.map((_,i)=>i).filter(i=>document.getElementById('opt-ctl-'+i)?.checked):[];
       let groups=G.groups.map((_,i)=>getG(i));
       const names=grpNames();
-      const ctrlI=ctrl?parseInt(ctrl):-1;
-      const res=onewayANOVA(groups,ph,ctrlI);
-      if(res.error){addStatTab('ANOVA',`<div class="ebox">${res.error}</div>`);return}
+      const res=onewayANOVA(groups,ph,ctrls);
+      if(res.error){addStatTab('One-way ANOVA',`<div class="ebox">${res.error}</div>`);return}
+      ph=res.posthocMethod;
+      const ctrlI=-1;
       lastStatPairs=res.posthoc.filter(p=>(ctrlI<0||p.i===ctrlI||p.j===ctrlI)).map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
       let html=`<div class="scard"><h3>One-Way ANOVA</h3>
         <div class="rh"><span class="rt">F(${res.dfB},${res.dfW}) = ${fmtF(res.F)}</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${sigStars(res.p)}</span></div>
@@ -3340,17 +3554,17 @@ function runAnalysis(){
         <tr><td>Between</td><td>${fmtF(res.SSB)}</td><td>${res.dfB}</td><td>${fmtF(res.MSB)}</td><td>${fmtF(res.F)}</td><td>${pRow(res.p)}</td></tr>
         <tr><td>Within</td><td>${fmtF(res.SSW)}</td><td>${res.dfW}</td><td>${fmtF(res.MSW)}</td><td></td><td></td></tr>
         </tbody></table>
-        <div class="sdiv"><h4>Post-hoc: ${CORR_SHORT[ph]||ph}, ${ctrlI>=0?'vs '+names[ctrlI]:'all pairs'} (${res.posthoc.length} comparisons)</h4>
+        <div class="sdiv"><h4>Post-hoc: ${CORR_SHORT[ph]||ph}, ${ctrls.length?'vs '+ctrls.map(i=>names[i]).join(' and '):'all pairs'} (${res.posthoc.length} comparisons)</h4>
         <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>Mean diff</th><th>${ph==='tukey'?'q':'t'}</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
         ${res.posthoc.map(ph=>(ctrlI<0||ph.i===ctrlI||ph.j===ctrlI)?`<tr><td>${names[ph.i]}</td><td>${names[ph.j]}</td><td>${fmtF(mean(groups[ph.i])-mean(groups[ph.j]))}</td><td>${fmtF(ph===null?NaN:(res.posthocMethod==='tukey'?ph.q:ph.t))}</td><td>${pRow(ph.p_raw)}</td><td>${pRow(ph.p_adj)}</td></tr>`:'').join('')}
         </tbody></table></div></div>`;
-      addStatTab('ANOVA',html);
+      addStatTab('One-way ANOVA',html);
 
     } else if(atype==='kruskal'){
       const groups=G.groups.map((_,i)=>getG(i));
       const names=grpNames();
       const res=kruskalWallis(groups);
-      if(res.error){addStatTab('Kruskal',`<div class="ebox">${res.error}</div>`);return}
+      if(res.error){addStatTab('Kruskal–Wallis',`<div class="ebox">${res.error}</div>`);return}
       const kph=document.getElementById('opt-ph')?.value||'holm_sidak';
       {const adj=adjustP(res.posthoc.map(x=>x.p_raw),kph);res.posthoc.forEach((x,n)=>x.p=adj[n]);}
       lastStatPairs=res.posthoc.map(ph=>({i:ph.a,j:ph.b,stars:sigStars(ph.p)})).filter(p=>p.stars!=='ns');
@@ -3360,14 +3574,14 @@ function runAnalysis(){
         <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>z</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
         ${res.posthoc.map(ph=>`<tr><td>${names[ph.a]}</td><td>${names[ph.b]}</td><td>${fmtF(ph.z)}</td><td>${pRow(ph.p_raw)}</td><td>${pRow(ph.p)}</td></tr>`).join('')}
         </tbody></table></div></div>`;
-      addStatTab('Kruskal',html);
+      addStatTab('Kruskal–Wallis',html);
 
     } else if(atype==='pearson'||atype==='spearman'){
       const nG=G.groups.length;
       const corrFn=(x,y)=>atype==='pearson'?pearsonR(x,y):spearmanR(x,y);
       const corrMode=document.getElementById('opt-corr-mode')?.value||'allpairs';
       const corrCtrl=parseInt(document.getElementById('opt-corr-ctrl')?.value||0);
-      const label=atype==='pearson'?'Pearson':'Spearman';
+      const label=atype==='pearson'?'Pearson correlation':'Spearman correlation';
       let pairs=[];
       if(nG<=2){
         pairs=[[0,1]];
@@ -3379,7 +3593,7 @@ function runAnalysis(){
       const ccorr=pairs.length>1?(document.getElementById('opt-ccorr')?.value||'holm_sidak'):'none';
       const cRes=pairs.map(([i,j])=>corrFn(getG(i),getG(j)));
       const cAdj=adjustP(cRes.map(r=>r.error?NaN:r.p),ccorr);
-      let html=`<div class="scard"><h3>${label} Correlation — ${pairs.length} pair(s)${ccorr!=='none'?`, ${CORR_SHORT[ccorr]}`:''}</h3>
+      let html=`<div class="scard"><h3>${label} — ${pairs.length} pair(s)${ccorr!=='none'?`, ${CORR_SHORT[ccorr]}`:''}</h3>
         <table class="rtbl"><thead><tr><th>Pair</th><th>${atype==='pearson'?'r':'ρ'}</th><th>p</th>${ccorr!=='none'?`<th>p adj (${CORR_SHORT[ccorr]})</th>`:''}${atype==='pearson'?'<th>95% CI</th>':''}<th>n</th></tr></thead><tbody>`;
       pairs.forEach(([i,j],k)=>{
         const res=cRes[k];
@@ -3394,11 +3608,12 @@ function runAnalysis(){
       const method=document.getElementById('opt-mtc-method')?.value||'holm_sidak';
       const adj=adjustP(pvals,method);
       const names=G.rowNames.slice(0,pvals.length);
-      let html=`<div class="scard"><h3>Multiple Testing Correction (${CORR_LABEL[method]||method}, ${pvals.length} tests)</h3>
+      let html=`<div class="scard"><h3>Multiple Testing Correction (${CORR_LABEL[method]||method}, ${pvals.length.toLocaleString()} tests, ${adj.filter(v=>v<0.05).length.toLocaleString()} with adjusted p < 0.05)</h3>
+        ${pvals.length>SHOW_ROWS?`<div class="opt-hint" style="font-style:normal;margin-bottom:6px">Showing the ${SHOW_ROWS} smallest p-values. ${csvButton('adjusted_p.csv',['Test','p-raw','p-adj'],pvals.map((p,i)=>[names[i]||i+1,p,adj[i]]))}</div>`:''}
         <table class="rtbl"><thead><tr><th>Test</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
-        ${pvals.map((p,i)=>`<tr><td>${names[i]||i+1}</td><td>${pRow(p)}</td><td>${pRow(adj[i])}</td></tr>`).join('')}
+        ${(pvals.length>SHOW_ROWS?pvals.map((p,i)=>i).sort((a,b)=>pvals[a]-pvals[b]).slice(0,SHOW_ROWS):pvals.map((p,i)=>i)).map(i=>`<tr><td>${names[i]||i+1}</td><td>${pRow(pvals[i])}</td><td>${pRow(adj[i])}</td></tr>`).join('')}
         </tbody></table></div>`;
-      addStatTab('MTC',html);
+      addStatTab('Multiple-testing correction',html);
 
     } else if(atype==='fisher'){
       const useGroups=G.groups.length>=2;
@@ -3412,7 +3627,7 @@ function runAnalysis(){
         <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
         <tr><td>Odds Ratio</td><td>${fmtF(res.or)}</td></tr>
         </tbody></table></div>`;
-      addStatTab("Fisher's",html);
+      addStatTab("Fisher's exact test",html);
 
     } else if(atype==='chisq'){
       const obs=G.groups[0].data.map((row,r)=>G.groups.map((_,c)=>parseFloat(G.groups[c].data[r]?.[0])||0));
@@ -3423,7 +3638,7 @@ function runAnalysis(){
         <tr><td>df</td><td>${res.df}</td></tr>
         <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
         </tbody></table></div>`;
-      addStatTab('Chi-Sq',html);
+      addStatTab('Chi-square test',html);
 
     } else if(atype==='norm'){
       let html='';
@@ -3438,31 +3653,74 @@ function runAnalysis(){
           <tr><td>p-value</td><td>${pRow(res.p)} (H₀: normal)</td></tr>
           </tbody></table></div>`;
       });
-      addStatTab('Normality',html);
+      addStatTab('Normality (Shapiro–Wilk)',html);
 
     } else if(atype==='km'){
-      const times=getGroupPooled(0),events=getGroupPooled(1);
-      const km=kaplanMeier(times,events);
-      const lr=logRankTest([times],[events]);
-      let html=`<div class="scard"><h3>Kaplan-Meier</h3>
-        <table class="rtbl"><thead><tr><th>t</th><th>At Risk</th><th>Events</th><th>Censored</th><th>S(t)</th></tr></thead><tbody>
-        ${km.filter((_,i)=>i<30).map(p=>`<tr><td>${fmtF(p.t,1)}</td><td>${p.n}</td><td>${p.d||0}</td><td>${p.c||0}</td><td>${fmtF(p.s,4)}</td></tr>`).join('')}
-        </tbody></table></div>`;
-      addStatTab('KM',html);
+      const kmd=kmGroups();
+      if(kmd.error){addStatTab('Kaplan–Meier survival',`<div class="ebox">${kmd.error}</div>`);return}
+      const {groups:kg}=kmd;const k=kg.length;
+      const kmcorr=document.getElementById('opt-kmcorr')?.value||'holm_sidak';
+      const summ=kg.map(g=>{const km=kaplanMeier(g.t,g.e);const med=km.find(p=>p.s<=0.5);return{name:g.name,n:g.t.length,ev:g.e.filter(x=>x===1).length,med:med?med.t:NaN,km};});
+      let html=`<div class="scard"><h3>Kaplan–Meier${k>1?' + log-rank':''}</h3>
+        <table class="rtbl"><thead><tr><th>Group</th><th>n</th><th>Events</th><th>Censored</th><th>Median survival</th></tr></thead><tbody>
+        ${summ.map(s=>`<tr><td>${s.name}</td><td>${s.n}</td><td>${s.ev}</td><td>${s.n-s.ev}</td><td>${isFinite(s.med)?fmtF(s.med,2):'not reached'}</td></tr>`).join('')}
+        </tbody></table>`;
+      if(k>1){
+        const subj=kg.flatMap((g,gi)=>g.t.map((t,i)=>({t,e:g.e[i],g:gi})));
+        const lr=logRankK(subj,k);
+        html+=`<div class="rh"><span class="rt">Log-rank (Mantel–Cox) χ²(${lr.df}) = ${fmtF(lr.chi)}</span><span class="rp ${pCls(lr.p)}">p = ${fmtP(lr.p)}</span><span class="stars">${sigStars(lr.p)}</span></div>
+        <table class="rtbl"><thead><tr><th>Group</th><th>Observed events</th><th>Expected</th><th>O/E</th></tr></thead><tbody>
+        ${kg.map((g,i)=>`<tr><td>${g.name}</td><td>${lr.O[i]}</td><td>${fmtF(lr.E[i])}</td><td>${fmtF(lr.O[i]/lr.E[i])}</td></tr>`).join('')}</tbody></table>`;
+        if(k===2){const hr=(lr.O[1]/lr.E[1])/(lr.O[0]/lr.E[0]);const se=Math.sqrt(1/lr.E[0]+1/lr.E[1]);
+          html+=`<div class="opt-hint" style="font-style:normal">Hazard ratio ${kg[1].name} vs ${kg[0].name} (log-rank estimate): ${fmtF(hr)} [95% CI ${fmtF(hr*Math.exp(-1.96*se))}, ${fmtF(hr*Math.exp(1.96*se))}]</div>`;}
+        if(k>2){
+          const pr=[];for(let i=0;i<k-1;i++)for(let j=i+1;j<k;j++){const r=logRankK(subj.filter(o=>o.g===i||o.g===j).map(o=>({...o,g:o.g===i?0:1})),2);pr.push({i,j,chi:r.chi,p:r.p});}
+          const adj=adjustP(pr.map(x=>x.p),kmcorr);
+          html+=`<div class="sdiv"><h4>Pairwise log-rank: ${CORR_SHORT[kmcorr]} (${pr.length} comparisons)</h4><table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>χ²(1)</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
+          ${pr.map((x,n)=>`<tr><td>${kg[x.i].name}</td><td>${kg[x.j].name}</td><td>${fmtF(x.chi)}</td><td>${pRow(x.p)}</td><td>${pRow(adj[n])}</td></tr>`).join('')}</tbody></table></div>`;
+        }
+      }
+      html+='</div>';
+      addStatTab('Kaplan–Meier survival',html);
+
+    } else if(atype==='ks'){
+      const mode=document.getElementById('opt-ks-mode')?.value||'two';
+      if(mode==='two'){
+        const g1=parseInt(document.getElementById('opt-ks-g1')?.value||0),g2=parseInt(document.getElementById('opt-ks-g2')?.value||1);
+        const r=ks2Sample(getG(g1),getG(g2));
+        if(r.error){addStatTab('Kolmogorov–Smirnov',`<div class="ebox">${r.error}</div>`);return}
+        if(sigStars(r.p)!=='ns')lastStatPairs=[{i:Math.min(g1,g2),j:Math.max(g1,g2),stars:sigStars(r.p)}];
+        addStatTab('Kolmogorov–Smirnov',`<div class="scard"><h3>Two-sample Kolmogorov–Smirnov: ${G.groups[g1].name} vs ${G.groups[g2].name}</h3>
+          <div class="rh"><span class="rt">D = ${fmtF(r.D,4)}</span><span class="rp ${pCls(r.p)}">p = ${fmtP(r.p)}</span><span class="stars">${sigStars(r.p)}</span></div>
+          <table class="rtbl"><tbody><tr><td>D (largest gap between the two cumulative distributions)</td><td>${fmtF(r.D,4)}</td></tr><tr><td>n</td><td>${r.n1} vs ${r.n2}</td></tr><tr><td>p-value (${r.method})</td><td>${pRow(r.p)}</td></tr></tbody></table></div>`);
+      } else {
+        let rows='';
+        G.groups.forEach((g,i)=>{const r=lillieforsTest(getG(i));rows+=r.error?`<tr><td>${g.name}</td><td colspan="4">${r.error}</td></tr>`:`<tr><td>${g.name}</td><td>${r.n}</td><td>${fmtF(r.D,4)}</td><td>${pRow(r.p)}</td><td>${r.p<0.05?'Not normal':'Consistent with normal'}</td></tr>`;});
+        addStatTab('KS normality (Lilliefors)',`<div class="scard"><h3>Kolmogorov–Smirnov normality test (Lilliefors)</h3>
+          <table class="rtbl"><thead><tr><th>Group</th><th>n</th><th>D</th><th>p</th><th>Interpretation</th></tr></thead><tbody>${rows}</tbody></table>
+          <div class="opt-hint">p-values by Monte Carlo simulation (fixed seed, so repeat runs agree). Shapiro–Wilk is usually more powerful for testing normality.</div></div>`);
+      }
 
     } else if(atype==='pca'){
-      const X=Array.from({length:G.nRows},(_,r)=>G.groups.map((_,c)=>{const v=G.groups[c].data[r]?.filter(x=>x!==''&&isFinite(x)).map(Number);return v?.length?mean(v):0}));
+      const mode=document.getElementById('opt-pcmode')?.value||'mean';
+      const zn=document.getElementById('opt-pcnorm')?.checked||false;
+      const {X,labels,feats}=buildPCAMatrix(mode,zn);
+      if(X.length<3||feats.length<2){addStatTab('PCA',`<div class="ebox">PCA needs at least 3 samples (${mode==='reps'?'replicate columns':'groups'}) and 2 complete, non-constant rows (have ${X.length} samples, ${feats.length} rows).</div>`);return}
       const res=pcaCompute(X);
       const cumVar=res.varExplained.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
-      const scoreHeaders=Array.from({length:res.nPCs},(_,i)=>`<th>PC${i+1}</th>`).join('');
-      let html=`<div class="scard"><h3>PCA</h3>
-        <table class="rtbl"><thead><tr><th>Component</th><th>Variance Explained (%)</th><th>Cumulative (%)</th></tr></thead><tbody>
-        ${res.varExplained.map((v,i)=>`<tr><td>PC${i+1}</td><td>${fmtF(v,2)}</td><td>${fmtF(cumVar[i],2)}</td></tr>`).join('')}
+      const nShow=res.nPCs;
+      const topLoad=k=>{const l=res.loadings[k];if(!l)return'';const idx=[...l.keys()].sort((x,y)=>Math.abs(l[y])-Math.abs(l[x])).slice(0,10);return idx.map(j=>`<tr><td>${G.rowNames[feats[j]]||'Row '+(feats[j]+1)}</td><td>${fmtF(l[j],4)}</td></tr>`).join('');};
+      let html=`<div class="scard"><h3>PCA: ${X.length} samples × ${feats.length.toLocaleString()} features${G.nRows>feats.length?` (${(G.nRows-feats.length).toLocaleString()} incomplete or constant rows skipped)`:''}</h3>
+        <table class="rtbl"><thead><tr><th>Component</th><th>Variance explained (%)</th><th>Cumulative (%)</th></tr></thead><tbody>
+        ${res.varExplained.slice(0,nShow).map((v,i)=>`<tr><td>PC${i+1}</td><td>${fmtF(v,2)}</td><td>${fmtF(cumVar[i],2)}</td></tr>`).join('')}
         </tbody></table>
-        <div class="sdiv"><h4>Sample Scores</h4>
-        <table class="rtbl"><thead><tr><th>Sample</th>${scoreHeaders}</tr></thead><tbody>
-        ${res.scores.map((s,i)=>`<tr><td>${G.rowNames[i]||'Row '+(i+1)}</td>${s.map(v=>`<td>${fmtF(v)}</td>`).join('')}</tr>`).join('')}
-        </tbody></table></div></div>`;
+        <div class="sdiv"><h4>Sample scores</h4>
+        <table class="rtbl"><thead><tr><th>Sample</th>${Array.from({length:nShow},(_,i)=>`<th>PC${i+1}</th>`).join('')}</tr></thead><tbody>
+        ${res.scores.map((s,i)=>`<tr><td>${labels[i]}</td>${s.slice(0,nShow).map(v=>`<td>${fmtF(v)}</td>`).join('')}</tr>`).join('')}
+        </tbody></table></div>
+        <div class="sdiv" id="pcaload-${Date.now()}"><h4>Top loadings of <select onchange="const b=this.closest('.sdiv');b.querySelectorAll('.pcl').forEach(d=>d.style.display=d.dataset.pc===this.value?'':'none')" style="font-size:11px">${res.loadings.map((_,k)=>`<option value="${k}">PC${k+1}</option>`).join('')}</select></h4>
+        ${res.loadings.map((_,k)=>`<div class="pcl" data-pc="${k}" style="${k?'display:none':''}"><table class="rtbl"><thead><tr><th>Feature</th><th>PC${k+1} loading</th></tr></thead><tbody>${topLoad(k)}</tbody></table></div>`).join('')}</div></div>`;
+      html=html.replace('<div class="sdiv" id="pcaload-','<div class="opt-hint" style="font-style:normal;margin:6px 0">'+csvButton('pca_loadings.csv',['Feature',...res.loadings.map((_,k)=>'PC'+(k+1)+' loading')],feats.map((f,j)=>[G.rowNames[f]||'Row '+(f+1),...res.loadings.map(l=>l[j])]))+'</div><div class="sdiv" id="pcaload-');
       addStatTab('PCA',html);
 
     } else if(atype==='volcano'){
@@ -3481,12 +3739,13 @@ function runAnalysis(){
         </tbody></table>
         ${up.length?`<div class="sdiv"><h4>Top Up-regulated</h4><table class="rtbl"><thead><tr><th>Gene</th><th>log2FC</th><th>p</th></tr></thead><tbody>${up.slice(0,10).map(p=>`<tr><td>${p.name}</td><td>${fmtF(p.log2fc)}</td><td>${fmtP(Math.pow(10,-p.neglog10p))}</td></tr>`).join('')}</tbody></table></div>`:''}
         </div>`;
-      addStatTab('Volcano',html);
+      html=html.replace('<h3>Volcano Plot Summary</h3>','<h3>Volcano Plot Summary</h3><div class="opt-hint" style="font-style:normal;margin-bottom:6px">'+csvButton('volcano_all_genes.csv',['Gene','log2FC','p-value','-log10 p','Category'],pts.map((q,i)=>[q.name,q.log2fc,pVals[i],q.neglog10p,q.up?'Up':q.down?'Down':'NS']))+'</div>');
+      addStatTab('Volcano summary',html);
 
     } else if(atype==='dose'){
       const xv=getGroupPooled(0),yv=getGroupPooled(1);
       const n=Math.min(xv.length,yv.length);
-      if(n<4){addStatTab('5PL','<div class="ebox">Need ≥ 4 data points</div>');return}
+      if(n<4){addStatTab('Dose–response (5PL)','<div class="ebox">Need ≥ 4 data points</div>');return}
       const res=fit5PL(xv.slice(0,n),yv.slice(0,n));
       const [bot,top,ec50,hill,asym]=res.params;
       let html=`<div class="scard"><h3>5PL Dose-Response</h3>
@@ -3498,37 +3757,66 @@ function runAnalysis(){
         <tr><td>Asymmetry</td><td>${fmtF(asym)}</td></tr>
         <tr><td>R²</td><td>${fmtF(res.r2,4)}</td></tr>
         </tbody></table></div>`;
-      addStatTab('5PL',html);
+      addStatTab('Dose–response (5PL)',html);
 
     } else if(atype==='heatmap'){
       let html=`<div class="scard"><h3>Heatmap Data Summary</h3>
         <table class="rtbl"><thead><tr><th>Group</th><th>Mean</th><th>SD</th></tr></thead><tbody>
         ${G.groups.map((g,i)=>{const v=getG(i);const d=describeGroup(v);return d?`<tr><td>${g.name}</td><td>${fmtF(d.mean)}</td><td>${fmtF(d.sd)}</td></tr>`:''}).join('')}
         </tbody></table></div>`;
-      addStatTab('Heatmap',html);
+      addStatTab('Heatmap clustering',html);
 
     } else if(atype==='anova2'){
       const nA=parseInt(document.getElementById('opt-nA')?.value||2);
       const nB=parseInt(document.getElementById('opt-nB')?.value||2);
-      if(G.groups.length<nA*nB){addStatTab('2-Way ANOVA',`<div class="ebox">Need ${nA*nB} groups for ${nA}×${nB} design (have ${G.groups.length})</div>`);return}
+      const fam=document.getElementById('opt-2ph')?.value||'simpleB';
+      const corr=document.getElementById('opt-2corr')?.value||'holm_sidak';
+      if(G.groups.length<nA*nB){addStatTab('Two-way ANOVA',`<div class="ebox">Need ${nA*nB} groups for ${nA}×${nB} design (have ${G.groups.length})</div>`);return}
       const groupData=Array.from({length:nA*nB},(_,k)=>getG(k));
-      const names=grpNames();
-      const fA=Array.from({length:nA},(_,a)=>names.slice(a*nB,(a+1)*nB)[0].replace(/[_\d]+$/,'')||`A${a+1}`);
-      const fB=Array.from({length:nB},(_,b)=>names[b]||`B${b+1}`);
+      const names=grpNames().slice(0,nA*nB);
+      // Factor level labels from names like "WT · Drug", "WT - Drug" or "WT_Drug"
+      let fA=Array.from({length:nA},(_,a)=>`A${a+1}`),fB=Array.from({length:nB},(_,b)=>`B${b+1}`);
+      for(const sep of [' · ',' | ',' - ','_',' ']){
+        const parts=names.map(n=>n.split(sep));
+        if(parts.every(x=>x.length>=2)){
+          const A=Array.from({length:nA},(_,a)=>parts[a*nB][0].trim()),B=Array.from({length:nB},(_,b)=>parts[b].slice(1).join(sep).trim());
+          const consistent=parts.every((x,k)=>x[0].trim()===A[Math.floor(k/nB)]&&x.slice(1).join(sep).trim()===B[k%nB]);
+          if(consistent){fA=A;fB=B;break;}
+        }
+      }
       const res=twowayANOVA(groupData,nA,nB);
-      if(res.error){addStatTab('2-Way ANOVA',`<div class="ebox">${res.error}</div>`);return}
-      let html=`<div class="scard"><h3>Two-Way ANOVA (${nA}×${nB})</h3>
+      if(res.error){addStatTab('Two-way ANOVA',`<div class="ebox">${res.error}</div>`);return}
+      // Post-hoc on the pooled error term (MS error, df error)
+      const mse=res.MSError,dfE=res.dfError,nR=res.nRep;
+      const comps=[];
+      const cellM=(a,b)=>res.cellMeans[a][b];
+      const add=(label1,label2,m1,m2,n1,n2,set,cellI,cellJ)=>{const se=Math.sqrt(mse*(1/n1+1/n2));const t=(m1-m2)/se;comps.push({label1,label2,diff:m1-m2,t,q:Math.abs(t)*Math.SQRT2,p_raw:2*(1-jStat.studentt.cdf(Math.abs(t),dfE)),set,cellI,cellJ});};
+      if(fam==='simpleB'){for(let a=0;a<nA;a++)for(let b1=0;b1<nB-1;b1++)for(let b2=b1+1;b2<nB;b2++)add(`${fA[a]}: ${fB[b1]}`,`${fA[a]}: ${fB[b2]}`,cellM(a,b1),cellM(a,b2),nR,nR,{k:nB},a*nB+b1,a*nB+b2);}
+      else if(fam==='simpleA'){for(let b=0;b<nB;b++)for(let a1=0;a1<nA-1;a1++)for(let a2=a1+1;a2<nA;a2++)add(`${fB[b]}: ${fA[a1]}`,`${fB[b]}: ${fA[a2]}`,cellM(a1,b),cellM(a2,b),nR,nR,{k:nA},a1*nB+b,a2*nB+b);}
+      else if(fam==='cells'){const K=nA*nB;for(let i=0;i<K-1;i++)for(let j=i+1;j<K;j++)add(`${fA[Math.floor(i/nB)]} · ${fB[i%nB]}`,`${fA[Math.floor(j/nB)]} · ${fB[j%nB]}`,cellM(Math.floor(i/nB),i%nB),cellM(Math.floor(j/nB),j%nB),nR,nR,{k:K},i,j);}
+      else if(fam==='A'){for(let a1=0;a1<nA-1;a1++)for(let a2=a1+1;a2<nA;a2++)add(fA[a1],fA[a2],res.aMeans[a1],res.aMeans[a2],nB*nR,nB*nR,{k:nA},-1,-1);}
+      else if(fam==='B'){for(let b1=0;b1<nB-1;b1++)for(let b2=b1+1;b2<nB;b2++)add(fB[b1],fB[b2],res.bMeans[b1],res.bMeans[b2],nA*nR,nA*nR,{k:nB},-1,-1);}
+      if(corr==='tukey')comps.forEach(c=>c.p_adj=Math.min(1,Math.max(0,1-jStat.tukey.cdf(c.q,c.set.k,dfE))));
+      else{const adj=adjustP(comps.map(c=>c.p_raw),corr);comps.forEach((c,n)=>c.p_adj=adj[n]);}
+      lastStatPairs=comps.filter(c=>c.cellI>=0).map(c=>({i:c.cellI,j:c.cellJ,stars:sigStars(c.p_adj)})).filter(p=>p.stars!=='ns');
+      const famLabel={simpleB:`${fB.join(' vs ')} within each level of A`,simpleA:`${fA.join(' vs ')} within each level of B`,cells:'all cell means',A:'factor A main effect',B:'factor B main effect'}[fam];
+      let html=`<div class="scard"><h3>Two-Way ANOVA (${nA}×${nB}, n = ${nR} per cell)</h3>
         <table class="rtbl"><thead><tr><th>Source</th><th>SS</th><th>df</th><th>MS</th><th>F</th><th>p</th></tr></thead><tbody>
-        <tr><td>Factor A (${fA.join('/')})</td><td>${fmtF(res.SSA)}</td><td>${res.dfA}</td><td>${fmtF(res.MSA)}</td><td>${fmtF(res.FA)}</td><td>${pRow(res.pA)}</td></tr>
-        <tr><td>Factor B (${fB.join('/')})</td><td>${fmtF(res.SSB)}</td><td>${res.dfB}</td><td>${fmtF(res.MSB)}</td><td>${fmtF(res.FB)}</td><td>${pRow(res.pB)}</td></tr>
-        <tr><td>A × B Interaction</td><td>${fmtF(res.SSAB)}</td><td>${res.dfAB}</td><td>${fmtF(res.MSAB)}</td><td>${fmtF(res.FAB)}</td><td>${pRow(res.pAB)}</td></tr>
+        <tr><td>Factor A (${fA.join(' / ')})</td><td>${fmtF(res.SSA)}</td><td>${res.dfA}</td><td>${fmtF(res.MSA)}</td><td>${fmtF(res.FA)}</td><td>${pRow(res.pA)}</td></tr>
+        <tr><td>Factor B (${fB.join(' / ')})</td><td>${fmtF(res.SSB)}</td><td>${res.dfB}</td><td>${fmtF(res.MSB)}</td><td>${fmtF(res.FB)}</td><td>${pRow(res.pB)}</td></tr>
+        <tr><td>A × B interaction</td><td>${fmtF(res.SSAB)}</td><td>${res.dfAB}</td><td>${fmtF(res.MSAB)}</td><td>${fmtF(res.FAB)}</td><td>${pRow(res.pAB)}</td></tr>
         <tr><td>Error</td><td>${fmtF(res.SSError)}</td><td>${res.dfError}</td><td>${fmtF(res.MSError)}</td><td></td><td></td></tr>
         </tbody></table>
-        <div class="sdiv"><h4>Cell Means</h4>
-        <table class="rtbl"><thead><tr><th>A\B</th>${fB.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>
-        ${Array.from({length:nA},(_,a)=>`<tr><td>${fA[a]}</td>${Array.from({length:nB},(_,b)=>`<td>${fmtF(res.cellMeans[a*nB+b])}</td>`).join('')}</tr>`).join('')}
-        </tbody></table></div></div>`;
-      addStatTab('2-Way ANOVA',html);
+        <div class="sdiv"><h4>Cell means</h4>
+        <table class="rtbl"><thead><tr><th>A \\ B</th>${fB.map(b=>`<th>${b}</th>`).join('')}</tr></thead><tbody>
+        ${Array.from({length:nA},(_,a)=>`<tr><td>${fA[a]}</td>${Array.from({length:nB},(_,b)=>`<td>${fmtF(res.cellMeans[a][b])}</td>`).join('')}</tr>`).join('')}
+        </tbody></table></div>
+        ${fam!=='none'&&comps.length?`<div class="sdiv"><h4>Post-hoc: ${famLabel}, ${CORR_SHORT[corr]} (${comps.length} comparisons; pooled MS error, df = ${dfE})</h4>
+        <table class="rtbl"><thead><tr><th>Comparison</th><th>Mean diff</th><th>${corr==='tukey'?'q':'t'}</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
+        ${comps.map(c=>`<tr><td>${c.label1} vs ${c.label2}</td><td>${fmtF(c.diff)}</td><td>${fmtF(corr==='tukey'?c.q:c.t)}</td><td>${pRow(c.p_raw)}</td><td>${pRow(c.p_adj)}</td></tr>`).join('')}
+        </tbody></table>${res.pAB<0.05&&(fam==='A'||fam==='B')?'<div class="opt-hint">The interaction is significant, so main-effect comparisons average over levels that behave differently; simple effects are usually more informative.</div>':''}</div>`:''}
+        </div>`;
+      addStatTab('Two-way ANOVA',html);
 
     } else if(atype==='regress'){
       const xi=parseInt(document.getElementById('opt-rx')?.value||0);
@@ -3575,7 +3863,7 @@ function runAnalysis(){
   } catch(e){
     addStatTab('Error',`<div class="ebox">Error: ${e.message}</div>`);
   }
-  {const st=statTabs.find(t=>t.id===lastStatTabId);if(st&&st.ds===activeDS){st.sigPairs=lastStatPairs?JSON.parse(JSON.stringify(lastStatPairs)):null;st.rowPairs=lastStatRowPairs?JSON.parse(JSON.stringify(lastStatRowPairs)):null;}}
+  {const st=statTabs.find(t=>t.id===lastStatTabId);if(st&&st.ds===activeDS){st.sigPairs=lastStatPairs?JSON.parse(JSON.stringify(lastStatPairs)):null;st.rowPairs=lastStatRowPairs?JSON.parse(JSON.stringify(lastStatRowPairs)):null;st.geneSet=lastStatGeneSet?JSON.parse(JSON.stringify(lastStatGeneSet)):null;}}
   if(_suppressAutoPlot){_suppressAutoPlot=false;return;}
   // Auto-plot: if the checkbox is ticked and this test has a natural plot, run it
   const autoPlotType=AUTO_PLOT_FOR_TYPE[atype];
@@ -3588,12 +3876,16 @@ function runAnalysis(){
     // Runs after the stat tab's own option-restore (50 ms), so these settings win
     setTimeout(()=>{
       if(psel&&psel.value!==autoPlotType){psel.value=autoPlotType;renderPlotOpts(autoPlotType);}
-      {const g=document.getElementById('popt-groupby');if(g)g.value=gby||'group';}
+      {const g=document.getElementById('popt-groupby');if(g)g.value=(gby&&gby!=='geneset')?gby:'group';}
+      if(gby==='geneset'){psel.value='heatmap';renderPlotOpts('heatmap');}
+      if(lastStatGeneSet&&psel.value==='heatmap'){const hr=document.getElementById('popt-hrows'),hc=document.getElementById('popt-hcols');if(hr)hr.value='sig';if(hc)hc.value='reps';}
+      if(atype==='pca'){const m=document.getElementById('popt-pcmode'),n=document.getElementById('popt-pcnorm');if(m)m.value=document.getElementById('opt-pcmode')?.value||'mean';if(n)n.checked=document.getElementById('opt-pcnorm')?.checked||false;}
+      if(atype==='ks'){const ov=document.getElementById('popt-ecnorm');if(ov)ov.checked=(document.getElementById('opt-ks-mode')?.value==='normal');const eg=document.getElementById('popt-ecg');if(eg&&document.getElementById('opt-ks-mode')?.value==='two')eg.value='all';}
       if(atype==='mtc'){const m=document.getElementById('popt-mtcm'),am=document.getElementById('opt-mtc-method');if(m&&am)m.value=am.value;}
       if(atype==='volcano'){ // carry the test's thresholds over to the plot
         const pf=document.getElementById('popt-fc'),pp=document.getElementById('popt-pt');if(pf&&fc)pf.value=fc;if(pp&&pt)pp.value=pt;
       }
-      runPlot();
+      _linkedPlotCtx=true;runPlot();_linkedPlotCtx=false;
       // Link stat tab to the auto-generated plot tab
       if(lastPlotTabId&&statIdToLink) linkTabs(statIdToLink,lastPlotTabId);
     },80);
@@ -3655,11 +3947,11 @@ function loadProject(event){
 // ═══════════════════════════════════════════════════════════
 // EXAMPLE DATA + INIT
 // ═══════════════════════════════════════════════════════════
-const EXAMPLES={"groups": {"nReps": 3, "nRows": 6, "rowNames": ["Sample 1", "Sample 2", "Sample 3", "Sample 4", "Sample 5", "Sample 6"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[2.1, 2.3, 1.9], [3.2, 2.8, 3.1], [1.8, 2.0, 2.2], [4.1, 3.9, 4.3], [2.5, 2.7, 2.3], [3.8, 3.6, 4.0]]}, {"name": "Treatment A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[4.5, 4.8, 4.2], [5.1, 5.4, 4.9], [3.9, 4.1, 4.3], [6.2, 5.8, 6.1], [4.7, 5.0, 4.6], [5.5, 5.3, 5.8]]}, {"name": "Treatment B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[3.0, 3.2, 2.8], [4.1, 3.8, 4.0], [2.7, 2.9, 3.1], [5.0, 4.7, 5.2], [3.5, 3.8, 3.3], [4.4, 4.2, 4.6]]}], "note": "3 groups × 3 replicates × 6 samples"}, "paired": {"nReps": 1, "nRows": 10, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10"], "groups": [{"name": "Before", "reps": ["Value"], "data": [[46.9], [56.1], [47.3], [46.2], [38.8], [47.4], [63.3], [55.1], [62.4], [53.0]]}, {"name": "After", "reps": ["Value"], "data": [[54.1], [62.7], [48.3], [54.8], [46.4], [54.9], [64.3], [55.9], [65.8], [57.6]]}], "note": "Paired: each row is one animal measured before and after treatment"}, "normality": {"nReps": 1, "nRows": 30, "rowNames": ["Obs 1", "Obs 2", "Obs 3", "Obs 4", "Obs 5", "Obs 6", "Obs 7", "Obs 8", "Obs 9", "Obs 10", "Obs 11", "Obs 12", "Obs 13", "Obs 14", "Obs 15", "Obs 16", "Obs 17", "Obs 18", "Obs 19", "Obs 20", "Obs 21", "Obs 22", "Obs 23", "Obs 24", "Obs 25", "Obs 26", "Obs 27", "Obs 28", "Obs 29", "Obs 30"], "groups": [{"name": "Normal-like", "reps": ["Value"], "data": [[10.61], [9.91], [11.04], [8.72], [10.62], [10.79], [8.68], [13.44], [11.11], [12.39], [8.76], [8.52], [9.31], [9.79], [11.26], [10.5], [9.11], [8.09], [8.96], [12.44], [8.38], [10.49], [10.85], [7.02], [10.1], [12.61], [5.97], [9.36], [9.79], [8.37]]}, {"name": "Right-skewed", "reps": ["Value"], "data": [[2.99], [1.98], [9.43], [8.65], [7.99], [5.35], [4.09], [7.69], [2.96], [1.54], [2.85], [2.48], [1.62], [1.8], [7.46], [2.84], [1.04], [2.7], [2.41], [5.18], [1.61], [3.12], [4.71], [5.61], [3.61], [1.22], [2.95], [3.66], [2.11], [5.26]]}], "note": "One roughly normal and one skewed sample (n = 30 each)"}, "anova2": {"nReps": 3, "nRows": 2, "rowNames": ["Litter 1", "Litter 2"], "groups": [{"name": "WT · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[20.0, 22.3, 19.2], [21.0, 24.6, 13.6]]}, {"name": "WT · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[29.2, 32.6, 33.0], [32.6, 30.9, 33.6]]}, {"name": "KO · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[21.7, 19.7, 27.1], [21.9, 19.6, 20.8]]}, {"name": "KO · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[22.4, 22.8, 16.2], [21.8, 25.5, 20.1]]}], "note": "2 × 2 design: genotype (WT, KO) × treatment (Vehicle, Drug), 6 animals per cell; nA = 2, nB = 2"}, "genes": {"nReps": 3, "nRows": 16, "rowNames": ["MYC", "FOS", "JUN", "EGR1", "IL6", "CXCL8", "TNF", "CCL2", "HMOX1", "NQO1", "GAPDH", "ACTB", "CDK1", "CCNB1", "MKI67", "TOP2A"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[7.27, 7.35, 7.5], [7.87, 7.81, 8.22], [7.1, 6.76, 7.52], [9.57, 10.09, 9.79], [8.7, 8.84, 8.72], [10.05, 9.51, 9.52], [7.8, 7.41, 7.39], [6.75, 7.43, 7.3], [10.43, 9.82, 10.06], [10.64, 11.12, 11.32], [10.04, 10.65, 10.51], [9.99, 9.54, 10.38], [10.07, 9.94, 10.19], [9.8, 10.07, 9.44], [7.42, 7.51, 7.5], [8.54, 8.4, 8.84]]}, {"name": "Drug 6 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.83, 8.84, 9.16], [10.27, 9.76, 10.24], [8.37, 9.04, 8.91], [12.51, 12.66, 12.87], [9.48, 9.79, 9.45], [11.16, 11.27, 11.3], [8.08, 8.47, 7.78], [7.54, 7.32, 8.08], [10.95, 11.25, 11.21], [11.82, 11.68, 11.88], [10.71, 10.27, 10.4], [10.38, 10.08, 9.82], [9.45, 9.86, 9.18], [9.15, 9.55, 9.5], [6.54, 6.74, 6.58], [7.79, 7.7, 7.93]]}, {"name": "Drug 24 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.04, 7.66, 7.58], [7.94, 7.75, 8.1], [7.14, 7.53, 6.85], [10.14, 9.9, 9.57], [11.44, 11.19, 10.71], [12.68, 12.97, 12.78], [10.04, 10.04, 10.01], [9.6, 9.85, 9.68], [11.97, 11.34, 12.08], [12.85, 12.45, 12.41], [10.75, 9.82, 10.38], [10.64, 9.8, 10.2], [8.56, 8.06, 8.23], [8.13, 7.67, 7.88], [5.01, 5.14, 4.93], [6.64, 6.43, 6.6]]}], "note": "16 genes (log2 expression) × 3 conditions × 3 replicates"}, "timecourse": {"nReps": 3, "nRows": 6, "rowNames": ["0 h", "2 h", "4 h", "8 h", "12 h", "24 h"], "groups": [{"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.07, 1.01, 0.93], [0.93, 1.21, 1.09], [1.05, 0.79, 1.05], [1.04, 1.13, 1.03], [0.99, 1.04, 0.84], [1.08, 1.03, 0.94]]}, {"name": "Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.27, 1.36, 0.72], [1.67, 1.86, 1.84], [2.82, 2.71, 3.32], [3.81, 3.36, 3.33], [3.44, 3.3, 3.46], [2.16, 1.83, 2.05]]}], "note": "Time course: rows = time points, 3 replicates (fold change vs 0 h)"}, "xy": {"nReps": 1, "nRows": 15, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15"], "groups": [{"name": "Body weight (g)", "reps": ["Value"], "data": [[18.7], [19.5], [19.8], [20.3], [20.8], [21.3], [21.8], [22.1], [22.3], [22.4], [25.0], [25.4], [25.7], [28.6], [31.0]]}, {"name": "Liver weight (g)", "reps": ["Value"], "data": [[0.98], [1.08], [1.08], [1.02], [1.24], [1.09], [1.01], [1.08], [0.84], [1.16], [1.42], [1.41], [1.16], [1.49], [1.61]]}], "note": "Two measurements on 15 mice: Col 1 = X, Col 2 = Y"}, "dose": {"nReps": 1, "nRows": 11, "rowNames": ["Dose 1", "Dose 2", "Dose 3", "Dose 4", "Dose 5", "Dose 6", "Dose 7", "Dose 8", "Dose 9", "Dose 10", "Dose 11"], "groups": [{"name": "Concentration (µM)", "reps": ["Value"], "data": [[0.001], [0.003], [0.01], [0.03], [0.1], [0.3], [1], [3], [10], [30], [100]]}, {"name": "Response (%)", "reps": ["Value"], "data": [[2.9], [1.3], [5.3], [9.1], [11.8], [28.8], [54.3], [80.5], [91.8], [96.3], [98.4]]}], "note": "Dose–response: Col 1 = concentration, Col 2 = % response (EC50 ≈ 0.8 µM)"}, "km": {"nReps": 1, "nRows": 20, "rowNames": ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5", "Subject 6", "Subject 7", "Subject 8", "Subject 9", "Subject 10", "Subject 11", "Subject 12", "Subject 13", "Subject 14", "Subject 15", "Subject 16", "Subject 17", "Subject 18", "Subject 19", "Subject 20"], "groups": [{"name": "Time (days)", "reps": ["Value"], "data": [[4.2], [40.5], [5.3], [55.2], [33.3], [8.3], [18.5], [17.7], [60.0], [23.8], [60.0], [13.2], [14.4], [21.0], [21.1], [9.2], [15.3], [0.7], [8.0], [22.6]]}, {"name": "Event (1 = death, 0 = censored)", "reps": ["Value"], "data": [[0], [1], [0], [1], [1], [1], [0], [1], [0], [0], [0], [0], [1], [0], [0], [0], [0], [1], [1], [1]]}], "note": "Survival: Col 1 = time, Col 2 = event (1) or censored (0)"}, "volcano": {"nReps": 1, "nRows": 40, "rowNames": ["Gene1", "Gene2", "Gene3", "Gene4", "Gene5", "Gene6", "Gene7", "Gene8", "Gene9", "Gene10", "Gene11", "Gene12", "Gene13", "Gene14", "Gene15", "Gene16", "Gene17", "Gene18", "Gene19", "Gene20", "Gene21", "Gene22", "Gene23", "Gene24", "Gene25", "Gene26", "Gene27", "Gene28", "Gene29", "Gene30", "Gene31", "Gene32", "Gene33", "Gene34", "Gene35", "Gene36", "Gene37", "Gene38", "Gene39", "Gene40"], "groups": [{"name": "log2 fold change", "reps": ["Value"], "data": [[2.55], [2.97], [1.92], [1.58], [2.52], [2.89], [-2.2], [-2.5], [-2.04], [-2.54], [-2.52], [0.63], [0.31], [-0.75], [-0.22], [0.54], [-0.44], [-0.45], [0.8], [0.02], [-0.64], [-0.14], [-0.0], [0.18], [0.21], [0.71], [-0.38], [0.35], [-0.48], [-0.43], [-0.02], [0.74], [0.16], [0.01], [-0.24], [-0.63], [-0.49], [0.11], [0.39], [1.18]]}, {"name": "p-value", "reps": ["Value"], "data": [[0.000526], [3.02e-05], [0.00552], [0.000565], [1.47e-06], [0.00245], [0.00113], [2.46e-05], [0.000258], [0.00179], [0.000432], [0.0051], [0.000376], [0.000215], [0.000183], [0.00249], [0.384], [0.217], [0.471], [0.226], [0.0611], [0.455], [0.111], [0.445], [0.93], [0.22], [0.388], [0.498], [0.0632], [0.0779], [0.125], [0.274], [0.112], [0.375], [0.12], [0.235], [0.0715], [0.727], [0.826], [0.0528]]}], "note": "40 genes: Col 1 = log2 fold change, Col 2 = p-value"}, "mtc": {"nReps": 1, "nRows": 12, "rowNames": ["Test A", "Test B", "Test C", "Test D", "Test E", "Test F", "Test G", "Test H", "Test I", "Test J", "Test K", "Test L"], "groups": [{"name": "p-value", "reps": ["Value"], "data": [[0.0004], [0.0021], [0.0089], [0.012], [0.019], [0.031], [0.044], [0.06], [0.17], [0.29], [0.48], [0.83]]}], "note": "12 p-values from separate tests (row names = test labels)"}, "fisher": {"nReps": 1, "nRows": 2, "rowNames": ["Responded", "Did not respond"], "groups": [{"name": "Treated", "reps": ["Value"], "data": [[12], [5]]}, {"name": "Untreated", "reps": ["Value"], "data": [[3], [10]]}], "note": "2 × 2 counts: columns = groups, rows = outcome"}, "chisq": {"nReps": 1, "nRows": 3, "rowNames": ["No symptoms", "Mild", "Severe"], "groups": [{"name": "Genotype AA", "reps": ["Value"], "data": [[42], [11], [3]]}, {"name": "Genotype Aa", "reps": ["Value"], "data": [[30], [18], [8]]}, {"name": "Genotype aa", "reps": ["Value"], "data": [[12], [17], [14]]}], "note": "Counts: columns = genotype, rows = severity"}};
+const EXAMPLES={"groups": {"nReps": 3, "nRows": 6, "rowNames": ["Sample 1", "Sample 2", "Sample 3", "Sample 4", "Sample 5", "Sample 6"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[2.1, 2.3, 1.9], [3.2, 2.8, 3.1], [1.8, 2.0, 2.2], [4.1, 3.9, 4.3], [2.5, 2.7, 2.3], [3.8, 3.6, 4.0]]}, {"name": "Treatment A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[4.5, 4.8, 4.2], [5.1, 5.4, 4.9], [3.9, 4.1, 4.3], [6.2, 5.8, 6.1], [4.7, 5.0, 4.6], [5.5, 5.3, 5.8]]}, {"name": "Treatment B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[3.0, 3.2, 2.8], [4.1, 3.8, 4.0], [2.7, 2.9, 3.1], [5.0, 4.7, 5.2], [3.5, 3.8, 3.3], [4.4, 4.2, 4.6]]}], "note": "3 groups × 3 replicates × 6 samples"}, "paired": {"nReps": 1, "nRows": 10, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10"], "groups": [{"name": "Before", "reps": ["Value"], "data": [[46.9], [56.1], [47.3], [46.2], [38.8], [47.4], [63.3], [55.1], [62.4], [53.0]]}, {"name": "After", "reps": ["Value"], "data": [[54.1], [62.7], [48.3], [54.8], [46.4], [54.9], [64.3], [55.9], [65.8], [57.6]]}], "note": "Paired: each row is one animal measured before and after treatment"}, "normality": {"nReps": 1, "nRows": 30, "rowNames": ["Obs 1", "Obs 2", "Obs 3", "Obs 4", "Obs 5", "Obs 6", "Obs 7", "Obs 8", "Obs 9", "Obs 10", "Obs 11", "Obs 12", "Obs 13", "Obs 14", "Obs 15", "Obs 16", "Obs 17", "Obs 18", "Obs 19", "Obs 20", "Obs 21", "Obs 22", "Obs 23", "Obs 24", "Obs 25", "Obs 26", "Obs 27", "Obs 28", "Obs 29", "Obs 30"], "groups": [{"name": "Normal-like", "reps": ["Value"], "data": [[10.61], [9.91], [11.04], [8.72], [10.62], [10.79], [8.68], [13.44], [11.11], [12.39], [8.76], [8.52], [9.31], [9.79], [11.26], [10.5], [9.11], [8.09], [8.96], [12.44], [8.38], [10.49], [10.85], [7.02], [10.1], [12.61], [5.97], [9.36], [9.79], [8.37]]}, {"name": "Right-skewed", "reps": ["Value"], "data": [[2.99], [1.98], [9.43], [8.65], [7.99], [5.35], [4.09], [7.69], [2.96], [1.54], [2.85], [2.48], [1.62], [1.8], [7.46], [2.84], [1.04], [2.7], [2.41], [5.18], [1.61], [3.12], [4.71], [5.61], [3.61], [1.22], [2.95], [3.66], [2.11], [5.26]]}], "note": "One roughly normal and one skewed sample (n = 30 each)"}, "anova2": {"nReps": 3, "nRows": 2, "rowNames": ["Litter 1", "Litter 2"], "groups": [{"name": "WT · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[20.0, 22.3, 19.2], [21.0, 24.6, 13.6]]}, {"name": "WT · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[29.2, 32.6, 33.0], [32.6, 30.9, 33.6]]}, {"name": "KO · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[21.7, 19.7, 27.1], [21.9, 19.6, 20.8]]}, {"name": "KO · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[22.4, 22.8, 16.2], [21.8, 25.5, 20.1]]}], "note": "2 × 2 design: genotype (WT, KO) × treatment (Vehicle, Drug), 6 animals per cell; nA = 2, nB = 2"}, "genes": {"nReps": 3, "nRows": 16, "rowNames": ["MYC", "FOS", "JUN", "EGR1", "IL6", "CXCL8", "TNF", "CCL2", "HMOX1", "NQO1", "GAPDH", "ACTB", "CDK1", "CCNB1", "MKI67", "TOP2A"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[7.27, 7.35, 7.5], [7.87, 7.81, 8.22], [7.1, 6.76, 7.52], [9.57, 10.09, 9.79], [8.7, 8.84, 8.72], [10.05, 9.51, 9.52], [7.8, 7.41, 7.39], [6.75, 7.43, 7.3], [10.43, 9.82, 10.06], [10.64, 11.12, 11.32], [10.04, 10.65, 10.51], [9.99, 9.54, 10.38], [10.07, 9.94, 10.19], [9.8, 10.07, 9.44], [7.42, 7.51, 7.5], [8.54, 8.4, 8.84]]}, {"name": "Drug 6 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.83, 8.84, 9.16], [10.27, 9.76, 10.24], [8.37, 9.04, 8.91], [12.51, 12.66, 12.87], [9.48, 9.79, 9.45], [11.16, 11.27, 11.3], [8.08, 8.47, 7.78], [7.54, 7.32, 8.08], [10.95, 11.25, 11.21], [11.82, 11.68, 11.88], [10.71, 10.27, 10.4], [10.38, 10.08, 9.82], [9.45, 9.86, 9.18], [9.15, 9.55, 9.5], [6.54, 6.74, 6.58], [7.79, 7.7, 7.93]]}, {"name": "Drug 24 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.04, 7.66, 7.58], [7.94, 7.75, 8.1], [7.14, 7.53, 6.85], [10.14, 9.9, 9.57], [11.44, 11.19, 10.71], [12.68, 12.97, 12.78], [10.04, 10.04, 10.01], [9.6, 9.85, 9.68], [11.97, 11.34, 12.08], [12.85, 12.45, 12.41], [10.75, 9.82, 10.38], [10.64, 9.8, 10.2], [8.56, 8.06, 8.23], [8.13, 7.67, 7.88], [5.01, 5.14, 4.93], [6.64, 6.43, 6.6]]}], "note": "16 genes (log2 expression) × 3 conditions × 3 replicates"}, "timecourse": {"nReps": 3, "nRows": 6, "rowNames": ["0 h", "2 h", "4 h", "8 h", "12 h", "24 h"], "groups": [{"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.07, 1.01, 0.93], [0.93, 1.21, 1.09], [1.05, 0.79, 1.05], [1.04, 1.13, 1.03], [0.99, 1.04, 0.84], [1.08, 1.03, 0.94]]}, {"name": "Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.27, 1.36, 0.72], [1.67, 1.86, 1.84], [2.82, 2.71, 3.32], [3.81, 3.36, 3.33], [3.44, 3.3, 3.46], [2.16, 1.83, 2.05]]}], "note": "Time course: rows = time points, 3 replicates (fold change vs 0 h)"}, "xy": {"nReps": 1, "nRows": 15, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15"], "groups": [{"name": "Body weight (g)", "reps": ["Value"], "data": [[18.7], [19.5], [19.8], [20.3], [20.8], [21.3], [21.8], [22.1], [22.3], [22.4], [25.0], [25.4], [25.7], [28.6], [31.0]]}, {"name": "Liver weight (g)", "reps": ["Value"], "data": [[0.98], [1.08], [1.08], [1.02], [1.24], [1.09], [1.01], [1.08], [0.84], [1.16], [1.42], [1.41], [1.16], [1.49], [1.61]]}], "note": "Two measurements on 15 mice: Col 1 = X, Col 2 = Y"}, "dose": {"nReps": 1, "nRows": 11, "rowNames": ["Dose 1", "Dose 2", "Dose 3", "Dose 4", "Dose 5", "Dose 6", "Dose 7", "Dose 8", "Dose 9", "Dose 10", "Dose 11"], "groups": [{"name": "Concentration (µM)", "reps": ["Value"], "data": [[0.001], [0.003], [0.01], [0.03], [0.1], [0.3], [1], [3], [10], [30], [100]]}, {"name": "Response (%)", "reps": ["Value"], "data": [[2.9], [1.3], [5.3], [9.1], [11.8], [28.8], [54.3], [80.5], [91.8], [96.3], [98.4]]}], "note": "Dose–response: Col 1 = concentration, Col 2 = % response (EC50 ≈ 0.8 µM)"}, "km": {"nReps": 1, "nRows": 30, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15", "Mouse 16", "Mouse 17", "Mouse 18", "Mouse 19", "Mouse 20", "Mouse 21", "Mouse 22", "Mouse 23", "Mouse 24", "Mouse 25", "Mouse 26", "Mouse 27", "Mouse 28", "Mouse 29", "Mouse 30"], "groups": [{"name": "Time (days)", "reps": ["Value"], "data": [[2.5], [24.3], [3.2], [33.1], [20.0], [5.0], [11.1], [10.6], [58.8], [14.3], [60.0], [7.9], [8.7], [12.6], [12.6], [13.8], [23.0], [1.0], [11.9], [33.9], [48.2], [60.0], [17.8], [7.3], [46.4], [60.0], [44.4], [60.0], [33.4], [60.0]]}, {"name": "Control", "reps": ["Value"], "data": [[0], [1], [0], [1], [1], [1], [0], [1], [1], [1], [0], [0], [1], [1], [0], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""]]}, {"name": "Treated", "reps": ["Value"], "data": [[""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [0], [0], [1], [1], [1], [1], [0], [1], [1], [0], [0], [1], [0], [1], [0]]}], "note": "Survival, Prism layout: Col 1 = time; Control / Treated columns hold 1 (death) or 0 (censored) for their own subjects, blank otherwise"}, "anova": {"nReps": 3, "nRows": 2, "rowNames": ["Exp 1", "Exp 2"], "groups": [{"name": "Untreated", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[10.7, 8.6, 11.4], [10.6, 10.1, 9.6]]}, {"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[9.3, 9.3, 9.9], [9.2, 12.6, 10.5]]}, {"name": "Drug A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[14.0, 12.6, 12.3], [13.6, 15.8, 14.8]]}, {"name": "Drug B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[11.5, 12.0, 11.3], [13.4, 12.0, 13.4]]}], "note": "4 groups × 6 values: Untreated and Vehicle are both possible controls"}, "volcano": {"nReps": 1, "nRows": 40, "rowNames": ["Gene1", "Gene2", "Gene3", "Gene4", "Gene5", "Gene6", "Gene7", "Gene8", "Gene9", "Gene10", "Gene11", "Gene12", "Gene13", "Gene14", "Gene15", "Gene16", "Gene17", "Gene18", "Gene19", "Gene20", "Gene21", "Gene22", "Gene23", "Gene24", "Gene25", "Gene26", "Gene27", "Gene28", "Gene29", "Gene30", "Gene31", "Gene32", "Gene33", "Gene34", "Gene35", "Gene36", "Gene37", "Gene38", "Gene39", "Gene40"], "groups": [{"name": "log2 fold change", "reps": ["Value"], "data": [[3.15], [2.03], [2.6], [2.47], [1.45], [1.78], [-1.69], [-1.22], [-1.63], [-2.31], [-1.67], [-0.06], [-0.61], [-0.48], [0.7], [-0.07], [0.48], [-0.1], [0.29], [-0.1], [-1.1], [-0.17], [-0.94], [-0.05], [0.42], [-0.31], [-0.49], [0.03], [-0.22], [0.33], [0.0], [-0.86], [-0.22], [-0.94], [-1.29], [1.03], [-0.32], [0.16], [0.19], [-0.32]]}, {"name": "p-value", "reps": ["Value"], "data": [[7.53e-05], [6.61e-05], [0.000821], [0.000277], [3.63e-06], [0.000667], [0.000389], [1.48e-05], [0.000761], [0.00078], [0.000279], [0.00147], [0.0171], [0.0279], [0.000111], [0.0112], [0.112], [0.0939], [0.286], [0.0766], [0.0745], [0.584], [0.411], [0.1], [0.054], [0.0507], [0.124], [0.0764], [0.62], [0.0504], [0.0718], [0.802], [0.119], [0.153], [0.292], [0.148], [0.0579], [0.068], [0.825], [0.106]]}], "note": "40 genes: Col 1 = log2 fold change, Col 2 = p-value"}, "mtc": {"nReps": 1, "nRows": 12, "rowNames": ["Test A", "Test B", "Test C", "Test D", "Test E", "Test F", "Test G", "Test H", "Test I", "Test J", "Test K", "Test L"], "groups": [{"name": "p-value", "reps": ["Value"], "data": [[0.0004], [0.0021], [0.0089], [0.012], [0.019], [0.031], [0.044], [0.06], [0.17], [0.29], [0.48], [0.83]]}], "note": "12 p-values from separate tests (row names = test labels)"}, "fisher": {"nReps": 1, "nRows": 2, "rowNames": ["Responded", "Did not respond"], "groups": [{"name": "Treated", "reps": ["Value"], "data": [[12], [5]]}, {"name": "Untreated", "reps": ["Value"], "data": [[3], [10]]}], "note": "2 × 2 counts: columns = groups, rows = outcome"}, "chisq": {"nReps": 1, "nRows": 3, "rowNames": ["No symptoms", "Mild", "Severe"], "groups": [{"name": "Genotype AA", "reps": ["Value"], "data": [[42], [11], [3]]}, {"name": "Genotype Aa", "reps": ["Value"], "data": [[30], [18], [8]]}, {"name": "Genotype aa", "reps": ["Value"], "data": [[12], [17], [14]]}], "note": "Counts: columns = genotype, rows = severity"}};
 
 // Which example suits each plot type / test
-const EXAMPLE_FOR_PLOT={bar_sd:'groups',boxplot:'groups',violin:'groups',scatter:'xy',line:'timecourse',heatmap:'genes',volcano:'volcano',pca:'genes',km:'km',dose:'dose',qq:'normality',histogram:'normality',mtc:'mtc'};
-const EXAMPLE_FOR_TEST={desc:'groups',norm:'normality',ttest_ind:'groups',ttest_rel:'paired',anova:'groups',anova2:'anova2',mw:'groups',wilcoxon:'paired',kruskal:'groups',ranksum:'paired',rankprod:'genes',pearson:'xy',spearman:'xy',regress:'xy',pca:'genes',heatmap:'genes',fisher:'fisher',chisq:'chisq',mtc:'mtc',km:'km',dose:'dose',volcano:'volcano'};
+const EXAMPLE_FOR_PLOT={bar_sd:'groups',boxplot:'groups',violin:'groups',scatter:'xy',line:'timecourse',heatmap:'genes',volcano:'volcano',pca:'genes',km:'km',dose:'dose',qq:'normality',histogram:'normality',mtc:'mtc',ecdf:'normality'};
+const EXAMPLE_FOR_TEST={desc:'groups',norm:'normality',ttest_ind:'groups',ttest_rel:'paired',anova:'anova',anova2:'anova2',mw:'groups',wilcoxon:'paired',kruskal:'groups',ranksum:'paired',rankprod:'screen',pearson:'xy',spearman:'xy',regress:'xy',pca:'genes',heatmap:'genes',fisher:'fisher',chisq:'chisq',mtc:'mtc',km:'km',dose:'dose',volcano:'volcano',ks:'normality'};
 function applyG(newG){
   pushUndo();
   G=JSON.parse(JSON.stringify(newG));delete G.note;
@@ -3669,8 +3961,17 @@ function applyG(newG){
   // option menus list group names, so rebuild them (keeping the chosen test / plot)
   onTypeChange();onPlotTypeChange();
 }
+// Larger examples are generated (fixed seed) instead of stored
+const EXAMPLE_GEN={screen:()=>{
+  const rnd=_mulberry32(2024),gauss=()=>{const u=Math.max(rnd(),1e-9),v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+  const n=300,G2={nReps:3,nRows:n,rowNames:[],groups:[{name:'Control',reps:['Rep1','Rep2','Rep3'],data:[]},{name:'Treated',reps:['Rep1','Rep2','Rep3'],data:[]}],note:'Gene screen: 300 genes (log2 expression) × Control / Treated × 3 replicates; 20 genes go up and 20 go down'};
+  for(let i=0;i<n;i++){const base=5+rnd()*7,eff=i%15===3?1.6+rnd():i%15===8?-(1.4+rnd()):0;
+    G2.rowNames.push(`Gene${String(i+1).padStart(3,'0')}`);
+    G2.groups[0].data.push([0,1,2].map(()=>+(base+0.35*gauss()).toFixed(2)));
+    G2.groups[1].data.push([0,1,2].map(()=>+(base+eff+0.35*gauss()).toFixed(2)));}
+  return G2;}};
 function loadExampleKey(key){
-  const ex=EXAMPLES[key];if(!ex)return;
+  const ex=EXAMPLES[key]||(EXAMPLE_GEN[key]&&EXAMPLE_GEN[key]());if(!ex)return;
   applyG(ex);
   showDataNote(ex.note?`Example loaded: ${ex.note}`:'Example loaded');
 }
@@ -3695,6 +3996,7 @@ function clearData(){applyG(defaultG());showDataNote('Cleared: back to an empty 
 function onCSV(event){
   const file=event.target.files[0];if(!file)return;
   Papa.parse(file,{header:false,dynamicTyping:true,complete:res=>{
+    pushUndo();
     const rows=res.data.filter(r=>r.some(v=>v!==null&&v!==''));
     if(!rows.length)return;
     // Check if first row is headers
@@ -3710,7 +4012,8 @@ function onCSV(event){
     G.rowNames=dataRows.map((r,i)=>firstColIsName?(String(r[0])||`Row ${i+1}`):`Row ${i+1}`);
     G.groups=colNames.map((name,c)=>({name,reps:['Rep1'],data:dataRows.map(r=>[parseFloat(r[c+startCol])])}));
     document.getElementById('n-grps').value=G.groups.length;
-    renderGrid();
+    renderGrid();onTypeChange();onPlotTypeChange();
+    showDataNote(`Imported ${G.nRows.toLocaleString()} rows × ${G.groups.length} columns from ${file.name}`);
   }});
   event.target.value='';
 }
@@ -3757,10 +4060,10 @@ window.addEventListener('load',checkLibs);
    <button class="btn-sm" onclick="closeHelp()" title="Close (Esc)">✕</button>
   </div>
   <div id="help-body">
-   <div class="hpane active" id="hq"><h2>About TP</h2>
+   <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (pure JavaScript, no Python, no server) and never uploads your data anywhere.</p>
-<p>TP is a <strong>beta (v0.7.0)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
-<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.7.0.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<p>TP is a <strong>beta (v0.8.2)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.8.2.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
 <ol>
@@ -3775,8 +4078,8 @@ window.addEventListener('load',checkLibs);
 <li><strong>Download</strong> with <strong>⬇ PNG</strong>, <strong>⬇ SVG</strong> or <strong>⬇ PDF</strong> at the top of the plot tab.</li>
 <li><strong>Save your work</strong> with <strong>💾 Save</strong>. This downloads a <code>.thistle</code> project file you can reopen later with <strong>📂 Load</strong>.</li>
 </ol>
-<p>Tip: Ctrl/Cmd+Z undoes and Ctrl/Cmd+Y redoes any change to the data table.</p></div>
-   <div class="hpane" id="hf"><h2>Full Manual</h2><h3>1. Screen layout</h3>
+<p>Tip: Ctrl/Cmd+Z undoes and Ctrl/Cmd+Y redoes any change to the data table.</p><!--/HELP:hq--></div>
+   <div class="hpane" id="hf"><!--HELP:hf--><h2>Full Manual</h2><h3>1. Screen layout</h3>
 <p>TP has a header bar, a left panel for data and settings, and a right panel of result and plot tabs.</p>
 <table>
 <thead>
@@ -3821,7 +4124,7 @@ window.addEventListener('load',checkLibs);
 <tbody>
 <tr>
 <td>Kaplan-Meier</td>
-<td>Col 1 = time, Col 2 = event (1 = event, 0 = censored)</td>
+<td>Col 1 = time; each further column is one group holding 1 (event) or 0 (censored) for its own subjects, blank otherwise (one subject per row, as in Prism)</td>
 </tr>
 <tr>
 <td>Dose-Response (5PL)</td>
@@ -3849,7 +4152,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>PCA, Heatmap</td>
-<td>Rows = features/genes, columns = samples</td>
+<td>Rows = features/genes, columns = groups/samples (PCA can use every replicate column as a sample)</td>
 </tr>
 <tr>
 <td>Two-Way ANOVA</td>
@@ -3866,6 +4169,7 @@ window.addEventListener('load',checkLibs);
 <li><strong>Rename</strong> a group, row or dataset by double-clicking its name; Enter confirms, Esc cancels.</li>
 <li><strong>Undo / Redo</strong> with the ↩/↪ buttons or Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Ctrl/Cmd+Z).</li>
 <li><strong>Import CSV</strong> with ⬆ CSV. A first row of text becomes group names; a first column of text becomes row names. Each column becomes a group with one replicate.</li>
+<li><strong>Paste a whole table</strong>: the table grows to fit the pasted block. Paste into the <strong>Row</strong> column to use the first pasted column as row names (e.g. gene IDs) and the rest as values.</li>
 <li><strong>Multiple datasets:</strong> click <strong>+</strong> beside the dataset tabs to add another table; it starts empty (Group1, Group2) and keeps its own data.</li>
 <li><strong>Clear</strong> resets the current table to the empty default (2 groups × 3 replicates × 6 rows, names reset). Undo with Ctrl/Cmd+Z.</li>
 <li><strong>📋 Example</strong> (beside the Visualisation and Statistical Test menus) loads a dataset suited to the chosen plot or test, for example survival times for Kaplan–Meier, a concentration series for dose–response, paired before/after values for the paired tests, or a gene × condition matrix for PCA and heatmaps. A note under the table says what was loaded; undo with Ctrl/Cmd+Z.</li>
@@ -3908,8 +4212,8 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Heatmap (Z-scored)</td>
-<td>Many features × samples</td>
-<td>Row normalisation (Z-score, Min-Max, none)</td>
+<td>Many features × samples; significant genes from a gene-level test</td>
+<td>Rows: most variable, or significant up (red bar) and down (blue bar) genes from the linked Rank Product / per-row t-test; how many (25–500); columns: group means or every replicate; row normalisation</td>
 </tr>
 <tr>
 <td>Volcano Plot</td>
@@ -3919,12 +4223,12 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>PCA Scores</td>
 <td>Sample clustering</td>
-<td>Points show (Group means, All replicates); Color by (Group, Replicate); PC on each axis</td>
+<td>Points show (Group means, All replicates); Color by (Group, Replicate); PC on each axis (X and Y, any component; also changeable on the plot)</td>
 </tr>
 <tr>
 <td>Kaplan-Meier</td>
-<td>Survival curve (censored subjects shown as tick marks)</td>
-<td>Time column; event column (1 = event, 0 = censored)</td>
+<td>Survival curves, one per group (censored subjects shown as tick marks)</td>
+<td>Time column; every other column is a group</td>
 </tr>
 <tr>
 <td>Dose-Response (5PL)</td>
@@ -3946,12 +4250,18 @@ window.addEventListener('load',checkLibs);
 <td>Raw vs adjusted p-values with a p = 0.05 line</td>
 <td>p-values column; correction shown</td>
 </tr>
+<tr>
+<td>Cumulative Distribution (ECDF)</td>
+<td>Comparing whole distributions (pairs with Kolmogorov–Smirnov)</td>
+<td>Groups; normalisation; overlay fitted normal curve</td>
+</tr>
 </tbody>
 </table>
 <p><strong>Normalisation</strong> options for group plots are None, log2, log10, Z-score and Min-Max.</p>
 <h3>5. Statistical tests</h3>
 <p>Choose a test, set its options, then click <strong>▶ Run Analysis</strong>. The blue box under the test menu says what the test does, how it reads the columns and which similar test to consider; each option shows a one-line explanation of the current choice. Every result tab starts with a grey header listing the test, all options used, the dataset and its size, and the time of the run.</p>
-<p>Tick <strong>Auto-plot after run</strong> to open a linked plot. The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).</p>
+<p>Every result tab has a <strong>⬇ Tables (CSV)</strong> button that saves all of its tables in one file (significance stars dropped so numbers stay numeric). Gene-level results (per-row t-test, Rank Product, Multiple Testing, Volcano, PCA loadings) also offer the <strong>full table</strong> for every row.</p>
+<p>Tick <strong>Auto-plot after run</strong> to open a linked plot. Significance marks and gene lists appear only on the figure created by that run (not on plots you make by hand later). The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).</p>
 <table>
 <thead>
 <tr>
@@ -3984,12 +4294,12 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Parametric</td>
 <td>One-Way ANOVA</td>
-<td>Comparisons: all pairs or vs a control; post-hoc: Tukey HSD (default), Holm–Šídák, Holm, Bonferroni, FDR, none</td>
+<td>Comparisons: all pairs (Tukey HSD by default) or vs one or more ticked control groups (Dunnett for one control; Holm–Šídák etc. for several); also Holm, Bonferroni, FDR, none</td>
 </tr>
 <tr>
 <td>Parametric</td>
 <td>Two-Way ANOVA</td>
-<td>Factor A levels (nA), Factor B levels (nB); balanced designs only</td>
+<td>nA, nB; post-hoc: simple effects (B within each A, or A within each B), all cell means, or main effects; Tukey, Holm–Šídák, Holm, Bonferroni, FDR. Balanced designs only</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
@@ -4014,7 +4324,12 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Non-parametric</td>
 <td>Rank Product</td>
-<td>Group A vs Group B per row; FDR across rows</td>
+<td>Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV</td>
+</tr>
+<tr>
+<td>Non-parametric</td>
+<td>Kolmogorov–Smirnov</td>
+<td>Two-sample (exact p for small samples) or one-sample vs normal (Lilliefors, p by simulation)</td>
 </tr>
 <tr>
 <td>Correlation / XY</td>
@@ -4028,8 +4343,13 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Multivariate</td>
-<td>PCA, Hierarchical Heatmap</td>
-<td>Rows = features, columns = samples</td>
+<td>PCA</td>
+<td>Samples = group means or every replicate column; optional Z-score per feature; reports variance explained and scores for every component, and top loadings for any chosen PC (CSV of the first 10)</td>
+</tr>
+<tr>
+<td>Multivariate</td>
+<td>Hierarchical Heatmap</td>
+<td>Rows = features, columns = groups</td>
 </tr>
 <tr>
 <td>Categorical</td>
@@ -4043,8 +4363,8 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Survival / XY</td>
-<td>Kaplan-Meier</td>
-<td>Time and event columns</td>
+<td>Kaplan-Meier + log-rank</td>
+<td>Any number of groups: median survival, log-rank χ², hazard ratio (2 groups), corrected pairwise log-rank (3+ groups)</td>
 </tr>
 <tr>
 <td>Survival / XY</td>
@@ -4114,6 +4434,16 @@ window.addEventListener('load',checkLibs);
 <td>Larger tables, all expected counts ≥ 5</td>
 </tr>
 <tr>
+<td>Mann–Whitney vs Kolmogorov–Smirnov</td>
+<td>You expect one group to be shifted higher or lower</td>
+<td>Distributions may differ in spread or shape, not just location</td>
+</tr>
+<tr>
+<td>Shapiro–Wilk vs KS (Lilliefors) normality</td>
+<td>Usual choice; more powerful</td>
+<td>You want a test based on the whole cumulative distribution (plot it with ECDF)</td>
+</tr>
+<tr>
 <td>4PL vs 5PL dose–response</td>
 <td>The curve is symmetric</td>
 <td>The curve is asymmetric (needs more points)</td>
@@ -4130,6 +4460,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>Dunnett</td>
+<td>Family-wise error, vs one control</td>
+<td>Each group vs a single control after one-way ANOVA (exact multivariate t); more power than Tukey or Holm–Šídák for this design</td>
+</tr>
 <tr>
 <td>Tukey HSD</td>
 <td>Family-wise error, all pairs</td>
@@ -4162,7 +4497,20 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p><strong>Significance brackets.</strong> After you run a test that compares pairs, the linked Bar + SD + Dots plot shows brackets with stars using the corrected p-values: * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001, **** p &lt; 0.0001. Non-significant pairs get no bracket. A <strong>per-row</strong> t-test instead opens Bar + SD + Dots <em>By sample</em>, with brackets inside each sample.</p>
+<p><strong>Significance brackets.</strong> After you run a test that compares pairs, the linked Bar + SD + Dots plot shows brackets with stars using the corrected p-values: * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001, **** p &lt; 0.0001. Non-significant pairs get no bracket. A <strong>per-row</strong> t-test on up to 40 rows opens Bar + SD + Dots <em>By sample</em>, with brackets inside each sample; on larger tables it opens a heatmap of the significant up and down genes (or the top-ranked ones if none pass the cutoff).</p>
+<h3>5b. Large datasets (RNA-seq and similar)</h3>
+<p>TP handles tables with tens of thousands of rows (tested with 20,000 genes × 6 samples).</p>
+<ul>
+<li>The data table only draws the rows in view, so scrolling stays fast; the line under the table shows the full size.</li>
+<li>Paste the table straight from Excel (paste into the Row column to include gene IDs), or use ⬆ CSV.</li>
+<li>Per-row t-tests (with FDR by default) and Multiple Testing show the 200 most significant rows and offer the <strong>full table as CSV</strong>; Rank Product, Volcano and PCA loadings also export every gene.</li>
+<li>Rank Product and per-row t-tests open a heatmap of the significant up and down genes across every replicate.</li>
+<li>Heatmaps cluster and draw only the most variable rows (25–500, chosen in the plot options).</li>
+<li>PCA works on samples (group means or every replicate column) and lists the genes with the largest loadings.</li>
+<li>Bar/box plots <em>By sample</em> show the first 40 rows; use <em>By group</em> for an overview.</li>
+<li>Volcano, Rank Product, Scatter, Histogram and ECDF use all rows.</li>
+<li>Saved projects of this size are a few MB.</li>
+</ul>
 <h3>6. Exporting figures</h3>
 <p>The <strong>Export</strong> menu in the header sets the style for every download button.</p>
 <table>
@@ -4238,17 +4586,17 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.7.0 (beta):</p>
+<p>Known limitations of v0.8.2 (beta):</p>
 <ul>
-<li>Dunnett's test (control vs groups after ANOVA) is not available yet; use "vs control" with Holm–Šídák.</li>
-<li>Kaplan–Meier handles one group; there is no log-rank comparison between groups yet.</li>
-<li>Two-Way ANOVA supports balanced designs only and has no post-hoc tests yet.</li>
+<li>Two-Way ANOVA supports balanced designs only (equal n in every cell).</li>
+<li>Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.</li>
+<li>Kaplan–Meier assumes one subject per row; hazard ratios are log-rank estimates (no Cox regression).</li>
 <li>SVG export is an embedded image, not editable vectors.</li>
 <li>Publication style is greyscale only; there are no colour publication palettes yet.</li>
 <li>Project files store only the active dataset, and plots only as snapshot images.</li>
 <li>TP has not yet been formally validated against a reference package. Spot-check key results.</li>
-</ul></div>
-   <div class="hpane" id="hv"><h2>Version History</h2><p>All releases are beta (0.x). Earlier builds were called PyPrism / PyPrism Pro; numbers before 0.6.0 are mapped from the old v1–v5 builds.</p>
+</ul><!--/HELP:hf--></div>
+   <div class="hpane" id="hv"><!--HELP:hv--><h2>Version History</h2><p>All releases are beta (0.x). Earlier builds were called PyPrism / PyPrism Pro; numbers before 0.6.0 are mapped from the old v1–v5 builds.</p>
 <table>
 <thead>
 <tr>
@@ -4258,6 +4606,21 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.8.2 (5 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Significance stars, brackets and gene lists now belong only to the figure created by a specific run of a test: re-plotting the same settings by hand, or after closing the tabs, no longer carries them over (🔗 still re-creates the linked figure with them); PCA now lists every component (variance, scores for all PCs, top loadings for any PC with a selector, loadings CSV for the first 10 PCs) and the PCA plot lets you choose the X and Y components before plotting as well as afterwards</td>
+</tr>
+<tr>
+<td>0.8.1 (5 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Clearer result tab names (e.g. "Unpaired t-test (Welch)" instead of "t-ind"); ⬇ Tables (CSV) on every result, and full gene tables for Rank Product, Volcano and PCA loadings; Rank Product rewritten to rank up and down separately (each with its own FDR), effect defined as Group B vs Group A with a difference / log2-ratio choice (previously always a ratio, even on log data); Rank Product and large per-row t-tests open a linked heatmap of significant up and down genes across replicates; heatmap can show replicate columns and a linked gene list; new 300-gene screen example for Rank Product</td>
+</tr>
+<tr>
+<td>0.8.0 (5 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Dunnett's test for one-way ANOVA vs a control (exact multivariate t; checked against simulation and SciPy); one-way ANOVA can compare against several ticked control groups; two-way ANOVA post-hoc tests (simple effects, all cells, main effects) with brackets on the bar chart, factor labels from group names, and a check for unbalanced designs (cell-means table fixed); Kaplan–Meier with any number of groups (Prism layout), log-rank test, hazard ratio and corrected pairwise log-rank; Kolmogorov–Smirnov test (two-sample exact, or Lilliefors normality) with a new Cumulative Distribution (ECDF) plot; large datasets: data table draws only visible rows, paste grows the table and can fill row names, PCA rewritten to work on samples with tens of thousands of genes (and lists top loadings), heatmap limited to the most variable rows, long result tables show the top 200 rows with a full CSV download; Rank Product p-values now use the exact distribution of the product of rank fractions</td>
+</tr>
 <tr>
 <td>0.7.0 (5 Nov 2026)</td>
 <td>Thistle Plot</td>
@@ -4299,7 +4662,7 @@ window.addEventListener('load',checkLibs);
 <td>Python desktop and Streamlit prototypes</td>
 </tr>
 </tbody>
-</table></div>
+</table><!--/HELP:hv--></div>
   </div>
  </div>
 </div>
