@@ -1,0 +1,38 @@
+# Normalise line endings: store LF in the repo and check out LF on every OS,
+# so index.html, tests and the Help build behave the same on Windows and Linux/CI.
+* text=auto eol=lf
+
+# Text files (explicit, in case auto-detection guesses wrong)
+*.html   text eol=lf
+*.js     text eol=lf
+*.json   text eol=lf
+*.md     text eol=lf
+*.py     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.css    text eol=lf
+*.csv    text eol=lf
+*.tsv    text eol=lf
+*.txt    text eol=lf
+*.sh     text eol=lf
+*.thistle text eol=lf
+*.pprism  text eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.ps1    text eol=crlf
+
+# Binary files: never touch
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.xlsx   binary
+*.woff   binary
+*.woff2  binary
+
+# Lock file: generated, hide from diffs
+package-lock.json -diff linguist-generated
