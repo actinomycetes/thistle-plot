@@ -31,8 +31,9 @@ Most tests pool all values in a group's columns. Some tests read columns positio
 ### 3. Entering and editing data
 
 - **Type** into any cell. Arrow keys move between cells.
-- **Paste** a block from Excel or Sheets with Ctrl/Cmd+V; it fills from the selected cell.
-- **Copy / cut** a selection with Ctrl/Cmd+C or X. **Delete** or Backspace clears selected cells.
+- **Select** a block of cells by dragging across them with the mouse, or click one cell and Shift+click another.
+- **Copy / cut** the selection with Ctrl/Cmd+C or X (or the right-click menu); it pastes into Excel or Sheets as a table. Cut is undoable with Ctrl/Cmd+Z. **Delete** or Backspace clears selected cells.
+- **Paste** a block from Excel, Sheets or TP with Ctrl/Cmd+V; it fills from the selected cell (the top-left cell of a selected block), and the table grows to fit. Pasting a single value into a selected block fills every cell with it.
 - **Resize** with Reps/group and Groups, or with +Grp, −Grp, +Row, −Row.
 - **Rename** a group, row or dataset by double-clicking its name; Enter confirms, Esc cancels.
 - **Undo / Redo** with the ↩/↪ buttons or Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Ctrl/Cmd+Z).
@@ -190,7 +191,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.9.0 (beta):
+Known limitations of v0.9.1 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell).
 - Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.

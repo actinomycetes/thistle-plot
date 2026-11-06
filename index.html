@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.9.0 (Beta)</title>
+<title>Thistle Plot v0.9.1 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -187,7 +187,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.9.0</span>
+  <span class="badge" id="app-version" title="Version">v0.9.1</span>
   <span class="badge">Pure JS</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
@@ -1344,12 +1344,29 @@ document.addEventListener('paste', e=>{
   const active=document.activeElement;
   if(!active||!active.closest('#dtbl'))return;
   const clip=e.clipboardData.getData('text');
-  if(!clip.includes('\t')&&!clip.includes('\n'))return;
+  const intoNames=active.classList.contains('rn');
+  // Pasting into a selected block starts at its top-left cell, wherever the drag began
+  const inSel=!intoNames&&active.dataset.g!==undefined&&_selIsMulti()&&isCellInSel(+active.dataset.g,+active.dataset.row,+active.dataset.r);
+  if(!clip.includes('\t')&&!clip.replace(/\r?\n$/,'').includes('\n')){
+    if(!inSel)return; // a single value into one cell: the browser's own paste
+    // a single value into a selected block fills every cell (as in Excel)
+    e.preventDefault();pushUndo();
+    const v=parseFloat(clip.trim().replace(',','.'));
+    const minRow=Math.min(gridSel.startRow,gridSel.endRow),maxRow=Math.max(gridSel.startRow,gridSel.endRow);
+    const a0=gridSel.startG*G.nReps+gridSel.startR,a1=gridSel.endG*G.nReps+gridSel.endR;
+    for(let row=minRow;row<=maxRow;row++)for(let abs=Math.min(a0,a1);abs<=Math.max(a0,a1);abs++){
+      const tG=Math.floor(abs/G.nReps),tR=abs%G.nReps;
+      if(!G.groups[tG].data[row])G.groups[tG].data[row]=Array(G.nReps).fill('');
+      G.groups[tG].data[row][tR]=isNaN(v)?'':v;
+    }
+    renderGrid();
+    return;
+  }
   e.preventDefault();pushUndo();
   const rows=clip.replace(/\r/g,'').replace(/\n+$/,'').split('\n').map(r=>r.split('\t'));
-  const intoNames=active.classList.contains('rn');
-  const startRow=parseInt(active.dataset.row??0);
-  const startG=intoNames?0:parseInt(active.dataset.g??0),startR=intoNames?0:parseInt(active.dataset.r??0);
+  const tl=inSel?_selTopLeft():null;
+  const startRow=tl?tl.row:parseInt(active.dataset.row??0);
+  const startG=intoNames?0:tl?tl.g:parseInt(active.dataset.g??0),startR=intoNames?0:tl?tl.r:parseInt(active.dataset.r??0);
   if(isNaN(startG)||isNaN(startRow)||isNaN(startR))return;
   const dataCols=Math.max(...rows.map(r=>r.length))-(intoNames?1:0);
   // grow rows / groups so the whole block fits (e.g. pasting 20,000 genes)
@@ -1425,6 +1442,34 @@ function getSelCells(){
   }
   return result;
 }
+function _selIsMulti(){
+  return gridSel.startG>=0&&(gridSel.startG!==gridSel.endG||gridSel.startRow!==gridSel.endRow||gridSel.startR!==gridSel.endR);
+}
+// Top-left cell of the selection as {g,row,r}
+function _selTopLeft(){
+  const minRow=Math.min(gridSel.startRow,gridSel.endRow);
+  const abs=Math.min(gridSel.startG*G.nReps+gridSel.startR,gridSel.endG*G.nReps+gridSel.endR);
+  return {g:Math.floor(abs/G.nReps),row:minRow,r:abs%G.nReps};
+}
+// Should copy/cut take TP's cell selection (true) or leave the browser to copy text inside one cell (false)?
+function _gridSelOwnsClipboard(el){
+  if(!el||!el.closest||!el.closest('#dtbl')||el.dataset.g===undefined||gridSel.startG<0)return false;
+  if(!isCellInSel(+el.dataset.g,+el.dataset.row,+el.dataset.r))return false; // moved away with the keyboard
+  if(_selIsMulti())return true;
+  return !(el.selectionEnd>el.selectionStart); // one cell: copy it whole unless part of its text is selected
+}
+// Copy / cut go through the clipboard events (not navigator.clipboard), so they also work inside
+// the Confluence iFrame and on pages opened from disk, where navigator.clipboard is blocked.
+function _gridClipboard(e,cut){
+  const el=document.activeElement;
+  if(!_gridSelOwnsClipboard(el)||!e.clipboardData)return;
+  const cells=getSelCells();if(!cells)return;
+  e.clipboardData.setData('text/plain',cells.map(row=>row.join('\t')).join('\n'));
+  e.preventDefault();
+  if(cut){const tl=_selTopLeft();clearSelCells();focusCell(tl.g,tl.row,tl.r);}
+}
+document.addEventListener('copy',e=>_gridClipboard(e,false));
+document.addEventListener('cut',e=>_gridClipboard(e,true));
 function clearSelCells(){pushUndo();
   if(gridSel.startG<0)return;
   const minG=Math.min(gridSel.startG,gridSel.endG),maxG=Math.max(gridSel.startG,gridSel.endG);
@@ -1442,24 +1487,8 @@ function clearSelCells(){pushUndo();
 document.addEventListener('keydown',e=>{
   const active=document.activeElement;
   const inGrid=active&&active.closest('#dtbl');
-  // Ctrl/Cmd+C = copy selection
-  if((e.ctrlKey||e.metaKey)&&e.key==='c'&&inGrid){
-    const cells=getSelCells();
-    if(cells){
-      const tsv=cells.map(row=>row.join('\t')).join('\n');
-      navigator.clipboard?.writeText(tsv);
-      e.preventDefault();
-    }
-  }
-  // Ctrl/Cmd+X = cut selection
-  if((e.ctrlKey||e.metaKey)&&e.key==='x'&&inGrid){
-    const cells=getSelCells();
-    if(cells){
-      const tsv=cells.map(row=>row.join('\t')).join('\n');
-      navigator.clipboard?.writeText(tsv).then(()=>clearSelCells());
-      e.preventDefault();
-    }
-  }
+  // Ctrl/Cmd+C / X are handled by the 'copy' / 'cut' listeners below (do not cancel the keydown here,
+  // or the browser never fires them)
   // Undo / Redo
   if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){undoAction();e.preventDefault();}
   if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){redoAction();e.preventDefault();}
@@ -2498,7 +2527,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.9.0';
+const APP_VERSION='0.9.1';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -4187,8 +4216,8 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (pure JavaScript, no Python, no server) and never uploads your data anywhere.</p>
-<p>TP is a <strong>beta (v0.9.0)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
-<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.9.0.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<p>TP is a <strong>beta (v0.9.1)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.9.1.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
 <ol>
@@ -4288,8 +4317,9 @@ window.addEventListener('load',checkLibs);
 <h3>3. Entering and editing data</h3>
 <ul>
 <li><strong>Type</strong> into any cell. Arrow keys move between cells.</li>
-<li><strong>Paste</strong> a block from Excel or Sheets with Ctrl/Cmd+V; it fills from the selected cell.</li>
-<li><strong>Copy / cut</strong> a selection with Ctrl/Cmd+C or X. <strong>Delete</strong> or Backspace clears selected cells.</li>
+<li><strong>Select</strong> a block of cells by dragging across them with the mouse, or click one cell and Shift+click another.</li>
+<li><strong>Copy / cut</strong> the selection with Ctrl/Cmd+C or X (or the right-click menu); it pastes into Excel or Sheets as a table. Cut is undoable with Ctrl/Cmd+Z. <strong>Delete</strong> or Backspace clears selected cells.</li>
+<li><strong>Paste</strong> a block from Excel, Sheets or TP with Ctrl/Cmd+V; it fills from the selected cell (the top-left cell of a selected block), and the table grows to fit. Pasting a single value into a selected block fills every cell with it.</li>
 <li><strong>Resize</strong> with Reps/group and Groups, or with +Grp, −Grp, +Row, −Row.</li>
 <li><strong>Rename</strong> a group, row or dataset by double-clicking its name; Enter confirms, Esc cancels.</li>
 <li><strong>Undo / Redo</strong> with the ↩/↪ buttons or Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Ctrl/Cmd+Z).</li>
@@ -4714,7 +4744,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.9.0 (beta):</p>
+<p>Known limitations of v0.9.1 (beta):</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell).</li>
 <li>Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.</li>
@@ -4734,6 +4764,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.9.1 (6 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Copying and cutting a block of selected cells in the data table works again: it no longer relies on the browser's clipboard permission, which is blocked in the Confluence embed and on pages opened from disk (Ctrl/Cmd+C copied nothing, and cut did not clear the cells); pasting into a selected block starts at its top-left cell; pasting one value into a selected block fills it</td>
+</tr>
 <tr>
 <td>0.9.0 (6 Nov 2026)</td>
 <td>Thistle Plot</td>
