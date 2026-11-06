@@ -6,7 +6,7 @@ TP has a header bar, a left panel for data and settings, and a right panel of re
 | --- | --- |
 | Header | Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu |
 | Left panel, top | Dataset tabs and the data grid |
-| Left panel, Visualisation | Plot type, 📋 Example (data suited to that plot), plot options, 📈 Plot |
+| Left panel, Visualisation | Plot type, 📋 Example (data suited to that plot), plot options, Live update, 📈 Plot (↻ Update plot and + New when a figure of that type is open) |
 | Left panel, Statistical Test | Test type, 📋 Example (data suited to that test), description, test options, ▶ Run Analysis |
 | Right panel | One tab per result or plot; × closes a tab, 🔗 jumps between a test and its linked plot (and re-creates it if closed) |
 
@@ -44,7 +44,13 @@ Most tests pool all values in a group's columns. Some tests read columns positio
 
 ### 4. Visualisation
 
-Choose a plot type, set its options, then click **📈 Plot**. Each plot opens in its own tab, and you can keep as many open as you like.
+Choose a plot type, set its options, then click **📈 Plot**. The figure opens in its own tab, and you can keep as many open as you like.
+
+**Adjusting a figure.** While a figure is open and the menu shows the same plot type, the button reads **↻ Update plot**: change the options (or the data) and click it to redraw that figure in place instead of opening another tab. **↻ Update** in the figure's own top bar does the same. To keep the current figure and draw another one, click **+ New** next to the button or **+** at the end of the plot tabs. Choosing a different plot type always makes a new tab. Clicking a plot tab puts its settings back into the options panel.
+
+**Live update.** Tick *Live update* under the plot options to redraw the open figure as you change them, with no button press. For very large tables (over 2,000 rows) heatmaps, PCA and volcano plots are not redrawn live because it would be slow; the ↻ Update button turns orange instead, and you click it when ready.
+
+**Linked figures.** Updating a figure made by *Auto-plot* (or 🔗) keeps the test's stars, brackets and gene list as long as the data are unchanged. If you have edited the data since the test was run, the marks are removed, the figure is no longer linked, and a note says so: run the test again for an up-to-date figure. Figures you drew by hand never gain marks when updated.
 
 | Plot | Best for | Main options |
 | --- | --- | --- |
@@ -159,7 +165,7 @@ The **Export** menu in the header sets the style for every download button.
 
 **💾 Save** downloads `thistle_project.thistle`, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. **📂 Load** reopens it. Projects saved by earlier versions (`.pprism`) still load.
 
-Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, click 📈 Plot again.
+Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, draw it again with 📈 Plot (↻ Update does not apply to snapshots).
 
 ### 8. Light and dark theme
 
@@ -184,7 +190,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.8.2 (beta):
+Known limitations of v0.9.0 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell).
 - Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.

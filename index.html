@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.8.2 (Beta)</title>
+<title>Thistle Plot v0.9.0 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -117,6 +117,12 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 .tab-item{display:flex;align-items:center;gap:5px;padding:7px 13px 7px 13px;cursor:pointer;border:none;background:transparent;color:var(--mu);font-size:12px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s}
 .tab-item.active{color:var(--ac);border-bottom-color:var(--ac)}
 .tab-item:hover:not(.active){color:var(--tx)}
+.tab-new{font-size:15px;font-weight:700;line-height:1;color:var(--mu);padding:4px 11px;border:none;background:transparent;cursor:pointer;flex-shrink:0}
+.tab-new:hover{color:var(--ac)}
+.replot-btn.stale{border-color:#f59e0b;color:#b45309}
+.replot-note{padding:5px 10px;font-size:11px;background:var(--surf2);border-bottom:1px solid var(--bd);color:var(--tx)}
+.live-row{margin-top:8px;font-size:11.5px}
+.lpfoot button.plot-new{flex:0 0 auto;padding-left:10px;padding-right:10px}
 .tab-close{font-size:14px;line-height:1;color:var(--mu);margin-left:2px;padding:0 2px;border:none;background:transparent;cursor:pointer;border-radius:3px}
 .tab-close:hover{background:var(--bd);color:var(--er)}
 .tab-link{font-size:11px;line-height:1;color:var(--ac);opacity:0.7;margin-left:2px;padding:0 2px;border:none;background:transparent;cursor:pointer;border-radius:3px}
@@ -181,7 +187,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.8.2</span>
+  <span class="badge" id="app-version" title="Version">v0.9.0</span>
   <span class="badge">Pure JS</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
@@ -244,6 +250,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
           <div class="sec-lbl">Visualisation</div>
           <div class="ex-row"><select id="psel" onchange="onPlotTypeChange()"></select><button class="btn btn-ex" onclick="loadExampleFor('plot')" title="Load example data suited to this plot type (replaces the table; undo with Ctrl/Cmd+Z)">📋 Example</button></div>
           <div id="popts" style="margin-top:8px"></div>
+          <label class="check-row live-row" title="Redraw the open figure whenever you change a plot option (paused for very large heatmaps, PCA and volcano plots; use ↻ Update there)"><input type="checkbox" id="plot-live"> Live update (redraw the open figure as you change options)</label>
         </div>
 
         <!-- Analysis -->
@@ -256,7 +263,8 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
       </div>
       <div class="lpfoot">
         <button class="btn btn-pri" onclick="runAnalysis()">▶ Run Analysis</button>
-        <button class="btn btn-pri" style="background:#0d9488;border-color:#0d9488" onclick="runPlot()">📈 Plot</button>
+        <button class="btn btn-pri" id="plot-main-btn" style="background:#0d9488;border-color:#0d9488" onclick="plotMainClick()" title="Draw a new figure tab">📈 Plot</button>
+        <button class="btn btn-pri plot-new" id="plot-new-btn" style="background:#0d9488;border-color:#0d9488;display:none" onclick="newPlot()" title="Draw these settings as a new figure tab (keeps the open one)">+ New</button>
       </div>
     </div>
   </div>
@@ -306,7 +314,9 @@ let plotTabs=[], statTabs=[], activePT=-1, activeST=-1, ptCount=0, stCount=0;
 let chartInst={}; // tabId -> Chart instance
 // Significance bracket data passed from runAnalysis to auto-plot
 let lastStatGeneSet=null,lastStatRowPairs=null,_autoPlotGroupBy=null,_suppressAutoPlot=false; // per-row tests: [{row,i,j,stars}]
-let _linkedPlotCtx=false; // true only while a plot is being drawn as the linked figure of a specific test run
+let _replotTarget=null,_curPlotType=null,_restoringOpts=0,_liveTimer=null; // ↻ Update: tab to redraw in place; plot type being drawn by runPlot
+let _linkedPlotCtx=false;
+document.addEventListener('DOMContentLoaded',()=>{const po=document.getElementById('popts');if(po){po.addEventListener('input',_liveOptChanged);po.addEventListener('change',_liveOptChanged);}}); // true only while a plot is being drawn as the linked figure of a specific test run
 let lastStatPairs=null; // [{i,j,stars}] group-index pairs with significance stars
 let lastStatTabId=null; // most recently created stat tab id
 let lastPlotTabId=null; // most recently created plot tab id
@@ -1661,6 +1671,7 @@ function renderAnalysisOpts(t){
 function onPlotTypeChange(){
   const t=document.getElementById('psel').value;
   renderPlotOpts(t);
+  updatePlotButtons();
 }
 
 function renderPlotOpts(t){
@@ -1755,6 +1766,7 @@ function captureOptState(){
 
 function restoreOptState(state){
   if(!state)return;
+  _restoringOpts++;
   if(state.asel){
     const el=document.getElementById('asel');
     if(el&&el.value!==state.asel){el.value=state.asel;onTypeChange();}
@@ -1775,6 +1787,7 @@ function restoreOptState(state){
     const ph=document.getElementById('opt-ph');if(ph)ph.dataset.auto='0';
     ['opt-perrow','opt-cmp','opt-np-mode','opt-corr-mode','opt-ks-mode'].forEach(id=>{const el=document.getElementById(id);if(el)el.dispatchEvent(new Event('change'));});
     document.querySelectorAll('#aopts select[data-hint],#popts select[data-hint]').forEach(el=>el.dispatchEvent(new Event('change')));
+    _restoringOpts--;
   },50);
 }
 
@@ -1782,18 +1795,125 @@ function restoreOptState(state){
 // TAB SYSTEM (Plot pane + Stats pane)
 // ═══════════════════════════════════════════════════════════
 function addPlotTab(title, renderFn){
+  const ptype=_curPlotType,dataSig=ptype?_dataSig():null; // ptype is set only for figures drawn from the Visualisation menu
+  const tgt=_replotTarget;_replotTarget=null;
+  const old=tgt&&plotTabs.find(t=>t.id===tgt);
+  if(old&&document.getElementById(old.id)){ // ↻ Update: redraw this tab in place
+    if(chartInst[old.id]){try{chartInst[old.id].destroy()}catch(e){}delete chartInst[old.id];}
+    delete old._drawFn;delete old._chartFn;
+    Object.assign(old,{title,renderFn,optState:captureOptState(),ptype,dataSig});
+    lastPlotTabId=old.id;
+    renderPlotStrip();
+    const page=document.getElementById(old.id);page.innerHTML='';
+    _drawPlotTab(old,page);
+    return old.id;
+  }
   const id='pt'+(ptCount++);
   const optState=captureOptState();
-  plotTabs.push({id,title,renderFn,canvasData:null,linkedStatId:null,optState,ds:activeDS});
+  const tab={id,title,renderFn,canvasData:null,linkedStatId:null,optState,ds:activeDS,ptype,dataSig,draws:0};
+  plotTabs.push(tab);
   lastPlotTabId=id;
   renderPlotStrip();
   activatePlotTab(id);
   // After tab is in DOM, run renderFn
   setTimeout(()=>{
     const page=document.getElementById(id);
-    if(page&&renderFn)renderFn(page);
+    if(page&&renderFn)_drawPlotTab(tab,page);
   },30);
   return id;
+}
+function _drawPlotTab(tab,page){
+  tab.draws=(tab.draws||0)+1;
+  tab.renderFn(page);
+  const bar=page.querySelector('.plot-topbar');
+  if(tab.ptype&&bar&&!bar.querySelector('.replot-btn')){
+    const b=document.createElement('button');
+    b.className='btn-sm replot-btn';b.textContent='↻ Update';
+    b.title='Redraw this figure with the current options and data';
+    b.onclick=()=>updatePlot(tab.id);
+    const first=bar.querySelector('button');
+    if(first)bar.insertBefore(b,first);else bar.appendChild(b);
+  }
+  if(tab._note){
+    const n=document.createElement('div');n.className='replot-note';n.textContent=tab._note;
+    if(bar)bar.insertAdjacentElement('afterend',n);else page.prepend(n);
+    tab._note=null;
+  }
+}
+// Fingerprint of the active table, so a linked figure can tell whether the data changed since its test ran
+function _dataSig(){
+  const s=JSON.stringify([G.nReps,G.rowNames,G.groups.map(g=>[g.name,g.data])]);
+  let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+  return (h>>>0).toString(36)+':'+s.length;
+}
+// ── ↻ Update / + New / Live update ─────────────────────────────────────
+function canUpdatePlotTab(t){
+  const ps=document.getElementById('psel');
+  return !!(t&&t.ptype&&ps&&t.ptype===ps.value&&(t.ds===activeDS||t.ds===undefined)&&document.getElementById(t.id));
+}
+function updatePlotButtons(){
+  const btn=document.getElementById('plot-main-btn'),plus=document.getElementById('plot-new-btn');if(!btn)return;
+  const can=canUpdatePlotTab(plotTabs.find(t=>t.id===activePT));
+  btn.textContent=can?'↻ Update plot':'📈 Plot';
+  btn.title=can?'Redraw the open figure with these settings (use + New to keep it and draw another)':'Draw a new figure tab';
+  if(plus)plus.style.display=can?'':'none';
+}
+function plotMainClick(){
+  const t=plotTabs.find(x=>x.id===activePT);
+  if(canUpdatePlotTab(t))updatePlot(t.id);else newPlot();
+}
+function newPlot(){
+  _replotTarget=null;
+  runPlot();
+  updatePlotButtons();
+}
+function updatePlot(id){
+  const t=plotTabs.find(x=>x.id===(id||activePT));
+  if(!t||!t.ptype){newPlot();return;}
+  if(t.ds!==activeDS&&t.ds!==undefined)return;
+  const ps=document.getElementById('psel');
+  if(ps&&ps.value!==t.ptype){ // the panel shows another plot type: bring back this figure's settings first
+    restoreOptState(t.optState);
+    setTimeout(()=>updatePlot(t.id),90);
+    return;
+  }
+  // Stars/brackets/gene lists stay only while the figure still shows the data its test was run on
+  let lk=false;
+  if(t.linkedStatId){
+    if(_dataSig()===t.dataSig){
+      const cl=v=>v?JSON.parse(JSON.stringify(v)):null;
+      lastStatPairs=cl(t.sigPairs);lastStatRowPairs=cl(t.rowPairs);lastStatGeneSet=cl(t.geneSet);lk=true;
+    } else {
+      const st=statTabs.find(s=>s.id===t.linkedStatId);
+      if(st&&st.linkedPlotId===t.id){st.linkedPlotId=null;st.plotState=null;}
+      t.linkedStatId=null;t.sigPairs=null;t.rowPairs=null;t.geneSet=null;t.statState=null;
+      t._note='The data have changed since the linked test was run, so this figure is no longer linked to it and its significance marks were removed. Run the test again for an up-to-date figure.';
+      renderStatStrip();
+    }
+  }
+  _replotTarget=t.id;_linkedPlotCtx=lk;
+  try{runPlot();}finally{_replotTarget=null;_linkedPlotCtx=false;}
+  if(t.linkedStatId){const st=statTabs.find(s=>s.id===t.linkedStatId);if(st&&st.linkedPlotId===t.id)st.plotState=t.optState;}
+  updatePlotButtons();
+}
+const LIVE_HEAVY=['heatmap','pca','volcano'],LIVE_MAX_ROWS=2000;
+function _liveOptChanged(e){
+  if(!document.getElementById('plot-live')?.checked||_restoringOpts)return;
+  const el=e.target,ty=(el.type||'').toLowerCase(),textLike=el.tagName==='INPUT'&&!['checkbox','radio'].includes(ty);
+  if(e.type==='input'&&!textLike)return; // selects and tick boxes are handled on 'change'
+  if(e.type==='change'&&textLike)return;  // typed values were already handled on 'input'
+  clearTimeout(_liveTimer);
+  _liveTimer=setTimeout(()=>{
+    if(_restoringOpts)return;
+    const t=plotTabs.find(x=>x.id===activePT);
+    if(!canUpdatePlotTab(t))return;
+    if(LIVE_HEAVY.includes(t.ptype)&&G.nRows>LIVE_MAX_ROWS){ // too slow to redraw on every change
+      const b=document.querySelector('#'+t.id+' .replot-btn');
+      if(b){b.classList.add('stale');b.title='Large table: live update is paused for this plot. Click to redraw with the new options.';}
+      return;
+    }
+    updatePlot(t.id);
+  },e.type==='input'?400:150);
 }
 
 // Human-readable summary of the test and options used for this run
@@ -1831,7 +1951,7 @@ function linkTabs(statId, plotId){
   const st=statTabs.find(t=>t.id===statId);
   const pt=plotTabs.find(t=>t.id===plotId);
   if(st){st.linkedPlotId=plotId;if(pt)st.plotState=pt.optState;}
-  if(pt){pt.linkedStatId=statId;if(st){pt.statState=st.optState;pt.sigPairs=st.sigPairs;pt.rowPairs=st.rowPairs;}}
+  if(pt){pt.linkedStatId=statId;if(st){pt.statState=st.optState;pt.sigPairs=st.sigPairs;pt.rowPairs=st.rowPairs;pt.geneSet=st.geneSet;}}
   renderStatStrip();
   renderPlotStrip();
 }
@@ -1860,7 +1980,9 @@ function tabDrop(e,listType,idx){
 function renderPlotStrip(){
   const strip=document.getElementById('plot-strip');
   const dsTabs=plotTabs.filter(t=>t.ds===activeDS||t.ds===undefined);
-  strip.innerHTML=dsTabs.map((t,idx)=>`<button class="tab-item${activePT===t.id?' active':''}" onclick="activatePlotTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'plot',${idx})" ondragover="tabDragOver(event,'plot',${idx})" ondrop="tabDrop(event,'plot',${idx})">${t.title}${t.linkedStatId?` <button class="tab-link" onclick="goLinkedStat('${t.id}');event.stopPropagation()" title="Go to linked result (re-runs it if closed)">🔗</button>`:''}  <button class="tab-close" onclick="closePlotTab('${t.id}');event.stopPropagation()">×</button></button>`).join('');
+  strip.innerHTML=dsTabs.map((t,idx)=>`<button class="tab-item${activePT===t.id?' active':''}" onclick="activatePlotTab('${t.id}')" draggable="true" ondragstart="tabDragStart(event,'plot',${idx})" ondragover="tabDragOver(event,'plot',${idx})" ondrop="tabDrop(event,'plot',${idx})">${t.title}${t.linkedStatId?` <button class="tab-link" onclick="goLinkedStat('${t.id}');event.stopPropagation()" title="Go to linked result (re-runs it if closed)">🔗</button>`:''}  <button class="tab-close" onclick="closePlotTab('${t.id}');event.stopPropagation()">×</button></button>`).join('')
+    +`<button class="tab-new" onclick="newPlot()" title="New figure tab from the current Visualisation settings">+</button>`;
+  updatePlotButtons();
   const content=document.getElementById('plot-content');
   if(!dsTabs.length){
     content.innerHTML='<div class="ph">No plots yet — configure a plot type and click 📈 Plot</div>';
@@ -2095,7 +2217,10 @@ function runPlot(){
   const ptype=document.getElementById('psel').value;
   const normMethod=document.getElementById('popt-norm')?.value||'none';
   const title=PLOT_TYPES.find(p=>p.v===ptype)?.l||ptype;
-
+  _curPlotType=ptype;
+  try{_runPlotType(ptype,normMethod,title);}finally{_curPlotType=null;}
+}
+function _runPlotType(ptype,normMethod,title){
   if(ptype==='bar_sd') plotBarSD(normMethod, title);
   else if(ptype==='boxplot') plotBoxplot(normMethod, title);
   else if(ptype==='violin') plotViolin(normMethod, title);
@@ -2373,7 +2498,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.8.2';
+const APP_VERSION='0.9.0';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -4062,8 +4187,8 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (pure JavaScript, no Python, no server) and never uploads your data anywhere.</p>
-<p>TP is a <strong>beta (v0.8.2)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
-<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.8.2.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<p>TP is a <strong>beta (v0.9.0)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.9.0.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
 <ol>
@@ -4072,7 +4197,7 @@ window.addEventListener('load',checkLibs);
 <li><strong>Enter data.</strong> Paste a block straight from Excel or Google Sheets with Ctrl/Cmd+V, or click <strong>⬆ CSV</strong> to import a file. Double-click a group header or row name to rename it.</li>
 <li><strong>Pick a test</strong> under <strong>Statistical Test</strong>, for example <em>One-Way ANOVA</em> or <em>Unpaired t-test (Welch)</em>. Read the blue box under the menu: it says what the test does, how it expects the columns, and which similar test to use instead. Each option also shows a one-line explanation.</li>
 <li><strong>Click ▶ Run Analysis.</strong> Results appear in a new tab on the right, headed by the options and data used. With <em>Auto-plot after run</em> ticked, a linked plot opens too; 🔗 jumps between them, and re-creates either one if you closed it.</li>
-<li><strong>Pick a plot</strong> under <strong>Visualisation</strong>, for example <em>Bar + SD + Dots</em>, set its options (normalisation, dots shown, Y-axis label) and click <strong>📈 Plot</strong>.</li>
+<li><strong>Pick a plot</strong> under <strong>Visualisation</strong>, for example <em>Bar + SD + Dots</em>, set its options (normalisation, dots shown, Y-axis label) and click <strong>📈 Plot</strong>. To adjust it, change the options and click <strong>↻ Update plot</strong> (or tick <em>Live update</em> to redraw as you go); <strong>+ New</strong> keeps the figure and opens another tab.</li>
 <li><strong>Check the figure.</strong> Significance brackets (*, **, ***, ****) from your last test are drawn automatically on bar charts.</li>
 <li><strong>Choose an export style</strong> in the header: <strong>App</strong> (what you see on screen) or <strong>Publication (Prism-like)</strong> (white background, black axes, bold Arial, greyscale, about 300 dpi).</li>
 <li><strong>Download</strong> with <strong>⬇ PNG</strong>, <strong>⬇ SVG</strong> or <strong>⬇ PDF</strong> at the top of the plot tab.</li>
@@ -4099,7 +4224,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Left panel, Visualisation</td>
-<td>Plot type, 📋 Example (data suited to that plot), plot options, 📈 Plot</td>
+<td>Plot type, 📋 Example (data suited to that plot), plot options, Live update, 📈 Plot (↻ Update plot and + New when a figure of that type is open)</td>
 </tr>
 <tr>
 <td>Left panel, Statistical Test</td>
@@ -4175,7 +4300,10 @@ window.addEventListener('load',checkLibs);
 <li><strong>📋 Example</strong> (beside the Visualisation and Statistical Test menus) loads a dataset suited to the chosen plot or test, for example survival times for Kaplan–Meier, a concentration series for dose–response, paired before/after values for the paired tests, or a gene × condition matrix for PCA and heatmaps. A note under the table says what was loaded; undo with Ctrl/Cmd+Z.</li>
 </ul>
 <h3>4. Visualisation</h3>
-<p>Choose a plot type, set its options, then click <strong>📈 Plot</strong>. Each plot opens in its own tab, and you can keep as many open as you like.</p>
+<p>Choose a plot type, set its options, then click <strong>📈 Plot</strong>. The figure opens in its own tab, and you can keep as many open as you like.</p>
+<p><strong>Adjusting a figure.</strong> While a figure is open and the menu shows the same plot type, the button reads <strong>↻ Update plot</strong>: change the options (or the data) and click it to redraw that figure in place instead of opening another tab. <strong>↻ Update</strong> in the figure's own top bar does the same. To keep the current figure and draw another one, click <strong>+ New</strong> next to the button or <strong>+</strong> at the end of the plot tabs. Choosing a different plot type always makes a new tab. Clicking a plot tab puts its settings back into the options panel.</p>
+<p><strong>Live update.</strong> Tick <em>Live update</em> under the plot options to redraw the open figure as you change them, with no button press. For very large tables (over 2,000 rows) heatmaps, PCA and volcano plots are not redrawn live because it would be slow; the ↻ Update button turns orange instead, and you click it when ready.</p>
+<p><strong>Linked figures.</strong> Updating a figure made by <em>Auto-plot</em> (or 🔗) keeps the test's stars, brackets and gene list as long as the data are unchanged. If you have edited the data since the test was run, the marks are removed, the figure is no longer linked, and a note says so: run the test again for an up-to-date figure. Figures you drew by hand never gain marks when updated.</p>
 <table>
 <thead>
 <tr>
@@ -4544,7 +4672,7 @@ window.addEventListener('load',checkLibs);
 </ul>
 <h3>7. Saving and loading projects</h3>
 <p><strong>💾 Save</strong> downloads <code>thistle_project.thistle</code>, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. <strong>📂 Load</strong> reopens it. Projects saved by earlier versions (<code>.pprism</code>) still load.</p>
-<p>Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, click 📈 Plot again.</p>
+<p>Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, draw it again with 📈 Plot (↻ Update does not apply to snapshots).</p>
 <h3>8. Light and dark theme</h3>
 <p>The 🌙/☀️ button switches the on-screen theme and redraws all open plots. It only affects App-style exports; Publication exports are always white.</p>
 <h3>9. Using TP on the Confluence wiki</h3>
@@ -4586,7 +4714,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.8.2 (beta):</p>
+<p>Known limitations of v0.9.0 (beta):</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell).</li>
 <li>Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.</li>
@@ -4606,6 +4734,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.9.0 (6 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Figures can be adjusted in place: with a figure open, the Plot button becomes <strong>↻ Update plot</strong> and redraws that tab instead of adding a new one (also ↻ Update in the figure's top bar); <strong>+ New</strong> beside the button and <strong>+</strong> at the end of the plot tabs open a new figure; optional <strong>Live update</strong> redraws the open figure as you change plot options (paused for heatmaps, PCA and volcano plots on tables over 2,000 rows); updating a linked figure keeps the test's stars only while the data are unchanged, otherwise it is unlinked with a note</td>
+</tr>
 <tr>
 <td>0.8.2 (5 Nov 2026)</td>
 <td>Thistle Plot</td>

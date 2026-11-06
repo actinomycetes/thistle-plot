@@ -1,11 +1,11 @@
 {
   "name": "thistle-plot",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "private": true,
   "description": "Thistle Plot (TP): single-file stats and plotting web app for bench scientists (beta).",
   "scripts": {
     "test": "node --test --test-concurrency=1 --test-timeout=240000 \"tests/*.test.js\"",
-    "test:quick": "node --test --test-timeout=240000 tests/smoke.test.js tests/links.test.js",
+    "test:quick": "node --test --test-timeout=240000 tests/smoke.test.js tests/links.test.js tests/replot.test.js",
     "help": "python3 tools/build_help.py",
     "help:check": "python3 tools/build_help.py --check"
   },
