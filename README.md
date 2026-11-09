@@ -16,3 +16,10 @@ npm test
 
 Layout: `index.html` (the app) · `docs/` (manual sources) · `tools/build_help.py` (builds Help into `index.html`) ·
 `tests/` (Playwright tests) · `.github/workflows/ci.yml` (runs everything on each push).
+
+## Citing
+See [`CITATION.cff`](CITATION.cff), or use GitHub's "Cite this repository" button.
+
+## Licence
+[MIT](LICENSE) © 2026 Takanobu Tagawa (The University of Edinburgh).
+Bundled at runtime from cdnjs (each under its own MIT licence): Chart.js, jStat, PapaParse.

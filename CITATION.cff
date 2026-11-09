@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use Thistle Plot in your work, please cite it as below."
+title: "Thistle Plot: single-file statistics and plotting web app for bench scientists"
+type: software
+authors:
+  - given-names: Takanobu
+    family-names: Tagawa
+    affiliation: "The University of Edinburgh"
+version: 0.9.2
+license: MIT
+repository-code: "https://github.com/actinomycetes/thistle-plot"
+url: "https://actinomycetes.github.io/thistle-plot/"
+abstract: >-
+  Free, single-file web app for bench statistics and publication-style figures.
+  Runs entirely in the browser; data never leaves the user's computer. Beta (0.x).
+keywords:
+  - statistics
+  - data visualisation
+  - web application
