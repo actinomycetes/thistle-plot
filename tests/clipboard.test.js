@@ -1,6 +1,7 @@
 // Data grid: drag-select a block of cells, then copy / cut / paste it (Excel-style TSV).
-// Copy and cut must work without navigator.clipboard (blocked in iFrames such as the Confluence
-// embed, and on non-secure pages), so they go through the standard copy/cut events.
+// Drag-selection must not depend on mouseover reaching other cells (Firefox keeps it on the start cell).
+// Copy and cut must work without navigator.clipboard (blocked in iFrames and on non-secure pages),
+// so they go through the standard copy/cut events.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 const { openApp } = require('./helpers');
@@ -18,12 +19,33 @@ async function dragSelect(page, from, to) {
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
   await page.mouse.up();
 }
+test('drag-select works when cells get no mouseover during the drag (Firefox)', async () => {
+  // Firefox keeps every mouse event on the text box where a drag began, so the other cells never see
+  // 'mouseover'. Block those events here to reproduce that in Chromium.
+  const { page } = app;
+  await page.evaluate(() => {
+    loadExample();
+    window._blockOver = e => { if (e.target.closest && e.target.closest('#dtbl')) e.stopPropagation(); };
+    window.addEventListener('mouseover', _blockOver, true);
+  });
+  await page.waitForTimeout(150);
+  await dragSelect(page, [0, 0, 0], [0, 2, 1]);
+  const n = await page.evaluate(() => {
+    window.removeEventListener('mouseover', _blockOver, true);
+    return document.querySelectorAll('#dtbl input.sel-cell').length;
+  });
+  assert.strictEqual(n, 6);
+  assert.deepStrictEqual(app.errors, []);
+});
+
 // Fire a clipboard event on the focused cell, as the browser does for Ctrl/Cmd+C / X / V or the right-click menu
+// (Firefox ignores the clipboardData passed to the constructor and gives the event its own, so read and
+// write through ev.clipboardData, which works in every engine.)
 const clip = (page, type, text = '') => page.evaluate(([type, text]) => {
-  const dt = new DataTransfer(); if (text) dt.setData('text/plain', text);
-  const ev = new ClipboardEvent(type, { clipboardData: dt, bubbles: true, cancelable: true });
+  const ev = new ClipboardEvent(type, { clipboardData: new DataTransfer(), bubbles: true, cancelable: true });
+  if (text) ev.clipboardData.setData('text/plain', text);
   document.activeElement.dispatchEvent(ev);
-  return { data: dt.getData('text/plain'), prevented: ev.defaultPrevented };
+  return { data: ev.clipboardData.getData('text/plain'), prevented: ev.defaultPrevented };
 }, [type, text]);
 
 test('drag-select then copy puts the block on the clipboard as TSV', async () => {

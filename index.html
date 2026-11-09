@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.9.1 (Beta)</title>
+<title>Thistle Plot v0.9.2 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -187,7 +187,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.9.1</span>
+  <span class="badge" id="app-version" title="Version">v0.9.2</span>
   <span class="badge">Pure JS</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
@@ -1392,7 +1392,9 @@ document.addEventListener('paste', e=>{
 
 
 // ── Grid selection / copy / cut ──────────────────────────────────────
+let _gridDragging=false;
 function gridSelStart(e,g,row,r){
+  if(e.button===0)_gridDragging=true;
   if(!e.shiftKey){
     gridSel={active:true,startG:g,startRow:row,startR:r,endG:g,endRow:row,endR:r};
   } else {
@@ -1405,7 +1407,20 @@ function gridSelMove(e,g,row,r){
   gridSel.active=true;gridSel.endG=g;gridSel.endRow=row;gridSel.endR=r;
   updateSelHighlight();
 }
-document.addEventListener('mouseup',()=>{if(gridSel.active)gridSel.active=false});
+// Firefox keeps all mouse events on the text box where a drag began, so the other cells never get
+// 'mouseover'. Follow the pointer at document level instead and find the cell under it.
+document.addEventListener('mousemove',e=>{
+  if(!_gridDragging)return;
+  if(!e.buttons){_gridDragging=false;return;}
+  const hit=document.elementFromPoint(e.clientX,e.clientY);
+  const el=hit&&hit.closest?hit.closest('#dtbl input[data-g]'):null;
+  if(!el)return;
+  const g=+el.dataset.g,row=+el.dataset.row,r=+el.dataset.r;
+  if(g===gridSel.endG&&row===gridSel.endRow&&r===gridSel.endR)return;
+  gridSel.active=true;gridSel.endG=g;gridSel.endRow=row;gridSel.endR=r;
+  updateSelHighlight();
+});
+document.addEventListener('mouseup',()=>{_gridDragging=false;if(gridSel.active)gridSel.active=false});
 function updateSelHighlight(){
   document.querySelectorAll('#dtbl input[data-g]').forEach(el=>{
     const g=parseInt(el.dataset.g),row=parseInt(el.dataset.row),r=parseInt(el.dataset.r);
@@ -2527,7 +2542,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.9.1';
+const APP_VERSION='0.9.2';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -4216,8 +4231,8 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (pure JavaScript, no Python, no server) and never uploads your data anywhere.</p>
-<p>TP is a <strong>beta (v0.9.1)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
-<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.9.1.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<p>TP is a <strong>beta (v0.9.2)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.9.2.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
 <ol>
@@ -4744,7 +4759,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.9.1 (beta):</p>
+<p>Known limitations of v0.9.2 (beta):</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell).</li>
 <li>Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.</li>
@@ -4764,6 +4779,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.9.2 (6 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Dragging across the data table to select a block of cells works again in Firefox (only the first cell was selected, so copying and cutting a block did not work either)</td>
+</tr>
 <tr>
 <td>0.9.1 (6 Nov 2026)</td>
 <td>Thistle Plot</td>

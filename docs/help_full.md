@@ -191,7 +191,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.9.1 (beta):
+Known limitations of v0.9.2 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell).
 - Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.

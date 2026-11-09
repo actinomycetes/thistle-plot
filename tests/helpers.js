@@ -1,6 +1,6 @@
 // Shared test harness: opens index.html in headless Chromium with the three CDN
 // libraries served from node_modules (so tests run offline and with pinned versions).
-const { chromium } = require('playwright');
+const playwright = require('playwright'); // TP_BROWSER=firefox|webkit runs the same tests in another engine
 const path = require('path');
 const fs = require('fs');
 
@@ -12,7 +12,7 @@ fs.mkdirSync(OUT, { recursive: true });
 function lib(rel) { return fs.readFileSync(path.join(ROOT, 'node_modules', rel)); }
 
 async function openApp(opts = {}) {
-  const browser = await chromium.launch();
+  const browser = await playwright[process.env.TP_BROWSER || 'chromium'].launch();
   const ctx = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   const page = await ctx.newPage();
   const errors = [];

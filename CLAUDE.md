@@ -85,3 +85,6 @@ Fisher/chi-square have no plot; paired rank-sum and Wilcoxon "by sample" figures
 - `tests/helpers.js` provides `openApp()`, `selectTest`, `selectPlot`, `loadGenes(N)`. Tests drive the app through its global functions
   inside `page.evaluate`. Exported PNGs land in `test-output/` (git-ignored); look at them when changing plots or export.
 - When fixing a bug, first write the failing test, then fix.
+- Tests run in Chromium by default. Set `TP_BROWSER=firefox` (or `webkit`) to run the same suite in another engine
+  (`npx playwright install firefox` once). Mouse/clipboard behaviour differs: Firefox keeps mouse events on the text box
+  where a drag began, and ignores `clipboardData` passed to a synthetic `ClipboardEvent`. Lab users run Firefox and Safari.
