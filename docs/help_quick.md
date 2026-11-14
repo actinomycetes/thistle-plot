@@ -2,9 +2,9 @@
 
 Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <https://github.com/actinomycetes/thistle-plot> (MIT licence).
 
-TP is a **beta (v0.10.0)**. Its calculations are cross-checked against SciPy and statsmodels (see *Checking the calculations* in the Full Manual), but results should still be sanity-checked against an established package before you rely on them in a publication.
+This is TP **v1.0.0**. Its calculations are cross-checked against SciPy and statsmodels (see *Checking the calculations* in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.
 
-**Opening TP:** use the hosted copy at <https://actinomycetes.github.io/thistle-plot/>, double-click a downloaded `index.html` to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.
+**Opening TP:** use the hosted copy at <https://actinomycetes.github.io/thistle-plot/>, double-click a downloaded `index.html` to open it in Chrome, Edge, Firefox or Safari (Mac or iPad), or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.
 
 ## Quick Manual
 

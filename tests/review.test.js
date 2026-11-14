@@ -134,3 +134,10 @@ test('no trademarked product names or "Pure JS" badge in the app', async () => {
   assert.strictEqual(hit, '', 'found: ' + hit);
   assert.ok(t.includes('https://github.com/actinomycetes/thistle-plot'), 'Help links to the source repository');
 });
+
+test('Rank Sum (paired) is gone; settings saved with it reopen as Wilcoxon signed-rank', async () => {
+  const r = await ev(async () => { const had = ANALYSIS_TYPES.some(t => t.v === 'ranksum');
+    restoreOptState({ asel: 'ranksum' }); await new Promise(r => setTimeout(r, 80)); return { had, now: document.getElementById('asel').value }; });
+  assert.strictEqual(r.had, false);
+  assert.strictEqual(r.now, 'wilcoxon');
+});

@@ -1,6 +1,6 @@
 # Thistle Plot (TP): project guide for Claude Code
 
-TP is a **beta** (0.x) statistics and plotting web app for bench scientists
+TP (v1.x) is a statistics and plotting web app for bench scientists
 (UoE TT ncRNA lab). It is a **single self-contained `index.html`** (about 300 KB), plain JavaScript,
 no framework, no build step. Libraries come from cdnjs: Chart.js 4.4.1, jStat 1.9.6, PapaParse 5.4.1.
 It is served by GitHub Pages straight from `index.html` and embedded on a Confluence wiki through an iFrame macro.
@@ -11,7 +11,8 @@ Data never leaves the browser.
 - No `localStorage`/`sessionStorage` for data (projects are saved as `.thistle` JSON files; `.pprism` still loads).
 - Statistics must be correct before they are pretty. When adding or changing a test, validate it against SciPy or
   statsmodels (generate reference numbers with Python), then add a regression test in `tests/stats.test.js`.
-- Everything is **beta 0.x**. Do not call it validated; the Help says results must be spot-checked.
+- TP is cross-checked against SciPy/statsmodels (`npm run validate`) but not formally validated: do not call it validated;
+  the Help says important results must be spot-checked.
 - Explain tests and options in the UI in plain words (blue hint box, `data-hint`, `CORR_HINT`); results must list the
   options used (`runOptionsSummary`). Keep wording consistent across similar tests.
 - User-facing tone: bench scientists, not statisticians. British spelling is fine.
@@ -36,8 +37,8 @@ Open `index.html` directly in a browser to try it. Tests load the CDN libraries 
 3. Edit manual text only in `docs/*.md`, then run `python3 tools/build_help.py`. Never edit the HTML between the
    `<!--HELP:..-->` markers by hand (it is regenerated).
 4. `npm test` must pass. New feature means new test.
-5. Commit with a message like `v0.8.3: <summary>`; tag releases `v0.8.3`.
-Versioning: 0.MINOR.PATCH. Fixes bump PATCH, new features bump MINOR (0.8.2 -> 0.9.0 is the next big step; 1.0 only after validation).
+5. Commit with a message like `v1.0.1: <summary>`; tag releases `v1.0.1`.
+Versioning: MAJOR.MINOR.PATCH. Fixes bump PATCH, new features bump MINOR; MAJOR only for changes that break saved projects or remove features.
 
 ## Architecture map (search for these names in index.html)
 - **State:** `G = {nReps, groups:[{name, reps, data[row][rep]}], rowNames, nRows}` is the active data table; `datasets[]` holds
@@ -87,7 +88,7 @@ Versioning: 0.MINOR.PATCH. Fixes bump PATCH, new features bump MINOR (0.8.2 -> 0
 ## Known gaps (candidates for future work)
 Dunnett only for a single control; Kaplan-Meier has no Cox regression; two-way ANOVA needs a balanced design; SVG export is an
 embedded raster; Publication style is greyscale only; project files store only the active dataset and plots only as snapshots;
-Fisher/chi-square have no plot; paired rank-sum and Wilcoxon "by sample" figures are not specially handled; TP has not been formally validated.
+Fisher/chi-square have no plot; Wilcoxon "by sample" figures are not specially handled; TP has not been formally validated.
 
 ## Testing notes
 - `tests/helpers.js` provides `openApp()`, `selectTest`, `selectPlot`, `loadGenes(N)`. Tests drive the app through its global functions
@@ -95,4 +96,7 @@ Fisher/chi-square have no plot; paired rank-sum and Wilcoxon "by sample" figures
 - When fixing a bug, first write the failing test, then fix.
 - Tests run in Chromium by default. Set `TP_BROWSER=firefox` (or `webkit`) to run the same suite in another engine
   (`npx playwright install firefox` once). Mouse/clipboard behaviour differs: Firefox keeps mouse events on the text box
-  where a drag began, and ignores `clipboardData` passed to a synthetic `ClipboardEvent`. Lab users run Firefox and Safari.
+  where a drag began, and ignores `clipboardData` passed to a synthetic `ClipboardEvent`. Lab users run Firefox and Safari (Mac, and iPad with keyboard and trackpad).
+- `TP_DEVICE=ipad` (or `ipad-portrait`) runs the suite in WebKit emulating Safari on an iPad (`npx playwright install webkit`,
+  plus `npx playwright install-deps webkit` on Linux). iPad notes: Safari ignores theme colours on native `<select>` (we draw our own),
+  the iOS file picker cannot filter `.thistle` (`IS_IOS` drops `accept`), keep object URLs alive (`_saveBlob`), no F1 key (Cmd+/).

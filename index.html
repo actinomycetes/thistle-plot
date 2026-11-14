@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.10.0 (Beta)</title>
+<title>Thistle Plot v1.0.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -12,7 +12,7 @@
   --ac:#3b82f6;--ach:#2563eb;--ok:#22c55e;--wa:#f59e0b;--er:#ef4444}
 :root[data-theme="light"]{--bg:#f8fafc;--surf:#ffffff;--surf2:#f1f5f9;--bd:#e2e8f0;--tx:#0f172a;--mu:#475569;--ac:#2563eb;--ach:#1d4ed8;--ok:#16a34a;--wa:#d97706;--er:#dc2626}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body{background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;font-size:13px;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 
 /* Loading */
 #loading{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}
@@ -20,7 +20,8 @@ body{background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;font-
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* Header */
-#hdr{background:var(--surf);border-bottom:1px solid var(--bd);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+#hdr{background:var(--surf);border-bottom:1px solid var(--bd);padding:8px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;flex-shrink:0}
+#hdr .title{white-space:nowrap}
 #hdr .title{font-size:17px;font-weight:700}
 #hdr .badge{font-size:10px;color:var(--ac);background:#1d3461;padding:2px 7px;border-radius:4px;font-weight:600}
 #hdr .spacer{flex:1}
@@ -55,6 +56,9 @@ body{background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;font-
 .sec-stat .sec-lbl{color:var(--ac)}
 select,input[type=text],input[type=number]{background:var(--surf2);border:1px solid var(--bd);color:var(--tx);padding:5px 9px;border-radius:5px;font-size:12px;width:100%}
 select:focus,input:focus{outline:1px solid var(--ac);border-color:var(--ac)}
+/* Safari (Mac and iPad) draws native white menus that ignore the theme colours: draw our own box and arrow */
+select{-webkit-appearance:none;appearance:none;padding-right:24px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 8px center!important;background-size:10px 6px!important}
+select option{background:var(--surf);color:var(--tx)}
 .hint{background:#1a2744;border:1px solid #2a4080;border-radius:5px;padding:7px 9px;font-size:11px;color:#93c5fd;margin-top:5px;line-height:1.5}
 .lpfoot{padding:10px;border-top:1px solid var(--bd);flex-shrink:0;display:flex;gap:6px}
 .lpfoot button{flex:1}
@@ -153,7 +157,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 .p-sig{color:var(--ok);font-weight:700}
 .p-ns{color:var(--mu)}
 .stars{font-size:10px;font-weight:700;color:var(--wa)}
-.scard{background:var(--surf2);border:1px solid var(--bd);border-radius:7px;padding:11px 14px;margin-bottom:10px}
+.scard{background:var(--surf2);border:1px solid var(--bd);border-radius:7px;padding:11px 14px;margin-bottom:10px;overflow-x:auto}
 .scard h3{font-size:12px;font-weight:700;color:var(--ac);margin-bottom:7px}
 .rh{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .rt{font-size:15px;font-weight:700}
@@ -179,6 +183,8 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 #help-body a{color:#60a5fa}:root[data-theme="light"] #help-body a{color:var(--ac)}
 .hpane{display:none}.hpane.active{display:block}
 @media print{body>*:not(#help-ov){display:none!important}#help-ov{position:static;display:block!important;background:#fff;padding:0}#help-box{border:none;box-shadow:none;height:auto;width:100%;color:#000;background:#fff}#help-head{display:none}#help-body{overflow:visible}.hpane{display:block!important}#help-body th{background:#eee}#help-body h3{color:#000}}
+/* Narrow screens (iPad held upright): a slimmer left panel so the plot keeps room */
+@media (max-width:1000px){#lpanel{width:340px}#hdr{gap:6px;padding:6px 10px}#hdr .btn{padding:4px 8px}}
 </style>
 </head>
 <body>
@@ -187,8 +193,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 <header id="hdr" style="display:none">
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
-  <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.10.0</span>
+  <span class="badge" id="app-version" title="Version">v1.0.0</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
   <button class="btn" onclick="document.getElementById('fi-load').click()">📂 Load</button>
@@ -196,11 +201,11 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <button class="btn" onclick="clearData()">🗑 Clear</button>
   <button class="btn" onclick="openHelp()" title="Help and manuals (F1)">❓ Help</button>
   <button class="btn" id="theme-btn" onclick="toggleTheme()" title="Toggle dark/light mode" style="font-size:16px;padding:4px 9px">🌙</button>
-  <span style="font-size:11px;color:var(--mu)">Export:</span>
+  <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--mu)">Export:</span>
   <select id="export-style" title="Export figure style" style="width:170px;flex:none;font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--bd);background:var(--surf2);color:var(--tx)">
     <option value="app">App</option>
     <option value="publication">Publication</option>
-  </select>
+  </select></span>
 </header>
 <input type="file" id="fi-load" accept=".thistle,.pprism,.json" style="display:none" onchange="loadProject(event)">
 <input type="file" id="fi-csv" accept=".csv" style="display:none" onchange="onCSV(event)">
@@ -386,7 +391,6 @@ const ANALYSIS_CATEGORIES=[
     {v:'mw',l:'Mann-Whitney U (Rank Sum)'},
     {v:'wilcoxon',l:'Wilcoxon Signed-Rank'},
     {v:'kruskal',l:'Kruskal-Wallis H'},
-    {v:'ranksum',l:'Rank Sum (paired, delta/ratio)'},
     {v:'rankprod',l:'Rank Product'},
     {v:'ks',l:'Kolmogorov–Smirnov'}
   ]},
@@ -423,7 +427,6 @@ const HINTS={
   mw:'Mann–Whitney U (Wilcoxon rank-sum): compares independent groups using ranks, so it is robust to skew and outliers. Exact p-value for up to 60 values in total, otherwise a normal approximation. Use instead of the unpaired t-test for non-normal data. For matched values use Wilcoxon signed-rank.',
   wilcoxon:'Wilcoxon signed-rank: compares matched pairs (same row and replicate) using the ranks of their differences; zero differences are left out. Exact p-value for up to 60 pairs. Ratio mode ranks log(A/B). Non-parametric alternative to the paired t-test. For independent groups use Mann–Whitney.',
   kruskal:'Kruskal–Wallis H: rank-based test across 3 or more independent groups, followed by Dunn\'s pairwise tests. Non-parametric alternative to one-way ANOVA.',
-  ranksum:'Paired rank test on transformed values: Wilcoxon signed-rank on the per-pair difference (A−B) or log ratio log(A/B), so a 2-fold rise and a 2-fold fall weigh the same. Gives the same result as Wilcoxon signed-rank with the same Comparison setting.',
   rankprod:'Rank Product (Breitling 2004): finds rows (genes) that rank consistently among the largest increases, or the largest decreases, across replicate pairs. Up and down are analysed separately, each with its own FDR. Designed for screens with few replicates. Data: rows = genes; Group A = reference (e.g. control), Group B = test; replicate i of A is paired with replicate i of B.',
   pearson:'Pearson r: strength of a straight-line relationship between two columns. Sensitive to outliers; assumes roughly normal data. Use Spearman for curved-but-monotonic relationships, ranks or outliers.',
   spearman:'Spearman ρ: correlation of ranks, so it detects any monotonic relationship and resists outliers. Use Pearson when the relationship is linear and the data roughly normal.',
@@ -473,12 +476,12 @@ function exportStatTables(tabId){
     tbl.querySelectorAll('tr').forEach(tr=>{lines.push([...tr.children].map(td=>{const c=td.cloneNode(true);c.querySelectorAll('span.stars').forEach(x=>x.remove());return esc(c.textContent);}).join(','));});
   });
   const blob=new Blob([lines.join('\n')],{type:'text/csv'});const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=(tab?.title||'result').replace(/[^\w\-]+/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const a=document.createElement('a');a.href=url;a.download=(tab?.title||'result').replace(/[^\w\-]+/g,'_')+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 function downloadCSV(id){
   const c=_csvStore[id];if(!c){alert('This table was loaded from a saved project; re-run the test to download the full table.');return;}
   const blob=new Blob([c.text],{type:'text/csv'});const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=c.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const a=document.createElement('a');a.href=url;a.download=c.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 const SHOW_ROWS=200,MAX_SAMPLE_ROWS=40;
 function adjustP(pv,method){
@@ -691,9 +694,9 @@ function wilcoxonSR(a,b){
   return{W,Wplus:Wp,z,p,n,nZero,method,ties};
 }
 
-// Paired rank test on transformed pairs: Wilcoxon signed-rank on the per-pair difference A − B ('delta')
+// Wilcoxon signed-rank on the per-pair difference A − B ('delta')
 // or on the log ratio log(A / B) ('ratio', values must be > 0), so a ratio of 2 and of 1/2 weigh the same.
-function rankSumTest(a,b,mode='delta'){
+function wilcoxonPaired(a,b,mode='delta'){
   if(mode==='ratio'){
     if(a.some((x,i)=>isFinite(x)&&isFinite(b[i])&&(x<=0||b[i]<=0)))return{error:'Ratio comparison needs values > 0 in both groups'};
     return wilcoxonSR(a.map((x,i)=>Math.log(x/b[i])),a.map(()=>0));
@@ -1579,8 +1582,8 @@ document.addEventListener('keydown',e=>{
   // Ctrl/Cmd+C / X are handled by the 'copy' / 'cut' listeners below (do not cancel the keydown here,
   // or the browser never fires them)
   // Undo / Redo
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){undoAction();e.preventDefault();}
-  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){redoAction();e.preventDefault();}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey){undoAction();e.preventDefault();}
+  if((e.ctrlKey||e.metaKey)&&(e.key.toLowerCase()==='y'||(e.key.toLowerCase()==='z'&&e.shiftKey))){redoAction();e.preventDefault();}
   // Delete/Backspace: clear selected range (if multi-cell selection active)
   if(inGrid&&(e.key==='Delete'||e.key==='Backspace')){
     if(gridSel.startG>=0&&(gridSel.startG!==gridSel.endG||gridSel.startRow!==gridSel.endRow||gridSel.startR!==gridSel.endR)){
@@ -1690,7 +1693,7 @@ function npModeChange(){
   const cw=document.getElementById('np-corr-wrap');if(cw)cw.style.display=(mode==='pair')?'none':'block';
 }
 
-const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'bar_sd',mw:'bar_sd',wilcoxon:'bar_sd',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',ranksum:'bar_sd',rankprod:'heatmap',heatmap:'heatmap',mtc:'mtc',km:'km',volcano:'volcano',ks:'ecdf'};
+const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'bar_sd',mw:'bar_sd',wilcoxon:'bar_sd',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',rankprod:'heatmap',heatmap:'heatmap',mtc:'mtc',km:'km',volcano:'volcano',ks:'ecdf'};
 
 function renderAnalysisOpts(t){
   const el=document.getElementById('aopts');
@@ -1789,7 +1792,7 @@ function renderAnalysisOpts(t){
       <div class="full-col"><div class="opt-lbl">Model</div><select id="opt-rmodel" data-hint="rmodel"><option value="linear">Linear</option><option value="poly2">Polynomial deg 2</option><option value="poly3">Polynomial deg 3</option><option value="poly4">Polynomial deg 4</option><option value="log">Logarithmic</option><option value="exp">Exponential</option><option value="power">Power</option><option value="4pl">4-Parameter Logistic</option><option value="5pl">5-Parameter Logistic</option></select></div>
       ${autoPlotHint}
     </div>`;
-  } else if(t==='mw'||t==='wilcoxon'||t==='ranksum'||t==='rankprod'){
+  } else if(t==='mw'||t==='wilcoxon'||t==='rankprod'){
     const nG=G.groups.length;
     const grpOpts2=G.groups.map((g,i)=>`<option value="${i}">${g.name}</option>`).join('');
     const grpOpts2b=G.groups.map((g,i)=>`<option value="${i}" ${i===1?'selected':''}>${g.name}</option>`).join('');
@@ -1797,7 +1800,7 @@ function renderAnalysisOpts(t){
     const modeOpts=(nG>2&&t!=='rankprod')?`<div class="full-col"><div class="opt-lbl">Mode</div><select id="opt-np-mode" data-hint="npmode" onchange="npModeChange()"><option value="pair">Single pair</option><option value="allpairs">All pairs</option><option value="vsctrl">vs Control</option></select></div><div class="full-col" id="np-corr-wrap" style="display:none"><div class="opt-lbl">Multiple-comparison correction</div>${corrSelect('opt-npcorr')}</div>`:'';
     const ctrlWrap=(nG>2&&t!=='rankprod')?`<div id="np-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-np-ctrl">${ctrlOpts}</select></div>`:'';
     const pairOpts=`<div id="np-pair-wrap" style="display:flex;gap:7px;grid-column:1/-1"><div style="flex:1"><div class="opt-lbl">Group A</div><select id="opt-np-g1">${grpOpts2}</select></div><div style="flex:1"><div class="opt-lbl">Group B</div><select id="opt-np-g2">${grpOpts2b}</select></div></div>`;
-    const compOpts=t==='rankprod'?`<div class="full-col"><div class="opt-lbl">Effect per replicate pair</div><select id="opt-rp-comp" data-hint="rpcomp"><option value="delta">Difference B − A (data already on a log scale)</option><option value="ratio">log2 ratio B / A (linear-scale data, e.g. normalised counts)</option></select></div>`:(t==='wilcoxon'||t==='ranksum')?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
+    const compOpts=t==='rankprod'?`<div class="full-col"><div class="opt-lbl">Effect per replicate pair</div><select id="opt-rp-comp" data-hint="rpcomp"><option value="delta">Difference B − A (data already on a log scale)</option><option value="ratio">log2 ratio B / A (linear-scale data, e.g. normalised counts)</option></select></div>`:t==='wilcoxon'?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
     el.innerHTML=`<div class="opts-grid">${modeOpts}${ctrlWrap}${pairOpts}${compOpts}${autoPlotHint}</div>`;
     if(nG>2)setTimeout(npModeChange,10);
   } else if(t==='mtc'){
@@ -1921,7 +1924,8 @@ function restoreOptState(state){
   _restoringOpts++;
   if(state.asel){
     const el=document.getElementById('asel');
-    if(el&&el.value!==state.asel){el.value=state.asel;onTypeChange();}
+    const v=state.asel==='ranksum'?'wilcoxon':state.asel; // Rank Sum (paired) was removed in v1.0.0: identical to Wilcoxon
+    if(el&&el.value!==v){el.value=v;onTypeChange();}
   }
   if(state.psel){
     const el=document.getElementById('psel');
@@ -2631,9 +2635,12 @@ function _renderExport(pageId,mode){
 }
 function _exportName(ext){return (getExportStyle()==='publication'?'plot_publication.':'plot.')+ext;}
 
+// Save a Blob as a file. The object URL is kept for a minute: Safari on iPad asks the user before it downloads,
+// and revoking the URL earlier makes that download fail.
+function _saveBlob(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
 function downloadTabPlot(pageId){
   const c=_renderExport(pageId,getExportStyle());if(!c)return;
-  const a=document.createElement('a');a.href=c.toDataURL('image/png');a.download=_exportName('png');a.click();
+  c.toBlob(b=>{if(b)_saveBlob(b,_exportName('png'));},'image/png');
 }
 
 function downloadTabSVG(pageId){
@@ -2644,7 +2651,7 @@ function downloadTabSVG(pageId){
   const blob=new Blob([svg],{type:'image/svg+xml'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=_exportName('svg');a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 
 function downloadTabPDF(pageId){
@@ -2657,7 +2664,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.10.0';
+const APP_VERSION='1.0.0';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -3750,7 +3757,7 @@ function runAnalysis(){
         const pairs=[];
         for(const [i,j] of _npPairs(npMode)){
           const pr=getPair(i,j);
-          const res=rankSumTest(pr.a,pr.b,npComp);
+          const res=wilcoxonPaired(pr.a,pr.b,npComp);
           pairs.push({i,j,na:names[i],nb:names[j],...res});
         }
         {const adj=adjustP(pairs.map(p=>p.p),npCorr);pairs.forEach((p,k)=>{p.p_adj=adj[k];});}
@@ -3763,7 +3770,7 @@ function runAnalysis(){
         addStatTab(npMode==='vsctrl'?'Wilcoxon signed-rank (vs control)':'Wilcoxon signed-rank (all pairs)',html);
       } else {
         const pr=getPair(g1i,g2i);
-        const res=rankSumTest(pr.a,pr.b,npComp);
+        const res=wilcoxonPaired(pr.a,pr.b,npComp);
         if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
         const html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Wilcoxon Signed-Rank${npComp==='ratio'?' (Ratio)':''}</h3>
           <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong></div>
@@ -3774,40 +3781,6 @@ function runAnalysis(){
           <tr><td>n (non-zero ${npComp==='ratio'?'log ratios':'differences'})</td><td>${res.n}${res.nZero?` (${res.nZero} zero difference(s) left out)`:''}</td></tr>
           </tbody></table></div>`;
         addStatTab('Wilcoxon signed-rank',html);
-      }
-
-    } else if(atype==='ranksum'){
-      const npMode=document.getElementById('opt-np-mode')?.value||'pair';const npCorr=document.getElementById('opt-npcorr')?.value||'holm_sidak';
-      const g1i=parseInt(document.getElementById('opt-np-g1')?.value||0);
-      const g2i=parseInt(document.getElementById('opt-np-g2')?.value||1);
-      const npComp=document.getElementById('opt-np-comp')?.value||'delta';
-      const names=grpNames();
-      if((npMode==='allpairs'||npMode==='vsctrl')&&G.groups.length>2){
-        const pairs=[];
-        for(const [i,j] of _npPairs(npMode)){
-          const pr=getPair(i,j);const res=rankSumTest(pr.a,pr.b,npComp);
-          pairs.push({i,j,na:names[i],nb:names[j],...res});
-        }
-        {const adj=adjustP(pairs.map(p=>p.p),npCorr);pairs.forEach((p,k)=>{p.p_adj=adj[k];});}
-        pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
-        lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
-        const html=`<div class="scard"><h3>Rank Sum — ${npMode==='vsctrl'?'vs Control':'All Pairs'} (${CORR_SHORT[npCorr]}, ${npComp})</h3>
-          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>W</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
-          ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.W,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)} <span style="color:var(--mu);font-size:10px">${p.method}</span></td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
-          </tbody></table></div>`;
-        addStatTab(npMode==='vsctrl'?'Paired rank sum (vs control)':'Paired rank sum (all pairs)',html);
-      } else {
-        const pr=getPair(g1i,g2i);const res=rankSumTest(pr.a,pr.b,npComp);
-        if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
-        const html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Rank Sum Test (${npComp})</h3>
-          <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong></div>
-          <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
-          <tr><td>W (signed-rank, on ${npComp==='ratio'?'log ratios':'differences'})</td><td>${fmtF(res.W,1)}</td></tr>
-          <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
-          <tr><td>p-value (${res.method})</td><td>${pRow(res.p)}</td></tr>
-          <tr><td>Pairs (non-zero)</td><td>${res.n}</td></tr>
-          </tbody></table></div>`;
-        addStatTab('Paired rank sum',html);
       }
 
     } else if(atype==='rankprod'){
@@ -4215,7 +4188,7 @@ function saveProject(){
     activePT,activeST
   };
   const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='thistle_project.thistle';a.click();
+  _saveBlob(blob,'thistle_project.thistle');
 }
 
 function loadProject(event){
@@ -4258,7 +4231,7 @@ const EXAMPLES={"groups": {"nReps": 3, "nRows": 6, "rowNames": ["Sample 1", "Sam
 
 // Which example suits each plot type / test
 const EXAMPLE_FOR_PLOT={bar_sd:'groups',boxplot:'groups',violin:'groups',scatter:'xy',line:'timecourse',heatmap:'genes',volcano:'volcano',pca:'genes',km:'km',dose:'dose',qq:'normality',histogram:'normality',mtc:'mtc',ecdf:'normality'};
-const EXAMPLE_FOR_TEST={desc:'groups',norm:'normality',ttest_ind:'groups',ttest_rel:'paired',anova:'anova',anova2:'anova2',mw:'groups',wilcoxon:'paired',kruskal:'groups',ranksum:'paired',rankprod:'screen',pearson:'xy',spearman:'xy',regress:'xy',pca:'genes',heatmap:'genes',fisher:'fisher',chisq:'chisq',mtc:'mtc',km:'km',dose:'dose',volcano:'volcano',ks:'normality'};
+const EXAMPLE_FOR_TEST={desc:'groups',norm:'normality',ttest_ind:'groups',ttest_rel:'paired',anova:'anova',anova2:'anova2',mw:'groups',wilcoxon:'paired',kruskal:'groups',rankprod:'screen',pearson:'xy',spearman:'xy',regress:'xy',pca:'genes',heatmap:'genes',fisher:'fisher',chisq:'chisq',mtc:'mtc',km:'km',dose:'dose',volcano:'volcano',ks:'normality'};
 function applyG(newG){
   pushUndo();
   G=JSON.parse(JSON.stringify(newG));delete G.note;
@@ -4335,7 +4308,13 @@ function populateSelects(){
   psel.innerHTML=PLOT_TYPES.map(t=>`<option value="${t.v}">${t.l}</option>`).join('');
 }
 
+// iPhone/iPad (iPadOS reports itself as a Mac, but with a touch screen)
+const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function checkLibs(){
+  if(IS_IOS){ // the iOS file picker greys out extensions it does not know (.thistle), so let it offer every file
+    document.getElementById('fi-load')?.removeAttribute('accept');
+    document.getElementById('fi-csv')?.setAttribute('accept','.csv,text/csv,text/comma-separated-values,text/plain');
+  }
   if(typeof jStat!=='undefined'&&typeof Chart!=='undefined'&&typeof Papa!=='undefined'){
     document.getElementById('loading').style.display='none';
     document.getElementById('hdr').style.display='flex';
@@ -4369,8 +4348,8 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a> (MIT licence).</p>
-<p>TP is a <strong>beta (v0.10.0)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual), but results should still be sanity-checked against an established package before you rely on them in a publication.</p>
-<p><strong>Opening TP:</strong> use the hosted copy at <a href="https://actinomycetes.github.io/thistle-plot/">https://actinomycetes.github.io/thistle-plot/</a>, double-click a downloaded <code>index.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<p>This is TP <strong>v1.0.0</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> use the hosted copy at <a href="https://actinomycetes.github.io/thistle-plot/">https://actinomycetes.github.io/thistle-plot/</a>, double-click a downloaded <code>index.html</code> to open it in Chrome, Edge, Firefox or Safari (Mac or iPad), or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
 <ol>
@@ -4398,7 +4377,7 @@ window.addEventListener('load',checkLibs);
 <tbody>
 <tr>
 <td>Header</td>
-<td>Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu</td>
+<td>Name and version badge, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu</td>
 </tr>
 <tr>
 <td>Left panel, top</td>
@@ -4629,11 +4608,6 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Non-parametric</td>
-<td>Rank Sum (paired)</td>
-<td>Signed-rank test of the per-pair difference or log ratio: the same result as Wilcoxon signed-rank with the same Comparison</td>
-</tr>
-<tr>
-<td>Non-parametric</td>
 <td>Rank Product</td>
 <td>Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV</td>
 </tr>
@@ -4713,11 +4687,6 @@ window.addEventListener('load',checkLibs);
 <td>Mann–Whitney vs Wilcoxon signed-rank</td>
 <td>Groups are independent</td>
 <td>Values are paired</td>
-</tr>
-<tr>
-<td>Wilcoxon signed-rank vs Rank Sum (paired)</td>
-<td>Either: since v0.10.0 they give the same result</td>
-<td>(kept so older projects reopen)</td>
 </tr>
 <tr>
 <td>One-way ANOVA vs Kruskal–Wallis</td>
@@ -4897,7 +4866,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.10.0 (beta):</p>
+<p>Known limitations of v1.0.0:</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.</li>
 <li>Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).</li>
@@ -4909,13 +4878,22 @@ window.addEventListener('load',checkLibs);
 <li>Project files store only the active dataset, and plots only as snapshot images.</li>
 <li>TP has not yet been formally validated against a reference package. Spot-check key results.</li>
 </ul>
+<h3>10b. Using TP on an iPad</h3>
+<p>TP runs in Safari on iPadOS 16 or later. It is laid out for a large screen, so it works best in landscape with a keyboard and trackpad (Magic Keyboard or similar); portrait works too, with a narrower left panel. Fingers work for buttons, menus and single cells; selecting a block of cells and dragging the panel dividers need the trackpad (or a mouse).</p>
+<ul>
+<li><strong>Shortcuts:</strong> Cmd+C / Cmd+X / Cmd+V in the table, Cmd+Z / Cmd+Shift+Z for undo and redo. iPad keyboards have no F1 key, so open Help with <strong>Cmd+/</strong> (or the ❓ Help button).</li>
+<li><strong>Downloads</strong> (PNG, SVG, CSV, 💾 Save): Safari asks whether to download; tap <strong>Download</strong>. Files go to the Downloads folder in the Files app.</li>
+<li><strong>📂 Load</strong> and <strong>⬆ CSV</strong> open the Files app; every file is selectable (iPadOS cannot filter on the <code>.thistle</code> extension), so pick the right one.</li>
+<li><strong>⬇ PDF</strong> opens the figure in a new tab with the print options; tap the Share button at the top of that sheet and choose <strong>Save to Files</strong> to keep a PDF. Close the tab to return to TP.</li>
+<li>Very large tables (tens of thousands of rows) are slower than on a computer, and an iPad has less memory, so close plot tabs you no longer need.</li>
+</ul>
 <h3>11. Checking the calculations</h3>
 <p>Every statistical test in TP has been compared with independent open-source software (SciPy and statsmodels for Python) on the same data: t-tests, Mann–Whitney, Wilcoxon, ANOVA with Tukey and Dunnett, Kruskal–Wallis and Dunn, two-way ANOVA, correlation and regression, 4PL/5PL fits, Shapiro–Wilk, Lilliefors and Kolmogorov–Smirnov, Fisher's exact, chi-square, Kaplan–Meier, log-rank and the multiple-comparison corrections. The script that does this is in the code repository, with step-by-step instructions: <a href="https://github.com/actinomycetes/thistle-plot/blob/main/tools/validate/README.md">tools/validate/README.md</a>. Agreement with these packages is not a formal validation, so keep spot-checking important results.</p>
 <h3>12. Source code and licences</h3>
 <p>TP is free and open source under the MIT licence: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a>. © 2026 Takanobu Tagawa (The University of Edinburgh). Report problems or suggestions there.</p>
 <p>TP loads three open-source libraries from cdnjs, each under the MIT licence: <a href="https://www.chartjs.org/">Chart.js</a> (© Chart.js contributors), <a href="https://github.com/jstat/jstat">jStat</a> (© jStat contributors) and <a href="https://www.papaparse.com/">PapaParse</a> (© Matthew Holt). Product names mentioned in this manual (for example Excel, Google Sheets and Confluence) are trademarks of their owners; TP is not affiliated with them.</p>
 <p>Methods follow their published descriptions, for example Shapiro–Wilk (Royston 1992, 1995), Dunnett (1955), Rank Product (Breitling et al. 2004), Lilliefors (1967) and the 5-parameter logistic curve (Gottschalk &amp; Dunn 2005).</p><!--/HELP:hf--></div>
-   <div class="hpane" id="hv"><!--HELP:hv--><h2>Version History</h2><p>All releases are beta (0.x). Earlier builds had a different working name; numbers before 0.6.0 are mapped from the old v1–v5 builds.</p>
+   <div class="hpane" id="hv"><!--HELP:hv--><h2>Version History</h2><p>Releases before 1.0.0 were beta (0.x). Earlier builds had a different working name; numbers before 0.6.0 are mapped from the old v1–v5 builds.</p>
 <table>
 <thead>
 <tr>
@@ -4925,6 +4903,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>1.0.0 (14 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>First stable release. Rank Sum (paired) removed: since 0.10.0 it gave the same result as Wilcoxon signed-rank (projects that used it reopen as Wilcoxon). Works in Safari on iPad: drop-down menus readable in Safari (Mac and iPad), layout fits an upright iPad, the Files app can pick <code>.thistle</code> projects, downloads survive Safari's download prompt, Cmd+/ opens Help, Cmd+Shift+Z redoes. BETA badge removed</td>
+</tr>
 <tr>
 <td>0.10.0 (14 Nov 2026)</td>
 <td>Thistle Plot</td>
@@ -5010,7 +4993,7 @@ window.addEventListener('load',checkLibs);
 function openHelp(t){document.querySelectorAll('#help-body a[href^="http"]').forEach(x=>{x.target='_blank';x.rel='noopener';});document.getElementById('help-ov').classList.add('open');if(t)helpTab(t);}
 function closeHelp(){document.getElementById('help-ov').classList.remove('open');}
 function helpTab(id){document.querySelectorAll('.hpane').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('#help-head .htab').forEach(b=>b.classList.toggle('active',b.dataset.p===id));document.getElementById('help-body').scrollTop=0;}
-document.addEventListener('keydown',e=>{if(e.key==='F1'){e.preventDefault();openHelp();}else if(e.key==='Escape'&&document.getElementById('help-ov').classList.contains('open'))closeHelp();});
+document.addEventListener('keydown',e=>{if(e.key==='F1'||((e.ctrlKey||e.metaKey)&&e.key==='/')){e.preventDefault();openHelp();}else if(e.key==='Escape'&&document.getElementById('help-ov').classList.contains('open'))closeHelp();});
 </script>
 </body>
 </html>

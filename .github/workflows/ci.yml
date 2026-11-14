@@ -18,7 +18,7 @@ jobs:
       - name: Help panes match docs/*.md
         run: python3 tools/build_help.py --check
       - run: npm install
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm test
       - run: pip install numpy scipy pandas statsmodels
       - name: Statistics agree with SciPy/statsmodels (tools/validate)

@@ -19,7 +19,7 @@ const cases = require('./cases.json');
       R.mw_large = pick(mannWhitneyU(big1, big2), ['U1', 'p', 'method']);
       R.wilcoxon = pick(wilcoxonSR(C.pre, C.post), ['Wplus', 'p', 'method']);
       R.wilcoxon_noties = pick(wilcoxonSR([1.3, -2.1, 3.4, 4.6, 5.2, 6.9, -0.7, 8.8, 9.5, 2.2], Array(10).fill(0)), ['Wplus', 'p', 'method']);
-      R.wilcoxon_ratio = pick(rankSumTest(C.pre, C.post, 'ratio'), ['Wplus', 'p', 'method']);
+      R.wilcoxon_ratio = pick(wilcoxonPaired(C.pre, C.post, 'ratio'), ['Wplus', 'p', 'method']);
       const anova = onewayANOVA([C.a, C.b, C.c], 'tukey');
       R.anova = { F: anova.F, p: anova.p, tukey: anova.posthoc.map(x => x.p_adj) };
       const dun = onewayANOVA([C.a, C.b, C.c], 'dunnett', [0]);

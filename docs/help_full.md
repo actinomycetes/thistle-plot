@@ -4,7 +4,7 @@ TP has a header bar, a left panel for data and settings, and a right panel of re
 
 | Area | What it holds |
 | --- | --- |
-| Header | Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu |
+| Header | Name and version badge, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu |
 | Left panel, top | Dataset tabs and the data grid |
 | Left panel, Visualisation | Plot type, 📋 Example (data suited to that plot), plot options, Live update, 📈 Plot (↻ Update plot and + New when a figure of that type is open) |
 | Left panel, Statistical Test | Test type, 📋 Example (data suited to that test), description, test options, ▶ Run Analysis |
@@ -91,7 +91,6 @@ Tick **Auto-plot after run** to open a linked plot. Significance marks and gene 
 | Non-parametric | Mann-Whitney U | Exact p-value up to 60 values in total (ties allowed), normal approximation with tie and continuity corrections above; Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák) |
 | Non-parametric | Wilcoxon Signed-Rank | Exact p-value up to 60 non-zero pairs; zero differences left out; Mode and correction as above; Difference or Ratio (ranks log ratios) |
 | Non-parametric | Kruskal-Wallis H | Dunn's post-hoc with a choice of correction (default Holm–Šídák) |
-| Non-parametric | Rank Sum (paired) | Signed-rank test of the per-pair difference or log ratio: the same result as Wilcoxon signed-rank with the same Comparison |
 | Non-parametric | Rank Product | Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV |
 | Non-parametric | Kolmogorov–Smirnov | Two-sample (exact p for small samples) or one-sample vs normal (Lilliefors, p by simulation) |
 | Correlation / XY | Pearson, Spearman | All pairs or vs Control; correction when there are several pairs |
@@ -111,7 +110,6 @@ Tick **Auto-plot after run** to open a linked plot. Significance marks and gene 
 | Unpaired vs paired t-test | Groups are independent (different animals or samples) | Values are matched (same subject measured twice, or matched by row) |
 | t-test vs Mann–Whitney / Wilcoxon | Data are roughly normal; you want to compare means | Data are skewed or have outliers; you compare ranks (medians/distributions) |
 | Mann–Whitney vs Wilcoxon signed-rank | Groups are independent | Values are paired |
-| Wilcoxon signed-rank vs Rank Sum (paired) | Either: since v0.10.0 they give the same result | (kept so older projects reopen) |
 | One-way ANOVA vs Kruskal–Wallis | 3+ groups, roughly normal, similar spread | 3+ groups, skewed data or outliers |
 | One-way vs two-way ANOVA | One factor (e.g. treatment) | Two factors (e.g. genotype × treatment) and their interaction |
 | Pearson vs Spearman | The relationship is a straight line and data are roughly normal | The relationship is monotonic but curved, or there are outliers or ranks |
@@ -191,7 +189,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.10.0 (beta):
+Known limitations of v1.0.0:
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
@@ -202,6 +200,16 @@ Known limitations of v0.10.0 (beta):
 - Publication style is greyscale only; there are no colour publication palettes yet.
 - Project files store only the active dataset, and plots only as snapshot images.
 - TP has not yet been formally validated against a reference package. Spot-check key results.
+
+### 10b. Using TP on an iPad
+
+TP runs in Safari on iPadOS 16 or later. It is laid out for a large screen, so it works best in landscape with a keyboard and trackpad (Magic Keyboard or similar); portrait works too, with a narrower left panel. Fingers work for buttons, menus and single cells; selecting a block of cells and dragging the panel dividers need the trackpad (or a mouse).
+
+- **Shortcuts:** Cmd+C / Cmd+X / Cmd+V in the table, Cmd+Z / Cmd+Shift+Z for undo and redo. iPad keyboards have no F1 key, so open Help with **Cmd+/** (or the ❓ Help button).
+- **Downloads** (PNG, SVG, CSV, 💾 Save): Safari asks whether to download; tap **Download**. Files go to the Downloads folder in the Files app.
+- **📂 Load** and **⬆ CSV** open the Files app; every file is selectable (iPadOS cannot filter on the `.thistle` extension), so pick the right one.
+- **⬇ PDF** opens the figure in a new tab with the print options; tap the Share button at the top of that sheet and choose **Save to Files** to keep a PDF. Close the tab to return to TP.
+- Very large tables (tens of thousands of rows) are slower than on a computer, and an iPad has less memory, so close plot tabs you no longer need.
 
 ### 11. Checking the calculations
 
