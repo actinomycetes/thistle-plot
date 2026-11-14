@@ -18,7 +18,7 @@ Most tests pool all values in a group's columns. Some tests read columns positio
 
 | Test or plot | Expected layout |
 | --- | --- |
-| Kaplan-Meier | Col 1 = time; each further column is one group holding 1 (event) or 0 (censored) for its own subjects, blank otherwise (one subject per row, as in Prism) |
+| Kaplan-Meier | Col 1 = time; each further column is one group holding 1 (event) or 0 (censored) for its own subjects, blank otherwise (one subject per row) |
 | Dose-Response (5PL) | Col 1 = concentration, Col 2 = response |
 | Volcano Plot | Col 1 = log2 fold change, Col 2 = p-value, one gene per row |
 | Regression | Col 1 = X, Col 2 = Y |
@@ -83,25 +83,25 @@ Tick **Auto-plot after run** to open a linked plot. Significance marks and gene 
 | Category | Test | Key options |
 | --- | --- | --- |
 | Descriptive | Descriptive Statistics | — |
-| Descriptive | Normality Test (Shapiro-Wilk) | Each column tested separately |
+| Descriptive | Normality Test (Shapiro-Wilk) | Each column tested separately (Royston's method, 3 to 5000 values); skewness and excess kurtosis also shown |
 | Parametric | Unpaired t-test (Welch) | Normalisation; control group; correction when 3+ groups (default Holm–Šídák); Run per row with its own correction (default FDR) |
-| Parametric | Paired t-test | As above, plus Comparison: Difference (A−B) or Ratio (A/B) |
+| Parametric | Paired t-test | As above, plus Comparison: Difference (A−B), or Ratio (A/B) tested on log ratios and reported as a geometric mean ratio with 95% CI. Values are paired by row and replicate; a blank cell drops only its own pair |
 | Parametric | One-Way ANOVA | Comparisons: all pairs (Tukey HSD by default) or vs one or more ticked control groups (Dunnett for one control; Holm–Šídák etc. for several); also Holm, Bonferroni, FDR, none |
 | Parametric | Two-Way ANOVA | nA, nB; post-hoc: simple effects (B within each A, or A within each B), all cell means, or main effects; Tukey, Holm–Šídák, Holm, Bonferroni, FDR. Balanced designs only |
-| Non-parametric | Mann-Whitney U | Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák) |
-| Non-parametric | Wilcoxon Signed-Rank | Mode and correction as above; Difference or Ratio |
+| Non-parametric | Mann-Whitney U | Exact p-value up to 60 values in total (ties allowed), normal approximation with tie and continuity corrections above; Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák) |
+| Non-parametric | Wilcoxon Signed-Rank | Exact p-value up to 60 non-zero pairs; zero differences left out; Mode and correction as above; Difference or Ratio (ranks log ratios) |
 | Non-parametric | Kruskal-Wallis H | Dunn's post-hoc with a choice of correction (default Holm–Šídák) |
-| Non-parametric | Rank Sum (paired) | Mode and correction as above; Difference or Ratio |
+| Non-parametric | Rank Sum (paired) | Signed-rank test of the per-pair difference or log ratio: the same result as Wilcoxon signed-rank with the same Comparison |
 | Non-parametric | Rank Product | Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV |
 | Non-parametric | Kolmogorov–Smirnov | Two-sample (exact p for small samples) or one-sample vs normal (Lilliefors, p by simulation) |
 | Correlation / XY | Pearson, Spearman | All pairs or vs Control; correction when there are several pairs |
 | Correlation / XY | Regression / Curve Fitting | X and Y columns; Linear, Polynomial (degree 2–4), Logarithmic, Exponential, Power, 4PL, 5PL; fit and residual plots made automatically |
 | Multivariate | PCA | Samples = group means or every replicate column; optional Z-score per feature; reports variance explained and scores for every component, and top loadings for any chosen PC (CSV of the first 10) |
 | Multivariate | Hierarchical Heatmap | Rows = features, columns = groups |
-| Categorical | Fisher's Exact (2×2), Chi-Square | Counts tables |
+| Categorical | Fisher's Exact (2×2), Chi-Square | Counts tables (first replicate column). Chi-square has no continuity correction, ignores empty rows and columns, and warns when expected counts are below 5 |
 | Categorical | Multiple Testing Correction | Holm–Šídák, Holm, Bonferroni, FDR (BH) |
 | Survival / XY | Kaplan-Meier + log-rank | Any number of groups: median survival, log-rank χ², hazard ratio (2 groups), corrected pairwise log-rank (3+ groups) |
-| Survival / XY | Dose-Response (5PL) | Concentration and response columns |
+| Survival / XY | Dose-Response (5PL) | Concentration and response columns (one concentration per row with replicate responses is fine); reports EC50 (X half-way between Bottom and Top) and the midpoint parameter C |
 | Survival / XY | Volcano Plot | &#124;log2FC&#124; and p-value thresholds |
 
 **Choosing between similar tests**
@@ -111,7 +111,7 @@ Tick **Auto-plot after run** to open a linked plot. Significance marks and gene 
 | Unpaired vs paired t-test | Groups are independent (different animals or samples) | Values are matched (same subject measured twice, or matched by row) |
 | t-test vs Mann–Whitney / Wilcoxon | Data are roughly normal; you want to compare means | Data are skewed or have outliers; you compare ranks (medians/distributions) |
 | Mann–Whitney vs Wilcoxon signed-rank | Groups are independent | Values are paired |
-| Wilcoxon signed-rank vs Rank Sum (paired) | You test the paired difference | You want to test ratios (fold changes) as well as differences |
+| Wilcoxon signed-rank vs Rank Sum (paired) | Either: since v0.10.0 they give the same result | (kept so older projects reopen) |
 | One-way ANOVA vs Kruskal–Wallis | 3+ groups, roughly normal, similar spread | 3+ groups, skewed data or outliers |
 | One-way vs two-way ANOVA | One factor (e.g. treatment) | Two factors (e.g. genotype × treatment) and their interaction |
 | Pearson vs Spearman | The relationship is a straight line and data are roughly normal | The relationship is monotonic but curved, or there are outliers or ranks |
@@ -127,7 +127,7 @@ Tick **Auto-plot after run** to open a linked plot. Significance marks and gene 
 | --- | --- | --- |
 | Dunnett | Family-wise error, vs one control | Each group vs a single control after one-way ANOVA (exact multivariate t); more power than Tukey or Holm–Šídák for this design |
 | Tukey HSD | Family-wise error, all pairs | After one-way ANOVA when you compare every pair of means (exact studentised range; Tukey–Kramer for unequal n) |
-| Holm–Šídák | Family-wise error | Default for a few planned comparisons (control vs groups, all pairs after Kruskal–Wallis). Slightly more power than Holm; assumes tests are independent or positively correlated. Prism's default |
+| Holm–Šídák | Family-wise error | Default for a few planned comparisons (control vs groups, all pairs after Kruskal–Wallis). Slightly more power than Holm; assumes tests are independent or positively correlated. |
 | Holm–Bonferroni | Family-wise error | Same goal as Holm–Šídák with no assumption about how tests relate |
 | Bonferroni | Family-wise error | Simplest and most conservative; fine for a handful of comparisons |
 | Benjamini–Hochberg (FDR) | False discovery rate | Many tests (per-row, genes, screens): more power, accepts a small fraction of false positives. Default for per-row t-tests |
@@ -156,7 +156,7 @@ The **Export** menu in the header sets the style for every download button.
 | Style | Look | Size | File names |
 | --- | --- | --- | --- |
 | App | Exactly as on screen, in the current light or dark theme | Screen size | plot.png / plot.svg |
-| Publication (Prism-like) | White background; black L-shaped axes with outward ticks, no gridlines; greyscale bars with black outlines; black error bars and dots spread so they don't overlap; bold Arial labels; distinct marker shapes per series | About 300 dpi: bar charts narrow (width grows with the number of groups), other plots 4:3 | plot_publication.png / .svg |
+| Publication | White background; black L-shaped axes with outward ticks, no gridlines; greyscale bars with black outlines; black error bars and dots spread so they don't overlap; bold Arial labels; distinct marker shapes per series | About 300 dpi: bar charts narrow (width grows with the number of groups), other plots 4:3 | plot_publication.png / .svg |
 
 - **⬇ PNG** saves a raster image. Use it for slides and most journal submissions.
 - **⬇ SVG** saves an SVG file that wraps the same high-resolution image. It opens in Illustrator or Inkscape but is **not** editable vector art.
@@ -191,12 +191,26 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.9.2 (beta):
+Known limitations of v0.10.0 (beta):
 
-- Two-Way ANOVA supports balanced designs only (equal n in every cell).
+- Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
+- Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
+- Kolmogorov–Smirnov exact p-values assume no tied values (conservative with ties).
 - Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.
 - Kaplan–Meier assumes one subject per row; hazard ratios are log-rank estimates (no Cox regression).
 - SVG export is an embedded image, not editable vectors.
 - Publication style is greyscale only; there are no colour publication palettes yet.
 - Project files store only the active dataset, and plots only as snapshot images.
 - TP has not yet been formally validated against a reference package. Spot-check key results.
+
+### 11. Checking the calculations
+
+Every statistical test in TP has been compared with independent open-source software (SciPy and statsmodels for Python) on the same data: t-tests, Mann–Whitney, Wilcoxon, ANOVA with Tukey and Dunnett, Kruskal–Wallis and Dunn, two-way ANOVA, correlation and regression, 4PL/5PL fits, Shapiro–Wilk, Lilliefors and Kolmogorov–Smirnov, Fisher's exact, chi-square, Kaplan–Meier, log-rank and the multiple-comparison corrections. The script that does this is in the code repository, with step-by-step instructions: [tools/validate/README.md](https://github.com/actinomycetes/thistle-plot/blob/main/tools/validate/README.md). Agreement with these packages is not a formal validation, so keep spot-checking important results.
+
+### 12. Source code and licences
+
+TP is free and open source under the MIT licence: <https://github.com/actinomycetes/thistle-plot>. © 2026 Takanobu Tagawa (The University of Edinburgh). Report problems or suggestions there.
+
+TP loads three open-source libraries from cdnjs, each under the MIT licence: [Chart.js](https://www.chartjs.org/) (© Chart.js contributors), [jStat](https://github.com/jstat/jstat) (© jStat contributors) and [PapaParse](https://www.papaparse.com/) (© Matthew Holt). Product names mentioned in this manual (for example Excel, Google Sheets and Confluence) are trademarks of their owners; TP is not affiliated with them.
+
+Methods follow their published descriptions, for example Shapiro–Wilk (Royston 1992, 1995), Dunnett (1955), Rank Product (Breitling et al. 2004), Lilliefors (1967) and the 5-parameter logistic curve (Gottschalk & Dunn 2005).

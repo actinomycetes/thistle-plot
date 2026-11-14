@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.9.2 (Beta)</title>
+<title>Thistle Plot v0.10.0 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -176,6 +176,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 #help-body th,#help-body td{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}
 #help-body th{background:var(--surf2)}
 #help-body code{background:var(--surf2);padding:1px 5px;border-radius:4px;font-size:12px}
+#help-body a{color:#60a5fa}:root[data-theme="light"] #help-body a{color:var(--ac)}
 .hpane{display:none}.hpane.active{display:block}
 @media print{body>*:not(#help-ov){display:none!important}#help-ov{position:static;display:block!important;background:#fff;padding:0}#help-box{border:none;box-shadow:none;height:auto;width:100%;color:#000;background:#fff}#help-head{display:none}#help-body{overflow:visible}.hpane{display:block!important}#help-body th{background:#eee}#help-body h3{color:#000}}
 </style>
@@ -187,8 +188,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.9.2</span>
-  <span class="badge">Pure JS</span>
+  <span class="badge" id="app-version" title="Version">v0.10.0</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
   <button class="btn" onclick="document.getElementById('fi-load').click()">📂 Load</button>
@@ -199,7 +199,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <span style="font-size:11px;color:var(--mu)">Export:</span>
   <select id="export-style" title="Export figure style" style="width:170px;flex:none;font-size:11px;padding:2px 6px;border-radius:4px;border:1px solid var(--bd);background:var(--surf2);color:var(--tx)">
     <option value="app">App</option>
-    <option value="prism">Publication (Prism-like)</option>
+    <option value="publication">Publication</option>
   </select>
 </header>
 <input type="file" id="fi-load" accept=".thistle,.pprism,.json" style="display:none" onchange="loadProject(event)">
@@ -417,13 +417,13 @@ const HINTS={
   desc:'Mean, SD, SEM, median and range for each group. Data: one block of replicate columns per group; all values in a group are pooled.',
   norm:'Shapiro–Wilk: tests whether each group could come from a normal distribution (p < 0.05 = evidence of non-normality). Use it to choose between parametric and non-parametric tests; with small n it has little power, so also check a Q-Q plot.',
   ttest_ind:'Welch\'s unpaired t-test: compares the means of independent groups without assuming equal variances. Data: control group vs each other group. Use when samples are independent and roughly normal. Non-parametric alternative: Mann–Whitney. For matched values use the paired t-test.',
-  ttest_rel:'Paired t-test: compares matched measurements (same subject, animal or row measured twice). Data: control vs each other group, values matched by position. More powerful than the unpaired test when pairing is real. Non-parametric alternative: Wilcoxon signed-rank.',
+  ttest_rel:'Paired t-test: compares matched measurements (same subject, animal or row measured twice). Data: control vs each other group, values matched by row and replicate (a blank cell drops only its own pair). Ratio mode tests log(A/B), reported as a geometric mean ratio. More powerful than the unpaired test when pairing is real. Non-parametric alternative: Wilcoxon signed-rank.',
   anova:'One-way ANOVA: tests whether 3 or more group means differ, then post-hoc tests show which pairs differ: Tukey for all pairs, Dunnett for each group vs one control, or any correction vs several controls. Assumes roughly normal data and similar spread. Non-parametric alternative: Kruskal–Wallis. For two factors use two-way ANOVA.',
   anova2:'Two-way ANOVA: effects of two factors (e.g. genotype × treatment) and their interaction, with optional post-hoc tests (main effects, simple effects within each level, or all cells). Data: balanced design, groups ordered A1B1, A1B2 … A2B1 …; set nA and nB below. Name groups "WT · Drug" (or WT_Drug) to label the factor levels.',
-  mw:'Mann–Whitney U (Wilcoxon rank-sum): compares independent groups using ranks, so it is robust to skew and outliers. Use instead of the unpaired t-test for non-normal data. For matched values use Wilcoxon signed-rank.',
-  wilcoxon:'Wilcoxon signed-rank: compares matched pairs using the ranks of their differences. Non-parametric alternative to the paired t-test. For independent groups use Mann–Whitney.',
+  mw:'Mann–Whitney U (Wilcoxon rank-sum): compares independent groups using ranks, so it is robust to skew and outliers. Exact p-value for up to 60 values in total, otherwise a normal approximation. Use instead of the unpaired t-test for non-normal data. For matched values use Wilcoxon signed-rank.',
+  wilcoxon:'Wilcoxon signed-rank: compares matched pairs (same row and replicate) using the ranks of their differences; zero differences are left out. Exact p-value for up to 60 pairs. Ratio mode ranks log(A/B). Non-parametric alternative to the paired t-test. For independent groups use Mann–Whitney.',
   kruskal:'Kruskal–Wallis H: rank-based test across 3 or more independent groups, followed by Dunn\'s pairwise tests. Non-parametric alternative to one-way ANOVA.',
-  ranksum:'Paired rank test on transformed values: ranks the per-pair difference (A−B) or ratio (A/B). Like Wilcoxon signed-rank, but lets you test ratios, e.g. fold changes.',
+  ranksum:'Paired rank test on transformed values: Wilcoxon signed-rank on the per-pair difference (A−B) or log ratio log(A/B), so a 2-fold rise and a 2-fold fall weigh the same. Gives the same result as Wilcoxon signed-rank with the same Comparison setting.',
   rankprod:'Rank Product (Breitling 2004): finds rows (genes) that rank consistently among the largest increases, or the largest decreases, across replicate pairs. Up and down are analysed separately, each with its own FDR. Designed for screens with few replicates. Data: rows = genes; Group A = reference (e.g. control), Group B = test; replicate i of A is paired with replicate i of B.',
   pearson:'Pearson r: strength of a straight-line relationship between two columns. Sensitive to outliers; assumes roughly normal data. Use Spearman for curved-but-monotonic relationships, ranks or outliers.',
   spearman:'Spearman ρ: correlation of ranks, so it detects any monotonic relationship and resists outliers. Use Pearson when the relationship is linear and the data roughly normal.',
@@ -431,9 +431,9 @@ const HINTS={
   pca:'PCA: summarises many features into a few components to show how samples cluster. Data: rows = features/genes, columns = samples or groups.',
   heatmap:'Hierarchical heatmap: rows are scaled and clustered to show patterns across samples. Data: rows = features/genes, columns = groups (replicates averaged).',
   fisher:'Fisher\'s exact test: association in a 2×2 table of counts. Exact, so best for small counts (any expected count < 5). Data: 2 columns × 2 rows of counts. For larger tables use Chi-square.',
-  chisq:'Chi-square test of independence for a table of counts. Data: columns = groups, rows = categories. Approximate: needs expected counts ≥ 5; for small 2×2 tables use Fisher\'s exact.',
+  chisq:'Chi-square test of independence for a table of counts. Data: columns = groups, rows = categories. No continuity correction; empty rows and columns are ignored. Approximate: needs expected counts ≥ 5 (a warning is shown); for small 2×2 tables use Fisher\'s exact.',
   mtc:'Adjusts p-values you already have for multiple comparisons. Data: Col 1 = p-values, one per row; row names label the tests.',
-  km:'Kaplan–Meier survival curves with a log-rank test between groups. Data: Col 1 = time; each further column is one group, holding 1 (event) or 0 (censored) for the subjects in that group and blank otherwise (one subject per row, as in Prism). With 3+ groups, pairwise log-rank tests are corrected.',
+  km:'Kaplan–Meier survival curves with a log-rank test between groups. Data: Col 1 = time; each further column is one group, holding 1 (event) or 0 (censored) for the subjects in that group and blank otherwise (one subject per row). With 3+ groups, pairwise log-rank tests are corrected.',
   ks:'Kolmogorov–Smirnov: compares whole distributions (shape, spread and location), not just means or medians. Two-sample mode: are two groups drawn from the same distribution? (Mann–Whitney is more powerful for a simple shift.) Normality mode: Lilliefors-corrected KS against a normal curve; Shapiro–Wilk is usually more powerful.',
   dose:'5-parameter logistic (5PL) dose–response fit: bottom, top, EC50/IC50, Hill slope and asymmetry. Data: Col 1 = concentration, Col 2 = response. For a symmetric 4PL fit use Regression → 4-Parameter Logistic.',
   volcano:'Volcano summary: classifies genes by log2 fold change and p-value cutoffs. Data: Col 1 = log2FC, Col 2 = p-value, one gene per row.'
@@ -445,7 +445,7 @@ const CORR_SHORT={dunnett:'Dunnett',tukey:'Tukey',holm_sidak:'Holm–Šídák',h
 const CORR_HINT={
   dunnett:'Compares each group with a single control, accounting for the shared control exactly (multivariate t). More power than Tukey or Holm–Šídák for this design. Needs exactly one control.',
   tukey:'Compares every pair of means with the studentised range (Tukey–Kramer for unequal n). The standard choice after one-way ANOVA when you want all pairs.',
-  holm_sidak:'Controls the chance of any false positive (family-wise error, FWER). Step-down Šídák: a little more power than Holm–Bonferroni; assumes tests are independent or positively correlated. GraphPad Prism\'s default.',
+  holm_sidak:'Controls the chance of any false positive (family-wise error, FWER). Step-down Šídák: a little more power than Holm–Bonferroni; assumes tests are independent or positively correlated.',
   holm:'Controls family-wise error like Bonferroni but step-down, so it is always at least as powerful. Makes no assumption about how the tests relate.',
   bonferroni:'Multiplies each p by the number of comparisons. Simplest and most conservative; fine for a handful of comparisons.',
   fdr:'Controls the expected proportion of false discoveries among significant results, not the chance of any. Much more power with many tests (per-row, genes); expect a few false positives.',
@@ -505,8 +505,8 @@ function corrSelect(id,{def='holm_sidak',tukey=false,dunnett=false,none=true}={}
 // Short explanations shown under option menus, updated as the choice changes
 const OPT_HINTS={
   corr:CORR_HINT,
-  norm:{none:'Raw values.',log2:'log2: makes fold changes symmetric (×2 and ÷2 are equally far from 0). Common for expression data.',log10:'log10: for values spanning several orders of magnitude.',zscore:'Z-score: (x − mean) / SD across all values. Puts data on a common scale; absolute units are lost.',minmax:'Min–Max: rescales values to 0–1.'},
-  comp:{delta:'Difference (A − B): use when effects add, e.g. a 2-unit increase.',ratio:'Ratio (A / B): use when effects multiply, e.g. a 2-fold increase.'},
+  norm:{none:'Raw values.',log2:'log2: makes fold changes symmetric (×2 and ÷2 are equally far from 0). Common for expression data.',log10:'log10: for values spanning several orders of magnitude.',zscore:'Z-score: (x − mean) / SD, using one mean and SD over all values in the table, so group differences are kept. Does not change test p-values; absolute units are lost.',minmax:'Min–Max: rescales values to 0–1 (0 = smallest and 1 = largest value in the table).'},
+  comp:{delta:'Difference (A − B): use when effects add, e.g. a 2-unit increase.',ratio:'Ratio (A / B): use when effects multiply, e.g. a 2-fold increase. Tested on the log scale, so ×2 and ÷2 count equally; values must be > 0.'},
   npmode:{pair:'One chosen pair; no correction needed.',allpairs:'Every pair of groups, corrected for multiple comparisons.',vsctrl:'Control vs each other group only. Fewer comparisons than all pairs, so more power after correction.'},
   cmode:{allpairs:'Every pair of columns, corrected for multiple comparisons.',ctrl:'Control column vs each other column only (fewer comparisons, more power).'},
   rpcomp:{delta:'Use for log-transformed values (log2 CPM, Ct, log intensities). Up = higher in Group B.',ratio:'Use for positive linear-scale values; ranks log2(B/A). Up = higher in Group B.'},
@@ -554,13 +554,22 @@ const pCls=p=>p<0.05?'p-sig':'p-ns';
 const pRow=p=>`<span class="${pCls(p)}">${fmtP(p)}</span> <span class="stars">${sigStars(p)}</span>`;
 const eff=d=>{const a=Math.abs(d);return a<0.2?'negligible':a<0.5?'small':a<0.8?'medium':'large'};
 
+// Normalisation used by figures. Z-score and Min–Max use one set of statistics over the whole table, so
+// groups (and rows) stay comparable; a per-group z-score would put every group mean at 0.
+let _normStatsCache=null;
+function _normStats(){
+  if(_normStatsCache&&_normStatsCache.G===G)return _normStatsCache;
+  const all=[];G.groups.forEach((_,i)=>{for(const v of getGroupPooled(i))all.push(v);});
+  let mn=Infinity,mx=-Infinity;for(const v of all){if(v<mn)mn=v;if(v>mx)mx=v;}
+  return _normStatsCache={G,m:mean(all),sd:stddev(all),mn,mx};
+}
 function normalize(vals, method){
   if(method==='none'||!method) return vals;
   if(method==='log2') return vals.map(v=>Math.log2(v));
   if(method==='log10') return vals.map(v=>Math.log10(v));
   if(method==='ln') return vals.map(v=>Math.log(v));
-  if(method==='zscore'){const m=mean(vals),s=stddev(vals);return s>0?vals.map(v=>(v-m)/s):vals}
-  if(method==='minmax'){const mn=Math.min(...vals),mx=Math.max(...vals);return mx>mn?vals.map(v=>(v-mn)/(mx-mn)):vals}
+  if(method==='zscore'){const {m,sd}=_normStats();return sd>0?vals.map(v=>(v-m)/sd):vals}
+  if(method==='minmax'){const {mn,mx}=_normStats();return mx>mn?vals.map(v=>(v-mn)/(mx-mn)):vals}
   return vals;
 }
 
@@ -577,77 +586,119 @@ function describeGroup(vals){
     iqr:percentile(v,75)-percentile(v,25),min:Math.min(...v),max:Math.max(...v)};
 }
 
+// Two-sided p-value of a t statistic (computed from the tail, so very small p-values keep their precision)
+// Upper-tail p of an F statistic (via the incomplete beta, so very small p-values keep their precision)
+const fP=(F,d1,d2)=>F>0?(isFinite(F)?jStat.ibeta(d2/(d2+d1*F),d2/2,d1/2):0):1;
+const tP2=(t,df)=>isFinite(t)?Math.min(1,2*jStat.studentt.cdf(-Math.abs(t),df)):(isNaN(t)?NaN:0);
 function ttestInd(a,b){
+  a=a.filter(isFinite);b=b.filter(isFinite);
   const n1=a.length,n2=b.length;
   if(n1<2||n2<2)return{error:'Need ≥ 2 values per group'};
   const m1=mean(a),m2=mean(b),v1=variance(a),v2=variance(b);
   const se=Math.sqrt(v1/n1+v2/n2);
-  if(se===0)return{t:0,df:n1+n2-2,p:1,d:0,m1,m2,sd1:stddev(a),sd2:stddev(b),n1,n2};
+  if(se===0)return{error:'No variation within either group: the t-test is undefined'};
   const t=(m1-m2)/se;
   const df=(v1/n1+v2/n2)**2/((v1/n1)**2/(n1-1)+(v2/n2)**2/(n2-1));
-  const p=2*(1-jStat.studentt.cdf(Math.abs(t),df));
-  return{t,df,p,d:cohensD(a,b),m1,m2,sd1:stddev(a),sd2:stddev(b),n1,n2};
+  return{t,df,p:tP2(t,df),d:cohensD(a,b),m1,m2,sd1:stddev(a),sd2:stddev(b),n1,n2};
 }
 
+// Paired t-test on aligned pairs (a[i] with b[i]). 'delta' tests the mean difference A − B against 0;
+// 'ratio' tests log(A / B) against 0 (a ratio paired t-test) and reports the geometric mean ratio A / B.
 function ttestRel(a,b,method='delta'){
   if(a.length!==b.length)return{error:'Groups must have equal length for paired test'};
-  let vals;
-  if(method==='ratio') vals=a.map((x,i)=>b[i]!==0?x/b[i]:NaN).filter(isFinite);
-  else vals=a.map((x,i)=>x-b[i]); // delta
-  const diffs=vals;
+  let diffs;
+  if(method==='ratio'){
+    if(a.some((x,i)=>isFinite(x)&&isFinite(b[i])&&(x<=0||b[i]<=0)))return{error:'Ratio comparison needs values > 0 in both groups'};
+    diffs=a.map((x,i)=>Math.log(x/b[i])).filter(isFinite);
+  } else diffs=a.map((x,i)=>x-b[i]).filter(isFinite);
   const n=diffs.length;if(n<2)return{error:'Need ≥ 2 pairs'};
-  const m=mean(diffs),sd=stddev(diffs),se=sd/Math.sqrt(n);
-  if(se===0)return{t:0,df:n-1,p:1,mean_diff:m,sd_diff:sd,n,method};
-  const t=m/se,df=n-1;
-  const p=2*(1-jStat.studentt.cdf(Math.abs(t),df));
-  return{t,df,p,mean_diff:m,sd_diff:sd,n,method};
+  const m=mean(diffs),sd=stddev(diffs),se=sd/Math.sqrt(n),df=n-1;
+  if(se===0)return{error:'All paired differences are identical: the t-test is undefined'};
+  const t=m/se,tc=jStat.studentt.inv(0.975,df);
+  const out={t,df,p:tP2(t,df),n,method};
+  if(method==='ratio'){out.ratio=Math.exp(m);out.ci95lo=Math.exp(m-tc*se);out.ci95hi=Math.exp(m+tc*se);out.sd_log=sd;}
+  else{out.mean_diff=m;out.sd_diff=sd;out.ci95lo=m-tc*se;out.ci95hi=m+tc*se;}
+  return out;
 }
 
+// Midranks of a (ties share the average rank)
+// Exact permutation distribution of a sum of ranks, used by Mann–Whitney and Wilcoxon below.
+// Ranks are doubled so tied midranks (x.5) become whole numbers.
+// subsetSumDist: P(sum of a random size-k subset of r = s); signSumDist: P(sum of r_i over a random half-sign set = s).
+function _subsetSumDist(r2,k){
+  const S=r2.reduce((s,x)=>s+x,0);
+  let f=Array.from({length:k+1},()=>new Float64Array(S+1));f[0][0]=1;
+  for(let i=0;i<r2.length;i++){const v=r2[i];for(let j=Math.min(k,i+1);j>=1;j--){const fj=f[j],fp=f[j-1];for(let s=S;s>=v;s--)if(fp[s-v])fj[s]+=fp[s-v];}}
+  const tot=f[k].reduce((s,x)=>s+x,0);return Array.from(f[k],x=>x/tot);
+}
+function _signSumDist(r2){
+  const S=r2.reduce((s,x)=>s+x,0);let f=new Float64Array(S+1);f[0]=1;
+  for(const v of r2){const g=new Float64Array(S+1);for(let s=0;s<=S;s++)if(f[s]){g[s]+=f[s]/2;g[s+v]+=f[s]/2;}f=g;}
+  return f;
+}
+// Two-sided exact p: probability of a statistic at least as far from its mean as the observed one
+function _exactP2(dist,obs,mu){const d0=Math.abs(obs-mu)-1e-9;let p=0;for(let s=0;s<dist.length;s++)if(dist[s]&&Math.abs(s-mu)>=d0)p+=dist[s];return Math.min(1,p);}
+const EXACT_MAX_N=60; // exact p-values up to this many values (or pairs); normal approximation above
+
+// Mann–Whitney U (Wilcoxon rank-sum). Exact permutation p-value for n1 + n2 ≤ EXACT_MAX_N (ties handled by
+// midranks); otherwise normal approximation with tie and continuity corrections.
 function mannWhitneyU(a,b){
-  const n1=a.length,n2=b.length;
+  a=a.filter(isFinite);b=b.filter(isFinite);
+  const n1=a.length,n2=b.length,N=n1+n2;
   if(n1<1||n2<1)return{error:'Need values in each group'};
-  const combined=[...a.map(x=>({v:x,g:0})),...b.map(x=>({v:x,g:1}))];
-  combined.sort((x,y)=>x.v-y.v);
-  let i=0;
-  while(i<combined.length){let j=i;while(j<combined.length&&combined[j].v===combined[i].v)j++;const r=(i+j+1)/2;for(let k=i;k<j;k++)combined[k].rank=r;i=j}
-  const R1=combined.filter(x=>x.g===0).reduce((s,x)=>s+x.rank,0);
-  const U1=R1-n1*(n1+1)/2,U2=n1*n2-U1,U=Math.min(U1,U2);
-  const mu=n1*n2/2;
-  const tcounts={};combined.forEach(x=>{tcounts[x.v]=(tcounts[x.v]||0)+1});
-  const T=Object.values(tcounts).reduce((s,t)=>s+(t**3-t),0);
-  const N=n1+n2;
+  const ranks=computeRanks([...a,...b]);
+  const R1=ranks.slice(0,n1).reduce((s,x)=>s+x,0);
+  const U1=R1-n1*(n1+1)/2,U2=n1*n2-U1,U=Math.min(U1,U2),mu=n1*n2/2;
+  const tc={};[...a,...b].forEach(v=>{tc[v]=(tc[v]||0)+1});
+  const T=Object.values(tc).reduce((s,t)=>s+(t**3-t),0),ties=T>0;
   const sigma=Math.sqrt((n1*n2/12)*((N+1)-T/(N*(N-1))));
-  if(sigma===0)return{U,z:0,p:1,n1,n2};
-  const z=(U-mu)/sigma;
-  const p=2*jStat.normal.cdf(-Math.abs(z),0,1);
-  return{U,z,p,n1,n2};
+  if(!(sigma>0))return{error:'All values are identical'};
+  const z=(U1-mu)/sigma;
+  let p,method;
+  if(N<=EXACT_MAX_N){
+    const r2=ranks.map(r=>Math.round(2*r));
+    const dist=_subsetSumDist(r2,n1);
+    p=_exactP2(dist,Math.round(2*R1),n1*(N+1));method=ties?'exact (with ties)':'exact';
+  } else {
+    const zc=Math.max(0,Math.abs(U1-mu)-0.5)/sigma;p=Math.min(1,2*jStat.normal.cdf(-zc,0,1));method='normal approximation';
+  }
+  return{U,U1,z,p,n1,n2,method,ties};
 }
 
+// Wilcoxon signed-rank on paired differences a[i] − b[i] (zero differences dropped). Exact permutation p-value
+// for up to EXACT_MAX_N non-zero differences (ties by midranks); otherwise normal approximation with tie and
+// continuity corrections. W = the smaller of the positive and negative rank sums.
 function wilcoxonSR(a,b){
-  const diffs=a.map((x,i)=>x-b[i]).filter(d=>d!==0);
-  const n=diffs.length;if(n<1)return{error:'No non-zero differences'};
-  const abs_d=diffs.map(d=>Math.abs(d));
-  const ranks=computeRanks(abs_d);
+  if(a.length!==b.length)return{error:'Groups must have equal length for a paired test'};
+  // differences rounded to 12 significant digits, so e.g. 11.1 − 11.0 and 9.9 − 9.8 count as tied (both 0.1)
+  const all=a.map((x,i)=>x-b[i]).filter(isFinite).map(d=>+d.toPrecision(12));
+  const diffs=all.filter(d=>d!==0);
+  const n=diffs.length,nZero=all.length-n;if(n<1)return{error:'No non-zero differences'};
+  const ranks=computeRanks(diffs.map(d=>Math.abs(d)));
   let Wp=0,Wm=0;
   diffs.forEach((d,i)=>{if(d>0)Wp+=ranks[i];else Wm+=ranks[i]});
-  const W=Math.min(Wp,Wm),mu=n*(n+1)/4,sigma=Math.sqrt(n*(n+1)*(2*n+1)/24);
-  if(sigma===0)return{W,z:0,p:1,n};
-  const z=(W-mu)/sigma;
-  const p=2*jStat.normal.cdf(-Math.abs(z),0,1);
-  return{W,z,p,n};
+  const tc={};diffs.forEach(d=>{const k=Math.abs(d);tc[k]=(tc[k]||0)+1});
+  const T=Object.values(tc).reduce((s,t)=>s+(t**3-t),0),ties=T>0;
+  const W=Math.min(Wp,Wm),mu=n*(n+1)/4,sigma=Math.sqrt(n*(n+1)*(2*n+1)/24-T/48);
+  const z=sigma>0?(Wp-mu)/sigma:0;
+  let p,method;
+  if(n<=EXACT_MAX_N){
+    const dist=_signSumDist(ranks.map(r=>Math.round(2*r)));
+    p=_exactP2(dist,Math.round(2*Wp),n*(n+1)/2);method=ties?'exact (with ties)':'exact';
+  } else {
+    const zc=Math.max(0,Math.abs(Wp-mu)-0.5)/sigma;p=Math.min(1,2*jStat.normal.cdf(-zc,0,1));method='normal approximation';
+  }
+  return{W,Wplus:Wp,z,p,n,nZero,method,ties};
 }
 
-// Rank Sum test: Mann-Whitney rank-sum for each row (per-row mode) or single comparison
-// Also supports ratio vs delta mode (applies transformation before ranking)
-function rankSumTest(a, b, mode='delta'){
-  // mode: 'delta' = use a-b, 'ratio' = use a/b
+// Paired rank test on transformed pairs: Wilcoxon signed-rank on the per-pair difference A − B ('delta')
+// or on the log ratio log(A / B) ('ratio', values must be > 0), so a ratio of 2 and of 1/2 weigh the same.
+function rankSumTest(a,b,mode='delta'){
   if(mode==='ratio'){
-    const mn=Math.min(a.length,b.length);
-    const ratios=a.slice(0,mn).map((v,i)=>b[i]!==0?v/b[i]:NaN).filter(isFinite);
-    const ones=Array(ratios.length).fill(1);
-    return mannWhitneyU(ratios,ones);
+    if(a.some((x,i)=>isFinite(x)&&isFinite(b[i])&&(x<=0||b[i]<=0)))return{error:'Ratio comparison needs values > 0 in both groups'};
+    return wilcoxonSR(a.map((x,i)=>Math.log(x/b[i])),a.map(()=>0));
   }
-  return mannWhitneyU(a,b);
+  return wilcoxonSR(a,b);
 }
 
 // Rank Product test (Breitling 2004): identifies consistently regulated rows
@@ -690,9 +741,10 @@ function onewayANOVA(groups, posthocMethod='tukey', ctrls=[]){
   const SSB=sum(groups.map(g=>g.length*(mean(g)-grand)**2));
   const SSW=sum(groups.map(g=>g.reduce((s,x)=>s+(x-mean(g))**2,0)));
   const dfB=k-1,dfW=N-k;
-  if(dfW<=0||SSW===0)return{F:Infinity,dfB,dfW,p:0,posthoc:[]};
+  if(dfW<=0)return{error:'Need more values than groups'};
+  if(SSW===0)return{error:SSB===0?'All values are identical':'No variation within any group: the F test is undefined'};
   const MSB=SSB/dfB,MSW=SSW/dfW,F=MSB/MSW;
-  const p=1-jStat.centralF.cdf(F,dfB,dfW);
+  const p=fP(F,dfB,dfW);
   // Family: all pairs, or every pair that involves at least one control
   const posthoc=[];
   for(let i=0;i<k-1;i++)for(let j=i+1;j<k;j++){
@@ -701,7 +753,7 @@ function onewayANOVA(groups, posthocMethod='tukey', ctrls=[]){
     const se=Math.sqrt(MSW*(1/ni+1/nj));
     if(se===0){posthoc.push({i,j,t:NaN,p_raw:NaN,p_adj:NaN,df:dfW});continue}
     const t=(mean(groups[i])-mean(groups[j]))/se;
-    const p_raw=2*(1-jStat.studentt.cdf(Math.abs(t),dfW));
+    const p_raw=tP2(t,dfW);
     posthoc.push({i,j,t,q:Math.abs(t)*Math.SQRT2,p_raw,df:dfW});
   }
   let method=posthocMethod;
@@ -751,10 +803,10 @@ function pearsonR(x,y){
   const n=x.length,mx=mean(x),my=mean(y);
   const num=sum(x.map((xi,i)=>(xi-mx)*(y[i]-my)));
   const den=Math.sqrt(sum(x.map(xi=>(xi-mx)**2))*sum(y.map(yi=>(yi-my)**2)));
-  if(den===0)return{r:0,t:0,df:n-2,p:1,n};
-  const r=num/den;
+  if(den===0)return{error:'One of the columns has no variation'};
+  const r=Math.max(-1,Math.min(1,num/den));
   const t=r*Math.sqrt((n-2)/(1-r*r));
-  const p=2*(1-jStat.studentt.cdf(Math.abs(t),n-2));
+  const p=tP2(t,n-2);
   const z=0.5*Math.log((1+r)/(1-r));
   const se=1/Math.sqrt(n-3);
   return{r,t,df:n-2,p,n,ci95lo:Math.tanh(z-1.96*se),ci95hi:Math.tanh(z+1.96*se)};
@@ -772,24 +824,6 @@ function _npPairs(mode){
   else for(let i=0;i<n-1;i++)for(let j=i+1;j<n;j++)out.push([i,j]);
   return out;
 }
-function bonferroni(pvals){return pvals.map(p=>Math.min(p*pvals.length,1))}
-function holmBonferroni(pvals){
-  const n=pvals.length;
-  const idx=pvals.map((p,i)=>({p,i})).sort((a,b)=>a.p-b.p);
-  const adj=new Array(n);
-  let maxSoFar=0;
-  idx.forEach((x,k)=>{const a=Math.min(x.p*(n-k),1);maxSoFar=Math.max(maxSoFar,a);adj[x.i]=maxSoFar});
-  return adj;
-}
-function fdrBH(pvals){
-  const n=pvals.length;
-  const idx=pvals.map((p,i)=>({p,i})).sort((a,b)=>a.p-b.p);
-  const adj=new Array(n);
-  let minSoFar=1;
-  for(let k=n-1;k>=0;k--){minSoFar=Math.min(idx[k].p*n/(k+1),minSoFar);adj[idx[k].i]=minSoFar}
-  return adj;
-}
-
 function fishersExact(a,b,c,d){
   const n=a+b+c+d;
   function prob(a,b,c,d){return Math.exp(logFact(a+b)+logFact(c+d)+logFact(a+c)+logFact(b+d)-logFact(n)-logFact(a)-logFact(b)-logFact(c)-logFact(d))}
@@ -800,36 +834,75 @@ function fishersExact(a,b,c,d){
     const b2=a+b-k,c2=a+c-k,d2=n-k-b2-c2;
     if(b2<0||c2<0||d2<0)continue;
     const pi=prob(k,b2,c2,d2);
-    if(pi<=p0+1e-10)p+=pi;
+    if(pi<=p0*(1+1e-7))p+=pi; // tables no more likely than the observed one (relative tolerance for rounding)
   }
-  return{p:Math.min(p,1),or:(a*d)/(b*c||1)};
+  const num=a*d,den=b*c;
+  return{p:Math.min(p,1),or:den>0?num/den:num>0?Infinity:NaN};
 }
 
+// Chi-square test of independence (Pearson, no continuity correction). Empty rows and columns are ignored.
 function chiSquare(obs){
-  const rows=obs.length,cols=obs[0].length;
+  obs=obs.filter(r=>sum(r)>0);
+  if(!obs.length)return{error:'No data'};
+  const keep=obs[0].map((_,j)=>j).filter(j=>sum(obs.map(r=>r[j]))>0);
+  obs=obs.map(r=>keep.map(j=>r[j]));
+  const rows=obs.length,cols=keep.length;
+  if(rows<2||cols<2)return{error:'Need at least 2 non-empty rows and 2 non-empty columns of counts'};
   const rowTotals=obs.map(r=>sum(r));
   const colTotals=Array.from({length:cols},(_,j)=>sum(obs.map(r=>r[j])));
   const N=sum(rowTotals);
-  if(N===0)return{error:'No data'};
-  let chi=0;
+  let chi=0,minExp=Infinity,nLow=0;
   for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){
-    const exp=rowTotals[i]*colTotals[j]/N;
-    if(exp>0)chi+=(obs[i][j]-exp)**2/exp;
+    const exp=rowTotals[i]*colTotals[j]/N;minExp=Math.min(minExp,exp);if(exp<5)nLow++;
+    chi+=(obs[i][j]-exp)**2/exp;
   }
   const df=(rows-1)*(cols-1);
-  return{chi,df,p:1-jStat.chisquare.cdf(chi,df)};
+  return{chi,df,p:1-jStat.chisquare.cdf(chi,df),rows,cols,N,minExp,nLow};
 }
 
-function normalityJB(arr){
-  const n=arr.length;if(n<8)return{error:'Need ≥ 8 values'};
-  const m=mean(arr),s=stddev(arr);
-  if(s===0)return{error:'Zero variance'};
-  const z=arr.map(x=>(x-m)/s);
-  const sk=sum(z.map(x=>x**3))/n;
-  const ku=sum(z.map(x=>x**4))/n-3;
-  const JB=n*(sk**2/6+(ku**2)/24);
-  const p=1-jStat.chisquare.cdf(JB,2);
-  return{JB,skewness:sk,kurtosis:ku,p,n};
+// Shapiro–Wilk W test, using Royston's approximations for the coefficients and the p-value
+// (Royston 1992, Statistics and Computing 2:117–119; Royston 1995, Applied Statistics 44:547–551). 3 ≤ n ≤ 5000.
+function shapiroWilk(arr){
+  const x=arr.filter(isFinite).sort((p,q)=>p-q),n=x.length;
+  if(n<3)return{error:'Need ≥ 3 values'};
+  if(x[n-1]-x[0]===0)return{error:'All values identical'};
+  const poly=(c,u)=>c.reduce((s,ci,k)=>s+ci*Math.pow(u,k),0);
+  const a=new Float64Array(n);
+  if(n===3){a[0]=-Math.SQRT1_2;a[2]=Math.SQRT1_2;}
+  else{
+    const m=Array.from({length:n},(_,i)=>jStat.normal.inv((i+1-0.375)/(n+0.25),0,1));
+    const mm=m.reduce((s,v)=>s+v*v,0),u=1/Math.sqrt(n),rs=Math.sqrt(mm);
+    const an=-m[0]/rs+poly([0,0.221157,-0.147981,-2.071190,4.434685,-2.706056],u); // largest coefficient
+    if(n>5){
+      const an1=-m[1]/rs+poly([0,0.042981,-0.293762,-1.752461,5.682633,-3.582633],u);
+      const eps=Math.sqrt((mm-2*m[0]**2-2*m[1]**2)/(1-2*an**2-2*an1**2));
+      for(let i=2;i<n-2;i++)a[i]=m[i]/eps;
+      a[0]=-an;a[1]=-an1;a[n-1]=an;a[n-2]=an1;
+    } else {
+      const eps=Math.sqrt((mm-2*m[0]**2)/(1-2*an**2));
+      for(let i=1;i<n-1;i++)a[i]=m[i]/eps;
+      a[0]=-an;a[n-1]=an;
+    }
+  }
+  const xm=mean(x);let num=0,ss=0;
+  for(let i=0;i<n;i++){num+=a[i]*x[i];ss+=(x[i]-xm)**2;}
+  const W=Math.min(1,num*num/ss);
+  let p;
+  if(n===3){p=Math.max(0,Math.min(1,6/Math.PI*(Math.asin(Math.sqrt(W))-Math.asin(Math.sqrt(0.75)))));}
+  else{
+    let z;const w1=Math.log(1-W);
+    if(n<=11){
+      const g=-2.273+0.459*n,mu=0.5440-0.39978*n+0.025054*n*n-0.0006714*n**3,sg=Math.exp(1.3822-0.77857*n+0.062767*n*n-0.0020322*n**3);
+      z=g-w1>0?(-Math.log(g-w1)-mu)/sg:Infinity;
+    } else {
+      const L=Math.log(n),mu=-1.5861-0.31082*L-0.083751*L*L+0.0038915*L**3,sg=Math.exp(-0.4803-0.082676*L+0.0030302*L*L);
+      z=(w1-mu)/sg;
+    }
+    p=isFinite(z)?jStat.normal.cdf(-z,0,1):0;
+  }
+  // descriptive shape measures (moment estimates)
+  const sd=Math.sqrt(ss/n);const sk=x.reduce((s,v)=>s+((v-xm)/sd)**3,0)/n,ku=x.reduce((s,v)=>s+((v-xm)/sd)**4,0)/n-3;
+  return{W,p,n,skewness:sk,kurtosis:ku};
 }
 
 // Kaplan–Meier product-limit estimate. Subjects censored at time t stay in the risk set for events at t.
@@ -857,20 +930,6 @@ function kaplanMeier(times,events){
     n-=d+c;
   }
   return out;
-}
-
-function logRankTest(grps_t, grps_e){
-  const all_times=[...new Set([...grps_t.flat()].filter((t,i,a)=>a.indexOf(t)===i))].sort((a,b)=>a-b);
-  let O=grps_t.map(()=>0),E=grps_t.map(()=>0);
-  for(const t of all_times){
-    const n=grps_t.map((g,k)=>g.filter((ti,i)=>ti>=t).length);
-    const d=grps_t.map((g,k)=>g.filter((ti,i)=>ti===t&&grps_e[k][i]===1).length);
-    const N=sum(n),D=sum(d);
-    if(N<2||D===0)continue;
-    for(let k=0;k<grps_t.length;k++){O[k]+=d[k];E[k]+=n[k]*D/N}
-  }
-  const chi=sum(O.map((o,k)=>E[k]>0?(o-E[k])**2/E[k]:0));
-  return{chi,df:grps_t.length-1,p:1-jStat.chisquare.cdf(chi,grps_t.length-1),O,E};
 }
 
 // Symmetric eigen-decomposition (cyclic Jacobi) for small matrices
@@ -943,7 +1002,7 @@ function nelderMead(f,x0,opts={}){
   return{x:simplex[0],fval:vals[0]};
 }
 
-// 5PL: Y = Bottom + (Top − Bottom) / (1 + (EC50/X)^Hill)^Asym. EC50 fitted on a log scale, Asym kept > 0; several starts.
+// 5PL: Y = Bottom + (Top − Bottom) / (1 + (C/X)^Hill)^Asym. C fitted on a log scale, Asym kept > 0; several starts.
 // ── Dunnett's test (many-to-one) ─────────────────────────────────────────
 // Two-sided P(max_i |T_i| <= c) for T_i with correlation rho_ij = lam_i*lam_j and df degrees of freedom.
 // The product correlation lets the multivariate t probability be written as a double integral (Dunnett 1955).
@@ -965,18 +1024,25 @@ function dunnettP(t,nCtrl,nOther,df){
 }
 
 // ── Kolmogorov–Smirnov ───────────────────────────────────────────────────
-// Exact two-sample P(D < d) (algorithm of R's psmirnov2x)
+// Exact two-sample P(D < d) for samples of size m and n without ties: the fraction of the C(m+n, m) equally likely
+// orderings (monotone lattice paths from (0,0) to (m,n)) whose two empirical CDFs never differ by d or more.
+// Path counts are rescaled row by row so large samples do not overflow.
 function _psmirnov(d,m,n){
-  if(m>n){const t=m;m=n;n=t;}
-  const q=(0.5+Math.floor(d*m*n-1e-7))/(m*n);
-  const u=new Float64Array(n+1);
-  for(let j=0;j<=n;j++)u[j]=(j/n>q)?0:1;
+  const lim=Math.round(d*m*n);          // D·m·n is a whole number: |i·n − j·m| at the observed largest gap
+  const inside=(i,j)=>Math.abs(i*n-j*m)<lim;
+  let row=new Float64Array(n+1),logScale=0;
+  row[0]=1;for(let j=1;j<=n;j++)row[j]=inside(0,j)?row[j-1]:0;
   for(let i=1;i<=m;i++){
-    const w=i/(i+n);
-    u[0]=(i/m>q)?0:w*u[0];
-    for(let j=1;j<=n;j++)u[j]=(Math.abs(i/m-j/n)>q)?0:w*u[j]+u[j-1];
+    const nx=new Float64Array(n+1);
+    nx[0]=inside(i,0)?row[0]:0;
+    for(let j=1;j<=n;j++)nx[j]=inside(i,j)?nx[j-1]+row[j]:0;
+    let mx=0;for(let j=0;j<=n;j++)if(nx[j]>mx)mx=nx[j];
+    if(mx>0&&(mx>1e100||mx<1e-100)){for(let j=0;j<=n;j++)nx[j]/=mx;logScale+=Math.log(mx);}
+    row=nx;
   }
-  return u[n];
+  if(!(row[n]>0))return 0;
+  const lnC=jStat.gammaln(m+n+1)-jStat.gammaln(m+1)-jStat.gammaln(n+1);
+  return Math.min(1,Math.exp(Math.log(row[n])+logScale-lnC));
 }
 function _kolmogorovQ(l){if(l<0.2)return 1;let s=0;for(let k=1;k<=100;k++){const t=2*Math.pow(-1,k-1)*Math.exp(-2*k*k*l*l);s+=t;if(Math.abs(t)<1e-12)break;}return Math.max(0,Math.min(1,s));}
 function ks2Sample(a,b){
@@ -1033,7 +1099,7 @@ function fit5PL(x,y){
   const ok=x.map((xi,i)=>[xi,y[i]]).filter(([a,b])=>isFinite(a)&&isFinite(b));
   const X=ok.map(d=>d[0]),Y=ok.map(d=>d[1]);
   const model=(p,xi)=>{const c=Math.pow(10,p[2]),s=Math.exp(p[4]);if(xi<=0)return p[3]>0?p[0]:p[1];return p[0]+(p[1]-p[0])/Math.pow(1+Math.pow(c/xi,p[3]),s);};
-  const sse=p=>sum(X.map((xi,i)=>(model(p,xi)-Y[i])**2));
+  const sse=p=>{const v=sum(X.map((xi,i)=>(model(p,xi)-Y[i])**2));return isFinite(v)?v:Infinity;};
   const ym=mean(Y),yn=Math.min(...Y),yx=Math.max(...Y);
   const pos=X.filter(v=>v>0);const lmid=pos.length?(Math.log10(Math.min(...pos))+Math.log10(Math.max(...pos)))/2:0;
   let best=null;
@@ -1041,8 +1107,10 @@ function fit5PL(x,y){
     const r=nelderMead(sse,[yn,yx,lmid+dl,h,0],{maxIter:3000});
     if(!best||r.fval<best.fval)best=r;
   }
-  const P=best.x,ec50=Math.pow(10,P[2]),hill=P[3],asym=Math.exp(P[4]);
-  return{params:[P[0],P[1],ec50,hill,asym],ec50,hill,predict:xi=>model(P,xi),r2:1-sse(P)/sum(Y.map(v=>(v-ym)**2))};
+  const P=best.x,c=Math.pow(10,P[2]),hill=P[3],asym=Math.exp(P[4]);
+  // EC50 = the X where Y is half-way between Bottom and Top; equals C only when Asym = 1
+  const ec50=c*Math.pow(Math.pow(2,1/asym)-1,-1/hill);
+  return{params:[P[0],P[1],c,hill,asym],c,ec50,hill,asym,n:X.length,predict:xi=>model(P,xi),r2:1-sse(P)/sum(Y.map(v=>(v-ym)**2))};
 }
 
 // ── Regression helpers ─────────────────────────────────────────
@@ -1094,7 +1162,7 @@ function fitExponential(x,y){
   const a=Math.exp(lna),my=mean(y);const pred=x.map(xi=>a*Math.exp(b*xi));
   const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
   return{type:'exp',params:{a,b},predict:xi=>a*Math.exp(b*xi),r2,pred,
-    equation:`y = ${a.toFixed(4)}·e^(${b.toFixed(4)}·x)`};
+    equation:`y = ${a.toFixed(4)}·e^(${b.toFixed(4)}·x)  (fitted as a straight line on the log scale)`};
 }
 function fitPower(x,y){
   if(x.some(xi=>xi<=0)||y.some(yi=>yi<=0))return{error:'Need x,y > 0 for power fit'};
@@ -1102,21 +1170,26 @@ function fitPower(x,y){
   const a=Math.exp(lna),my=mean(y);const pred=x.map(xi=>a*Math.pow(xi,b));
   const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
   return{type:'power',params:{a,b},predict:xi=>a*Math.pow(xi,b),r2,pred,
-    equation:`y = ${a.toFixed(4)}·x^(${b.toFixed(4)})`};
+    equation:`y = ${a.toFixed(4)}·x^(${b.toFixed(4)})  (fitted as a straight line on the log scale)`};
 }
+// 4PL: Y = Bottom + (Top − Bottom) / (1 + (X/EC50)^Hill). EC50 fitted on a log scale (so it stays > 0); several starts.
 function fit4PL(x,y){
-  const model=(p,xi)=>p[0]+(p[1]-p[0])/(1+(xi/p[2])**p[3]);
-  const ym=mean(y),yn=Math.min(...y),yx=Math.max(...y),xm=mean(x);
-  const res=nelderMead(p=>sum(x.map((xi,i)=>(model(p,xi)-y[i])**2)),[yn,yx,xm,1]);
-  const [bot,top,ec50,hill]=res.x,my=mean(y);
-  const pred=x.map(xi=>model(res.x,xi));
-  const r2=1-sum(x.map((xi,i)=>(model(res.x,xi)-y[i])**2))/sum(y.map(yi=>(yi-my)**2));
-  return{type:'4pl',params:{bot,top,ec50,hill},predict:xi=>model(res.x,xi),r2,pred,
-    equation:`4PL: bot=${bot.toFixed(3)}, top=${top.toFixed(3)}, EC50=${ec50.toFixed(3)}, hill=${hill.toFixed(3)}`};
+  if(x.some(xi=>xi<0))return{error:'Need X ≥ 0 (concentrations) for the 4PL fit'};
+  const model=(p,xi)=>xi<=0?(p[3]>0?p[1]:p[0]):p[0]+(p[1]-p[0])/(1+Math.pow(xi/Math.pow(10,p[2]),p[3]));
+  const sse=p=>{const v=sum(x.map((xi,i)=>(model(p,xi)-y[i])**2));return isFinite(v)?v:Infinity;};
+  const yn=Math.min(...y),yx=Math.max(...y),pos=x.filter(v=>v>0);
+  const lmid=pos.length?(Math.log10(Math.min(...pos))+Math.log10(Math.max(...pos)))/2:0;
+  let best=null;
+  for(const [b0,t0] of [[yx,yn],[yn,yx]])for(const dl of [0,-1,1]){const r=nelderMead(sse,[b0,t0,lmid+dl,1],{maxIter:3000});if(!best||r.fval<best.fval)best=r;}
+  const P=best.x,[bot,top,hill]=[P[0],P[1],P[3]],ec50=Math.pow(10,P[2]),my=mean(y);
+  const pred=x.map(xi=>model(P,xi));
+  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  return{type:'4pl',params:{bot,top,ec50,hill},predict:xi=>model(P,xi),r2,pred,
+    equation:`Y = Bottom + (Top − Bottom) / (1 + (X/EC50)^Hill): bottom=${bot.toFixed(3)}, top=${top.toFixed(3)}, EC50=${ec50.toPrecision(4)}, hill=${hill.toFixed(3)}`};
 }
 function runRegression(x,y,model,degree){
   const fns={linear:()=>fitLinear(x,y),log:()=>fitLogarithmic(x,y),exp:()=>fitExponential(x,y),
-    power:()=>fitPower(x,y),'4pl':()=>fit4PL(x,y),'5pl':()=>{const r=fit5PL(x,y);if(r.error)return r;const [bot,top,ec50,hill,asym]=r.params;return{type:'5pl',params:{bot,top,ec50,hill,asym},predict:r.predict,r2:r.r2,pred:x.map(xi=>r.predict(xi)),equation:'Y = Bottom + (Top − Bottom) / (1 + (X/EC50)^Hill)^Asym'};},
+    power:()=>fitPower(x,y),'4pl':()=>fit4PL(x,y),'5pl':()=>{const r=fit5PL(x,y);if(r.error)return r;const [bot,top,C,hill,asym]=r.params;return{type:'5pl',params:{bot,top,C,hill,asym,EC50:r.ec50},predict:r.predict,r2:r.r2,pred:x.map(xi=>r.predict(xi)),equation:'Y = Bottom + (Top − Bottom) / (1 + (C/X)^Hill)^Asym'};},
     poly2:()=>fitPolynomial(x,y,2),poly3:()=>fitPolynomial(x,y,3),poly4:()=>fitPolynomial(x,y,4)};
   return(fns[model]||(()=>({error:'Unknown model'})))();
 }
@@ -1139,14 +1212,15 @@ function twowayANOVA(groupData,nA,nB){
   if(dfError<1)return{error:'Not enough replicates per cell for error estimate (need ≥2 reps/cell)'};
   const MSA=SSA/dfA,MSB=SSB/dfB,MSAB=dfAB>0?SSAB/dfAB:0,MSError=SSError/dfError;
   const FA=MSA/MSError,FB=MSB/MSError,FAB=dfAB>0?MSAB/MSError:0;
-  const pA=1-jStat.centralF.cdf(FA,dfA,dfError);
-  const pB=1-jStat.centralF.cdf(FB,dfB,dfError);
-  const pAB=dfAB>0?1-jStat.centralF.cdf(FAB,dfAB,dfError):1;
+  if(!(MSError>0))return{error:'No variation within any cell: the F tests are undefined'};
+  const pA=fP(FA,dfA,dfError);
+  const pB=fP(FB,dfB,dfError);
+  const pAB=dfAB>0?fP(FAB,dfAB,dfError):1;
   return{SSA,SSB,SSAB,SSError,dfA,dfB,dfAB,dfError,MSA,MSB,MSAB,MSError,FA,FB,FAB,pA,pB,pAB,cellMeans,aMeans,bMeans,nRep};
 }
 
 function volcanoData(names,log2fc,pvals,fc_thresh=1,p_thresh=0.05){
-  return names.map((n,i)=>({name:n,log2fc:log2fc[i],neglog10p:-Math.log10(pvals[i]),
+  return names.map((n,i)=>({name:n,log2fc:log2fc[i],neglog10p:-Math.log10(Math.max(pvals[i],1e-300)),
     up:log2fc[i]>=fc_thresh&&pvals[i]<p_thresh,
     down:log2fc[i]<=-fc_thresh&&pvals[i]<p_thresh,
     sig:Math.abs(log2fc[i])>=fc_thresh&&pvals[i]<p_thresh}));
@@ -1539,6 +1613,40 @@ function getGroupPooled(g){
   }
   return vals;
 }
+// Number in a data cell, or NaN for blank / non-numeric
+const cellNum=v=>(v!==''&&v!==null&&v!==undefined&&isFinite(v))?Number(v):NaN;
+// Paired values of groups i and j: the same row and replicate in both, kept only when both cells hold a number
+// (so a blank cell drops that pair instead of shifting every later pair). f transforms each value first.
+function pairedCells(i,j,f=v=>v){
+  const a=[],b=[],row=[];const gi=G.groups[i],gj=G.groups[j];if(!gi||!gj)return{a,b,row};
+  for(let r=0;r<G.nRows;r++){const ri=gi.data[r]||[],rj=gj.data[r]||[];const k=Math.max(ri.length,rj.length);
+    for(let c=0;c<k;c++){const x=f(cellNum(ri[c])),y=f(cellNum(rj[c]));if(isFinite(x)&&isFinite(y)){a.push(x);b.push(y);row.push(r);}}}
+  return{a,b,row};
+}
+// X–Y pairs for regression, correlation, dose-response and scatter plots. Row by row: when the X column holds a single
+// value in that row it is paired with every Y replicate of the row (an X column with replicate Y columns);
+// otherwise X and Y are paired replicate by replicate.
+function xyPairs(xi,yi,f=v=>v){
+  const x=[],y=[],row=[];const gx=G.groups[xi],gy=G.groups[yi];if(!gx||!gy)return{x,y,row};
+  for(let r=0;r<G.nRows;r++){
+    const rx=(gx.data[r]||[]).map(v=>f(cellNum(v))),ry=(gy.data[r]||[]).map(v=>f(cellNum(v)));
+    const fx=rx.filter(isFinite);
+    if(fx.length===1){for(const v of ry)if(isFinite(v)){x.push(fx[0]);y.push(v);row.push(r);}}
+    else{const k=Math.max(rx.length,ry.length);for(let c=0;c<k;c++)if(isFinite(rx[c])&&isFinite(ry[c])){x.push(rx[c]);y.push(ry[c]);row.push(r);}}
+  }
+  return{x,y,row};
+}
+// First number in each row of group g, with its row index (one value per row, e.g. a column of p-values)
+function rowFirstVals(g){const v=[],row=[];(G.groups[g]?.data||[]).forEach((r,i)=>{const x=(r||[]).map(cellNum).find(isFinite);if(x!==undefined){v.push(x);row.push(i);}});return{v,row};}
+// Value transform for a normalisation choice. Z-score uses one mean and SD over every value in the table,
+// so differences between groups are kept (a z-score per group would make every group mean 0).
+function makeNormFn(method){
+  if(method==='log2')return v=>Math.log2(v);
+  if(method==='log10')return v=>Math.log10(v);
+  if(method==='ln')return v=>Math.log(v);
+  if(method==='zscore'){const all=G.groups.flatMap((_,i)=>getGroupPooled(i));const m=mean(all),sd=stddev(all);return sd>0?v=>(v-m)/sd:v=>v;}
+  return v=>v;
+}
 // Get row-wise data: for each row, return array of values for group g
 function getGroupRows(g){return G.groups[g].data.map(row=>row.filter(v=>v!==''&&isFinite(v)).map(Number))}
 
@@ -1867,6 +1975,7 @@ function addPlotTab(title, renderFn){
   return id;
 }
 function _drawPlotTab(tab,page){
+  _normStatsCache=null;
   tab.draws=(tab.draws||0)+1;
   tab.renderFn(page);
   const bar=page.querySelector('.plot-topbar');
@@ -2217,6 +2326,9 @@ const errBarPlugin={id:'errBars',afterDatasetsDraw(chart){
   });
 }};
 
+// Tukey whiskers: from the box to the furthest data point within 1.5 × IQR of the box (sorted values)
+function _tukeyWhiskers(sv,q1,q3){const iqr=q3-q1,fl=q1-1.5*iqr,fh=q3+1.5*iqr;let lo=q1,hi=q3;
+  for(const v of sv)if(v>=fl){lo=Math.min(v,q1);break;}for(let i=sv.length-1;i>=0;i--)if(sv[i]<=fh){hi=Math.max(sv[i],q3);break;}return{lo,hi};}
 const sigBracketPlugin={id:'sigBrackets',afterDraw(chart){
   const pairs=chart._sigPairs;
   if(!pairs||!pairs.length)return;
@@ -2225,8 +2337,9 @@ const sigBracketPlugin={id:'sigBrackets',afterDraw(chart){
   const placed=[];
   pairs.forEach(pair=>{
     let lvl=0;
-    while(placed.some(([l,a,b])=>l===lvl&&!(pair.j<a||pair.i>b)))lvl++;
-    pair._lvl=lvl;placed.push([lvl,pair.i,pair.j]);
+    const pi=Math.min(pair.i,pair.j),pj=Math.max(pair.i,pair.j); // pairs may come as (control, group) with control > group
+    while(placed.some(([l,a,b])=>l===lvl&&!(pj<a||pi>b)))lvl++;
+    pair._lvl=lvl;placed.push([lvl,pi,pj]);
   });
   // Find max error-bar hi across datasets
   let maxHi=-Infinity;
@@ -2247,13 +2360,14 @@ const sigBracketPlugin={id:'sigBrackets',afterDraw(chart){
     ctx.beginPath();ctx.moveTo(x1,yb);ctx.lineTo(x2,yb);ctx.stroke();
     ctx.beginPath();ctx.moveTo(x1,yb);ctx.lineTo(x1,yb+6);ctx.stroke();
     ctx.beginPath();ctx.moveTo(x2,yb);ctx.lineTo(x2,yb+6);ctx.stroke();
-    ctx.font=_exportTheme?`bold 14px ${PRISM_FONT}`:'bold 11px system-ui';ctx.textAlign='center';ctx.fillStyle=ink;
+    ctx.font=_exportTheme?`bold 14px ${PUB_FONT}`:'bold 11px system-ui';ctx.textAlign='center';ctx.fillStyle=ink;
     ctx.fillText(stars,(x1+x2)/2,yb-4);
     ctx.restore();
   });
 }};
 
 function runPlot(){
+  _normStatsCache=null;
   { // significance marks / gene lists belong only to the figure made for that run of the test
     const lk=_linkedPlotCtx;_linkedPlotCtx=false;
     if(!lk){lastStatPairs=null;lastStatRowPairs=null;lastStatGeneSet=null;}
@@ -2302,20 +2416,20 @@ function canvasTab(title, drawFn){
   });
 }
 
-// ── Prism-style offscreen render ────────────────────────────────────────
-const PRISM_FONT='Arial, Helvetica, sans-serif';
-const PRISM_SCALE=3; // output pixels per logical px (~300 dpi at typical figure sizes)
-const PRISM_SHAPES=['circle','rect','triangle','rectRot','crossRot','star','rectRounded','cross'];
-const PRISM_DASH=[[],[6,4],[2,3],[10,4,2,4]];
+// ── Publication-style offscreen render ────────────────────────────────────────
+const PUB_FONT='Arial, Helvetica, sans-serif';
+const PUB_SCALE=3; // output pixels per logical px (~300 dpi at typical figure sizes)
+const PUB_SHAPES=['circle','rect','triangle','rectRot','crossRot','star','rectRounded','cross'];
+const PUB_DASH=[[],[6,4],[2,3],[10,4,2,4]];
 
 // Rewrites font strings drawn on custom canvases to bold Arial, slightly larger
-function _prismFontStr(v){
+function _pubFontStr(v){
   return String(v).replace(/(?:bold\s+|normal\s+|[1-9]00\s+)?(\d+(?:\.\d+)?)px\s+.*$/,
-    (m,sz)=>`bold ${Math.round(parseFloat(sz)*_prismFontK)}px ${PRISM_FONT}`);
+    (m,sz)=>`bold ${Math.round(parseFloat(sz)*_pubFontK)}px ${PUB_FONT}`);
 }
 
-// Canvas-based plots: re-run the draw function at logical size W×H, rendered at PRISM_SCALE
-function _scaledCanvasPlot(drawFn,W,H,S,prism){
+// Canvas-based plots: re-run the draw function at logical size W×H, rendered at PUB_SCALE
+function _scaledCanvasPlot(drawFn,W,H,S,pub){
   const cv=document.createElement('canvas');
   const realGet=cv.getContext.bind(cv);
   let done=false;
@@ -2324,9 +2438,9 @@ function _scaledCanvasPlot(drawFn,W,H,S,prism){
     if(!done){cv.width=cv.width*S;cv.height=cv.height*S;done=true;}
     const ctx=realGet(type,opts);
     ctx.setTransform(S,0,0,S,0,0);
-    if(prism){
+    if(pub){
       const d=Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype,'font');
-      try{Object.defineProperty(ctx,'font',{configurable:true,get(){return d.get.call(ctx)},set(v){d.set.call(ctx,_prismFontStr(v))}});}catch(e){}
+      try{Object.defineProperty(ctx,'font',{configurable:true,get(){return d.get.call(ctx)},set(v){d.set.call(ctx,_pubFontStr(v))}});}catch(e){}
     }
     return ctx;
   };
@@ -2335,8 +2449,8 @@ function _scaledCanvasPlot(drawFn,W,H,S,prism){
   return cv;
 }
 
-// Restyle a Chart.js config (before construction) to a GraphPad-Prism look
-function _prismifyConfig(cfg){
+// Restyle a Chart.js config (before construction) to a plain publication look (white, black axes, greyscale)
+function _pubifyConfig(cfg){
   const type=cfg.type,ds=(cfg.data&&cfg.data.datasets)||[];
   const isBar=d=>(d.type||type)==='bar';
   const hasBar=ds.some(isBar),nBar=ds.filter(isBar).length;
@@ -2345,18 +2459,18 @@ function _prismifyConfig(cfg){
   ds.forEach((d,i)=>{
     const t=d.type||type;
     if(t==='bar'){
-      const C=PRISM_THEME.colors;
+      const C=PUB_THEME.colors;
       d.backgroundColor=Array.isArray(d.backgroundColor)?d.backgroundColor.map((_,j)=>C[j%C.length]):(nBar===1?'#bfbfbf':C[i%C.length]);
       d.borderColor='#000000';d.borderWidth=1.5;
     } else if(t==='line'||d.showLine===true||d.pointRadius===0){
       d.borderColor='#000000';d.borderWidth=2;d.tension=0;
       const isFit=d.pointRadius===0&&type!=='line';
-      if(isFit){if(!d.borderDash)d.borderDash=PRISM_DASH[lineIdx%PRISM_DASH.length];d.pointStyle='line';}
+      if(isFit){if(!d.borderDash)d.borderDash=PUB_DASH[lineIdx%PUB_DASH.length];d.pointStyle='line';}
       else{ // data series: solid line + distinct marker (filled, then open)
-        const k=lineIdx%(PRISM_SHAPES.length*2);
-        d.pointStyle=PRISM_SHAPES[k%PRISM_SHAPES.length];d.pointRadius=4.5;d.pointHoverRadius=4.5;
+        const k=lineIdx%(PUB_SHAPES.length*2);
+        d.pointStyle=PUB_SHAPES[k%PUB_SHAPES.length];d.pointRadius=4.5;d.pointHoverRadius=4.5;
         d.pointBorderColor='#000000';d.pointBorderWidth=1.5;
-        d.pointBackgroundColor=k<PRISM_SHAPES.length?'#000000':'#ffffff';
+        d.pointBackgroundColor=k<PUB_SHAPES.length?'#000000':'#ffffff';
       }
       d.backgroundColor='#000000';d.fill=false;
       lineIdx++;
@@ -2365,28 +2479,28 @@ function _prismifyConfig(cfg){
     } else {
       d.backgroundColor='#000000';d.borderColor='#000000';d.borderWidth=1;
       d.pointRadius=isCat?3.5:4.5;d.pointHoverRadius=d.pointRadius;
-      // Bar + dots: drawn by _prismDotsPlugin as a beeswarm centred on each bar
-      if(isCat){d._prismSwarm=true;d._swarmR=d.pointRadius;d.pointRadius=0;d.pointHoverRadius=0;}
-      if(!isCat){d.pointStyle=PRISM_SHAPES[ptIdx%PRISM_SHAPES.length];
-        if(ptIdx>=PRISM_SHAPES.length)d.backgroundColor='#ffffff';}
+      // Bar + dots: drawn by _pubDotsPlugin as a beeswarm centred on each bar
+      if(isCat){d._pubSwarm=true;d._swarmR=d.pointRadius;d.pointRadius=0;d.pointHoverRadius=0;}
+      if(!isCat){d.pointStyle=PUB_SHAPES[ptIdx%PUB_SHAPES.length];
+        if(ptIdx>=PUB_SHAPES.length)d.backgroundColor='#ffffff';}
       ptIdx++;
     }
   });
   const o=cfg.options=cfg.options||{};
-  o.animation=false;o.devicePixelRatio=PRISM_SCALE;
+  o.animation=false;o.devicePixelRatio=PUB_SCALE;
   o.layout={padding:{top:12,right:16,bottom:4,left:4}};
   Object.entries(o.scales||{}).forEach(([key,sc])=>{
     if(key==='xjit')return;
     sc.grid={display:true,drawOnChartArea:false,drawTicks:true,tickLength:6,color:'#000000',lineWidth:1.5};
     sc.border={display:true,color:'#000000',width:1.5};
-    sc.ticks={...(sc.ticks||{}),color:'#000000',padding:4,font:{family:PRISM_FONT,size:13,weight:'bold'}};
-    if(sc.title)sc.title={...sc.title,color:'#000000',font:{family:PRISM_FONT,size:15,weight:'bold'}};
+    sc.ticks={...(sc.ticks||{}),color:'#000000',padding:4,font:{family:PUB_FONT,size:13,weight:'bold'}};
+    if(sc.title)sc.title={...sc.title,color:'#000000',font:{family:PUB_FONT,size:15,weight:'bold'}};
   });
   o.plugins=o.plugins||{};
   if(o.plugins.legend&&o.plugins.legend.display!==false){
     const ptLegend=!hasBar&&!isCat&&(ptIdx>0||lineIdx>0);
     o.plugins.legend={...o.plugins.legend,labels:{...(o.plugins.legend.labels||{}),color:'#000000',usePointStyle:ptLegend,
-      boxWidth:ptLegend?8:14,boxHeight:ptLegend?8:14,font:{family:PRISM_FONT,size:12,weight:'bold'}}};
+      boxWidth:ptLegend?8:14,boxHeight:ptLegend?8:14,font:{family:PUB_FONT,size:12,weight:'bold'}}};
   }
   o.plugins.tooltip={enabled:false};
   Object.entries(o.scales||{}).forEach(([k,sc])=>{
@@ -2394,18 +2508,18 @@ function _prismifyConfig(cfg){
     if(type==='line'&&(k==='x'||sc.axis==='x')&&sc.type!=='linear')sc.offset=true;
   });
   Object.entries(o.scales||{}).forEach(([k,sc])=>{if(sc.min===undefined&&sc.max===undefined&&((sc.type==='linear'&&type==='scatter')||(type==='line'&&k==='y')))sc.grace='6%';});
-  if(ds.some(d=>d._prismSwarm)){cfg.plugins=[_prismDotsPlugin,...(cfg.plugins||[])];}
+  if(ds.some(d=>d._pubSwarm)){cfg.plugins=[_pubDotsPlugin,...(cfg.plugins||[])];}
   return cfg;
 }
 
 // Beeswarm dot overlay for bar charts (pixel-accurate, centred on each category)
-const _prismDotsPlugin={id:'prismDots',afterDatasetsDraw(chart){
+const _pubDotsPlugin={id:'pubDots',afterDatasetsDraw(chart){
   const {ctx,scales:{x,y}}=chart;if(!x||!y)return;
   const labels=chart.data.labels||[];
   const barMeta=chart.data.datasets.map((d,i)=>chart.getDatasetMeta(i)).find(m=>m.type==='bar');
   const halfW=barMeta&&barMeta.data[0]?barMeta.data[0].width*0.42:20;
   chart.data.datasets.forEach(d=>{
-    if(!d._prismSwarm||!Array.isArray(d.data))return;
+    if(!d._pubSwarm||!Array.isArray(d.data))return;
     const r=d._swarmR||3.5,byCat={};
     d.data.forEach(p=>{const lab=p&&typeof p==='object'?p.x:null;const v=p&&typeof p==='object'?p.y:p;
       const ci=typeof lab==='number'?lab:labels.indexOf(lab);if(ci<0||!isFinite(v))return;(byCat[ci]=byCat[ci]||[]).push(v);});
@@ -2426,14 +2540,14 @@ const _prismDotsPlugin={id:'prismDots',afterDatasetsDraw(chart){
   });
 }};
 
-// Logical figure size for a Chart.js export: narrow for category bar charts (Prism-like), 4:3 otherwise
-function _prismSize(ci){
+// Logical figure size for a Chart.js export: narrow for category bar charts (publication style), 4:3 otherwise
+function _pubSize(ci){
   const isCat=ci&&ci.config.type==='bar'&&Array.isArray(ci.data.labels)&&ci.data.labels.length&&!(ci.options.scales&&ci.options.scales.x&&ci.options.scales.x.type==='linear');
   if(isCat){const n=ci.data.labels.length;return{W:Math.max(320,Math.min(900,110+105*n)),H:440};}
   return{W:620,H:460};
 }
 
-let _jitN=0,_prismFontK=1.4;
+let _jitN=0,_pubFontK=1.4;
 function _jit(){if(!_exportTheme)return Math.random()-.5;_jitN++;return ((_jitN*0.6180339887)%1)-.5;}
 function _legX(ctx,gi,x0){
   const f=ctx.font;ctx.font=_exportTheme?'10px Arial,Helvetica,sans-serif':'10px system-ui';
@@ -2449,7 +2563,7 @@ function _niceAxis(mn,mx){
   return[lo,hi,tk];
 }
 function _tickFmt(v,tk){
-  const step=tk.length>1?Math.abs(tk[1]-tk[0]):1;
+  const step=tk.length>1?+Math.abs(tk[1]-tk[0]).toPrecision(6):1; // strip floating-point noise (0.1+0.2)
   const dec=Math.max(0,Math.min(4,-Math.floor(Math.log10(step)+1e-9)));
   return v.toFixed(step%1===0?0:Math.max(dec,(String(step).split('.')[1]||'').length));
 }
@@ -2458,32 +2572,33 @@ function _deepClone(v){
   if(v&&typeof v==='object'&&Object.getPrototypeOf(v)===Object.prototype){const o={};for(const k in v)o[k]=_deepClone(v[k]);return o;}
   return v;
 }
-// Re-render a plot tab off-screen for export. mode: 'app' (on-screen look, 2x) or 'prism' (publication, PRISM_SCALE)
+// Re-render a plot tab off-screen for export. mode: 'app' (on-screen look, 2x) or 'publication' (PUB_SCALE)
 function _renderExport(pageId,mode){
-  const prism=mode==='prism';
+  _normStatsCache=null;
+  const pub=mode==='publication'||mode==='prism';
   const tab=plotTabs.find(t=>t.id===pageId);
-  const S=prism?PRISM_SCALE:2;
+  const S=pub?PUB_SCALE:2;
   const pa=document.getElementById('pa_'+pageId);
   const liveCv=document.getElementById('c_'+pageId)||document.querySelector('#'+pageId+' canvas');
   let src=null;
   _jitN=0;
-  if(prism)_exportTheme=PRISM_THEME;
+  if(pub)_exportTheme=PUB_THEME;
   try{
     if(tab&&tab._drawFn){
-      const isHm=/heatmap/i.test(tab.title||'');_prismFontK=isHm?1.05:1.4;
-      const W=prism?(isHm?640:600):Math.max(300,pa?.clientWidth||600),H=prism?(isHm?600:420):Math.max(220,pa?.clientHeight||400);
-      src=_scaledCanvasPlot(tab._drawFn,W,H,S,prism);
+      const isHm=/heatmap/i.test(tab.title||'');_pubFontK=isHm?1.05:1.4;
+      const W=pub?(isHm?640:600):Math.max(300,pa?.clientWidth||600),H=pub?(isHm?600:420):Math.max(220,pa?.clientHeight||400);
+      src=_scaledCanvasPlot(tab._drawFn,W,H,S,pub);
     } else {
       const live=chartInst[pageId];
-      const {W,H}=prism?_prismSize(live):{W:liveCv?.clientWidth||700,H:liveCv?.clientHeight||450};
+      const {W,H}=pub?_pubSize(live):{W:liveCv?.clientWidth||700,H:liveCv?.clientHeight||450};
       const holder=document.createElement('div');
       holder.style.cssText=`position:fixed;left:-20000px;top:0;width:${W}px;height:${H}px;`;
       document.body.appendChild(holder);
       const cv=document.createElement('canvas');holder.appendChild(cv);
       const prevAnim=Chart.defaults.animation,prevDpr=Chart.defaults.devicePixelRatio,prevFam=Chart.defaults.font.family;
-      Chart.defaults.animation=false;Chart.defaults.devicePixelRatio=S;if(prism)Chart.defaults.font.family=PRISM_FONT;
+      Chart.defaults.animation=false;Chart.defaults.devicePixelRatio=S;if(pub)Chart.defaults.font.family=PUB_FONT;
       let ci=null;const OrigChart=window.Chart;
-      const prep=cfg=>{if(prism)_prismifyConfig(cfg);else{cfg.options=cfg.options||{};cfg.options.animation=false;cfg.options.devicePixelRatio=S;}return cfg;};
+      const prep=cfg=>{if(pub)_pubifyConfig(cfg);else{cfg.options=cfg.options||{};cfg.options.animation=false;cfg.options.devicePixelRatio=S;}return cfg;};
       try{
         if(tab&&tab._chartFn){
           window.Chart=new Proxy(OrigChart,{construct(T,args){if(args[1])prep(args[1]);return new T(...args);}});
@@ -2510,11 +2625,11 @@ function _renderExport(pageId,mode){
   if(!src)return null;
   // Flatten onto an opaque background (Chart.js canvases are transparent)
   const out=document.createElement('canvas');out.width=src.width;out.height=src.height;
-  const octx=out.getContext('2d');octx.fillStyle=prism?'#ffffff':bgCol();octx.fillRect(0,0,out.width,out.height);
+  const octx=out.getContext('2d');octx.fillStyle=pub?'#ffffff':bgCol();octx.fillRect(0,0,out.width,out.height);
   octx.drawImage(src,0,0);
   return out;
 }
-function _exportName(ext){return (getExportStyle()==='prism'?'plot_publication.':'plot.')+ext;}
+function _exportName(ext){return (getExportStyle()==='publication'?'plot_publication.':'plot.')+ext;}
 
 function downloadTabPlot(pageId){
   const c=_renderExport(pageId,getExportStyle());if(!c)return;
@@ -2535,18 +2650,18 @@ function downloadTabSVG(pageId){
 function downloadTabPDF(pageId){
   const c=_renderExport(pageId,getExportStyle());if(!c)return;
   const imgData=c.toDataURL('image/png',1.0);
-  const bg=getExportStyle()==='prism'?'#ffffff':bgCol();
+  const bg=getExportStyle()==='publication'?'#ffffff':bgCol();
   const w=window.open('','_blank','width=1050,height=780');
   if(!w){alert('Allow popups to export PDF');return}
   w.document.write(`<!DOCTYPE html><html><head><title>Thistle Plot Export</title><style>*{margin:0;padding:0}body{background:${bg};display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:100vw;max-height:100vh;object-fit:contain}@media print{body{margin:0;display:block;background:${bg}}img{width:100%;height:auto}@page{size:A4 landscape;margin:1cm}}</style></head><body><img src="${imgData}"><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`);
   w.document.close();
 }
 
-const APP_VERSION='0.9.2';
+const APP_VERSION='0.10.0';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
-const PRISM_THEME={
+const PUB_THEME={
   bg:'#ffffff',surf:'#ffffff',ax:'#000000',tx:'#000000',
   grid:'rgba(0,0,0,0)',bd:'#000000',
   colors:['#8c8c8c','#404040','#b8b8b8','#595959','#cfcfcf','#737373','#262626','#a6a6a6'],
@@ -2817,10 +2932,10 @@ function plotBoxplot(normMethod, title){
         grps.forEach((vals,gi)=>{
           const col=plotColor(gi);
           const bx=cx+(gi-(nG-1)/2)*(bw+2);
-          const sv=[...vals].sort((a,b)=>a-b).filter(isFinite);
+          const sv=vals.filter(isFinite).sort((a,b)=>a-b);
           if(!sv.length)return;
           const q1=percentile(sv,25),q3=percentile(sv,75),med=median(sv);
-          const iqr=q3-q1,lo=Math.max(sv[0],q1-1.5*iqr),hi=Math.min(sv[sv.length-1],q3+1.5*iqr);
+          const {lo,hi}=_tukeyWhiskers(sv,q1,q3);
           // Whiskers (hidden in dots-only mode)
           if(dispMode!=='reps'){
           ctx.strokeStyle=plotStroke(gi);ctx.lineWidth=1.5;
@@ -2879,10 +2994,10 @@ function plotBoxplot(normMethod, title){
     if(yLab){ctx.save();ctx.translate(14,H/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=axc;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(yLab,0,0);ctx.restore()}
     groups.forEach((g,i)=>{
       const cx=pad.l+(i+0.5)*(W-pad.l-pad.r)/groups.length;
-      const vals=[...g.vals].sort((a,b)=>a-b).filter(isFinite);
+      const vals=g.vals.filter(isFinite).sort((a,b)=>a-b);
       if(!vals.length)return;
       const q1=percentile(vals,25),q3=percentile(vals,75),med=median(vals);
-      const iqr=q3-q1,lo=Math.max(vals[0],q1-1.5*iqr),hi=Math.min(vals[vals.length-1],q3+1.5*iqr);
+      const {lo,hi}=_tukeyWhiskers(vals,q1,q3);
       const col=plotColor(i);
       // Whiskers (hidden in dots-only mode)
       if(dispMode!=='reps'){
@@ -2989,9 +3104,8 @@ function plotScatter2(title){
   chartTab(title, canvas=>{
     const xg=G.groups[xi]||G.groups[0];
     const yg=G.groups[Math.min(yi,G.groups.length-1)]||G.groups[0];
-    const xv=getGroupPooled(xi),yv=getGroupPooled(Math.min(yi,G.groups.length-1));
-    const n=Math.min(xv.length,yv.length);
-    const data=Array.from({length:n},(_,i)=>({x:xv[i],y:yv[i]})).filter(p=>isFinite(p.x)&&isFinite(p.y));
+    const q=xyPairs(xi,Math.min(yi,G.groups.length-1));
+    const data=q.x.map((x,i)=>({x,y:q.y[i]}));
     const ac=axCol();
     const cfg={...chartCfgDefaults()};
     cfg.scales.x.title={display:true,text:xg.name,color:ac};
@@ -3176,7 +3290,8 @@ function plotHeatmapCustom(title){
       if(normMode==='minmax'){const mn=Math.min(...f),mx=Math.max(...f),rg=mx-mn||1;return r.map(v=>isFinite(v)?(v-mn)/rg:NaN);}
       return r;});
     const allV=normRows.flat().filter(isFinite);
-    const minV=Math.min(...allV),maxV=Math.max(...allV);
+    let minV=Math.min(...allV),maxV=Math.max(...allV);
+    if(normMode==='zscore'){const M=Math.max(Math.abs(minV),Math.abs(maxV))||1;minV=-M;maxV=M;} // grey = the row mean (z = 0)
     const cellColor=v=>{if(!isFinite(v))return bg;const t=(v-minV)/(maxV-minV||1);
       if(t<0.5){const s=t*2;return`rgb(${Math.round(s*215)},${Math.round(s*215)},215)`;}
       const s=(t-0.5)*2;return`rgb(215,${Math.round((1-s)*215)},${Math.round((1-s)*215)})`;};
@@ -3219,10 +3334,9 @@ function plotVolcanoCustom(title){
     const p_thresh=parseFloat(document.getElementById('popt-pt')?.value||0.05);
     const fcgi=parseInt(document.getElementById('popt-fcg')?.value||0);
     const pgi=parseInt(document.getElementById('popt-pg')?.value||Math.min(1,G.groups.length-1));
-    const fcVals=getGroupPooled(fcgi),pVals=getGroupPooled(pgi);
-    const n=Math.min(fcVals.length,pVals.length);
-    const names=G.rowNames.slice(0,n);
-    const pts=volcanoData(names,fcVals.slice(0,n),pVals.slice(0,n),fc_thresh,p_thresh);
+    const vq=pairedCells(fcgi,pgi),ok=vq.b.map(p=>p>=0&&p<=1);
+    const names=vq.row.filter((_,i)=>ok[i]).map(r=>G.rowNames[r]||'Row '+(r+1));
+    const pts=volcanoData(names,vq.a.filter((_,i)=>ok[i]),vq.b.filter((_,i)=>ok[i]),fc_thresh,p_thresh);
     const datasets=[
       {label:'NS',data:pts.filter(p=>!p.sig).map(p=>({x:p.log2fc,y:p.neglog10p,name:p.name})),backgroundColor:'#94a3b888',pointRadius:4},
       {label:`Up (FC≥${fc_thresh})`,data:pts.filter(p=>p.up).map(p=>({x:p.log2fc,y:p.neglog10p,name:p.name})),backgroundColor:'#ef4444cc',pointRadius:5},
@@ -3324,7 +3438,7 @@ function pcaReplot(pid){
     const {ctx,scales:{x,y}}=chart;
     chart.data.datasets.forEach(ds=>ds.data.forEach(pt=>{
       const px=x.getPixelForValue(pt.x),py=y.getPixelForValue(pt.y);
-      ctx.fillStyle=_exportTheme?'#000000':txc;ctx.font=_exportTheme?`bold 12px ${PRISM_FONT}`:'10px system-ui';ctx.textAlign='left';ctx.fillText(pt.label,px+7,py-5);
+      ctx.fillStyle=_exportTheme?'#000000':txc;ctx.font=_exportTheme?`bold 12px ${PUB_FONT}`:'10px system-ui';ctx.textAlign='left';ctx.fillText(pt.label,px+7,py-5);
     }));
   }};
   cfg.plugins={...cfg.plugins,legend:{display:true,labels:{color:txc,boxWidth:12,font:{size:11}}}};
@@ -3380,10 +3494,10 @@ function plotDoseResponse(title){
   chartTab(title, canvas=>{
     const dxi=parseInt(document.getElementById('popt-dxg')?.value||0);
     const dyi=parseInt(document.getElementById('popt-dyg')?.value||Math.min(1,G.groups.length-1));
-    const xv=getGroupPooled(dxi),yv=getGroupPooled(dyi);
-    const n=Math.min(xv.length,yv.length);
-    if(n<4)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
-    const res=fit5PL(xv.slice(0,n),yv.slice(0,n));
+    const {x:xv,y:yv}=xyPairs(dxi,dyi);
+    const n=xv.length;
+    if(n<6)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
+    const res=fit5PL(xv,yv);
     const mn=Math.min(...xv),mx=Math.max(...xv);
     const logX=mn>0;
     const curveX=Array.from({length:150},(_,i)=>logX?Math.pow(10,Math.log10(mn)+(Math.log10(mx)-Math.log10(mn))*i/149):mn+(mx-mn)*i/149);
@@ -3405,15 +3519,17 @@ function plotQQ2(title){
     const vals=getGroupPooled(qqgi).filter(isFinite).sort((a,b)=>a-b);
     const n=vals.length;
     if(n<4)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
-    const theo=Array.from({length:n},(_,i)=>jStat.normal.inv((i+0.375)/(n+0.25),0,1));
+    // Blom plotting positions (i − 3/8)/(n + 1/4) for i = 1..n
+    const theo=Array.from({length:n},(_,i)=>jStat.normal.inv((i+1-0.375)/(n+0.25),0,1));
     const data=vals.map((v,i)=>({x:theo[i],y:v}));
     const ac=axCol();
     const cfg={...chartCfgDefaults()};
     cfg.scales.x.title={display:true,text:'Theoretical Quantiles',color:ac};
     cfg.scales.y.title={display:true,text:'Sample Quantiles',color:ac};
-    // Add reference line
-    const mn=Math.min(...vals),mx=Math.max(...vals);
-    const tMn=Math.min(...theo),tMx=Math.max(...theo);
+    // Reference line through the first and third quartiles (not pulled by outliers)
+    const q1=percentile(vals,25),q3=percentile(vals,75),z1=jStat.normal.inv(0.25,0,1),z3=-z1;
+    const sl=(q3-q1)/(z3-z1),ic=q1-sl*z1;
+    const tMn=Math.min(...theo),tMx=Math.max(...theo),mn=ic+sl*tMn,mx=ic+sl*tMx;
     return new Chart(canvas,{type:'scatter',data:{datasets:[
       {label:G.groups[qqgi]?.name||'',data,backgroundColor:'#3b82f6cc',pointRadius:4},
       {type:'line',label:'Reference',data:[{x:tMn,y:mn},{x:tMx,y:mx}],borderColor:'#f59e0b',borderWidth:1.5,pointRadius:0,fill:false}
@@ -3421,25 +3537,30 @@ function plotQQ2(title){
   });
 }
 
+// A number rounded to the precision implied by a step size (avoids labels like 0.30000000000000004)
+function _tickFmtNum(v,step){const d=Math.max(0,Math.min(10,-Math.floor(Math.log10(Math.abs(step)||1))+1));return (+v.toFixed(d)).toString();}
 function plotHistogram(title){
   const hgv=document.getElementById('popt-hg')?.value||'all';
   const binsReq=parseInt(document.getElementById('popt-bins')?.value||0);
   chartTab(title, canvas=>{
     const ac=axCol();
     const groupsToPlot=hgv==='all'?G.groups.map((_,i)=>i):[parseInt(hgv)];
+    // Shared bin edges for every group drawn, so bars of different groups line up with the same value ranges
+    const allV=groupsToPlot.flatMap(i=>getGroupPooled(i).filter(isFinite));
+    const mn=allV.length?Math.min(...allV):0,mx=allV.length?Math.max(...allV):1;
+    const nMax=Math.max(1,...groupsToPlot.map(i=>getGroupPooled(i).filter(isFinite).length));
+    const bins=binsReq>0?binsReq:Math.max(5,Math.ceil(Math.sqrt(nMax)));
+    const bw=(mx-mn)/bins||1;
+    const binLabels=Array.from({length:bins},(_,b)=>`${_tickFmtNum(mn+b*bw,bw)}–${_tickFmtNum(mn+(b+1)*bw,bw)}`);
     const datasets=groupsToPlot.map(i=>{
-      const vals=getGroupPooled(i).filter(isFinite).sort((a,b)=>a-b);
+      const vals=getGroupPooled(i).filter(isFinite);
       if(!vals.length)return null;
-      const mn=Math.min(...vals),mx=Math.max(...vals);
-      const bins=binsReq>0?binsReq:Math.max(5,Math.ceil(Math.sqrt(vals.length)));
-      const bw=(mx-mn)/bins||1;
       const counts=Array(bins).fill(0);
-      vals.forEach(v=>{const b=Math.min(Math.floor((v-mn)/bw),bins-1);counts[b]++});
-      const labels=Array.from({length:bins},(_,b)=>(mn+b*bw).toFixed(2));
-      return{label:G.groups[i].name,data:counts,backgroundColor:COLORS[i]+'88',borderColor:COLORS[i],borderWidth:1,_labels:labels};
+      vals.forEach(v=>{const b=Math.max(0,Math.min(Math.floor((v-mn)/bw),bins-1));counts[b]++}); // the largest value goes in the last bin
+      return{label:G.groups[i].name,data:counts,backgroundColor:COLORS[i]+'88',borderColor:COLORS[i],borderWidth:1};
     }).filter(Boolean);
     if(!datasets.length)return new Chart(canvas,{type:'bar',data:{datasets:[]},options:chartCfgDefaults()});
-    const labels=datasets[0]._labels||[];
+    const labels=binLabels;
     const cfg={...chartCfgDefaults()};
     cfg.scales.x.title={display:true,text:'Value',color:ac};
     cfg.scales.y.title={display:true,text:'Count',color:ac};
@@ -3451,10 +3572,11 @@ function plotMTCCustom(title){
   chartTab(title, canvas=>{
     const mtci=parseInt(document.getElementById('popt-mtcg')?.value||0);
     const method=document.getElementById('popt-mtcm')?.value||'holm_sidak';
-    const raw=getGroupPooled(mtci);
-    const idx=raw.map((p,i)=>i).filter(i=>isFinite(raw[i])&&raw[i]>0);
+    const {v:raw,row:rIdx}=rowFirstVals(mtci); // one p-value per row, labelled by its own row
+    const idx=raw.map((p,i)=>i).filter(i=>raw[i]>=0&&raw[i]<=1);
     if(!idx.length)return new Chart(canvas,{type:'scatter',data:{datasets:[]},options:chartCfgDefaults()});
-    const pvals=idx.map(i=>raw[i]),names=idx.map(i=>G.rowNames[i]||`Row ${i+1}`);
+    const pvals=idx.map(i=>raw[i]),names=idx.map(i=>G.rowNames[rIdx[i]]||`Row ${rIdx[i]+1}`);
+    const nl=p=>-Math.log10(Math.max(p,1e-300));
     const adj=adjustP(pvals,method);
     const ac=axCol();
     const cfg={...chartCfgDefaults()};
@@ -3464,8 +3586,8 @@ function plotMTCCustom(title){
     cfg.plugins.tooltip={...cfg.plugins.tooltip,callbacks:{label:c=>`${names[c.raw.x]||c.raw.x}: p = ${Math.pow(10,-c.raw.y).toPrecision(3)}`}};
     const thr=-Math.log10(0.05);
     return new Chart(canvas,{type:'scatter',data:{datasets:[
-      {label:'Raw p',data:pvals.map((p,i)=>({x:i,y:-Math.log10(p)})),backgroundColor:COLORS[0]+'cc',pointRadius:5},
-      {label:`Adjusted (${CORR_SHORT[method]})`,data:adj.map((p,i)=>({x:i,y:-Math.log10(p)})),backgroundColor:COLORS[1]+'cc',pointRadius:5},
+      {label:'Raw p',data:pvals.map((p,i)=>({x:i,y:nl(p)})),backgroundColor:COLORS[0]+'cc',pointRadius:5},
+      {label:`Adjusted (${CORR_SHORT[method]})`,data:adj.map((p,i)=>({x:i,y:nl(p)})),backgroundColor:COLORS[1]+'cc',pointRadius:5},
       {type:'line',label:'p = 0.05',data:[{x:-0.5,y:thr},{x:names.length-0.5,y:thr}],borderColor:axCol(),borderDash:[5,4],borderWidth:1,pointRadius:0}
     ]},options:cfg});
   });
@@ -3479,8 +3601,15 @@ function runAnalysis(){
   const normMethod=document.getElementById('opt-norm')?.value||'none';
   lastStatPairs=null;lastStatRowPairs=null;lastStatGeneSet=null;_autoPlotGroupBy=null; // reset significance pairs
 
-  function getG(i){ return normalize(getGroupPooled(i),normMethod) }
+  const normFn=makeNormFn(normMethod);
+  function getG(i){ return getGroupPooled(i).map(normFn).filter(isFinite) }
+  function getPair(i,j){ return pairedCells(i,j,normFn) }
   function grpNames(){ return G.groups.map(g=>g.name) }
+  // Values a log transform cannot use (≤ 0) are left out; say so on the result
+  let normWarn='';
+  if(/^log/.test(normMethod)){const nBad=G.groups.reduce((s,_,i)=>s+getGroupPooled(i).filter(v=>!(v>0)).length,0);
+    if(nBad)normWarn=`<div class="ebox">${nBad.toLocaleString()} value(s) ≤ 0 cannot be log-transformed and were left out.</div>`;}
+  const addStatTab=(t,h)=>window.addStatTab(t,normWarn+h);
 
   try{
     if(atype==='desc'){
@@ -3506,14 +3635,15 @@ function runAnalysis(){
         for(let r=0;r<G.nRows;r++){
           const rows=[];
           G.groups.forEach((g,i)=>{
-            const v=g.data[r]?.filter(x=>x!==''&&isFinite(x)).map(Number)||[];
-            rows.push(v);
+            rows.push((g.data[r]||[]).map(x=>normFn(cellNum(x))));
           });
-          // Compare ctrl vs each other group
+          // Compare ctrl vs each other group (paired: replicate k of the control with replicate k of the group)
           const pvals=[];const labels=[];
           G.groups.forEach((g,i)=>{
             if(i===ctrl)return;
-            const res=atype==='ttest_ind'?ttestInd(rows[ctrl],rows[i]):ttestRel(rows[ctrl],rows[i],ptype);
+            let res;
+            if(atype==='ttest_ind')res=ttestInd(rows[ctrl].filter(isFinite),rows[i].filter(isFinite));
+            else{const A=[],B=[];rows[ctrl].forEach((x,k)=>{if(isFinite(x)&&isFinite(rows[i][k])){A.push(x);B.push(rows[i][k]);}});res=ttestRel(A,B,ptype);}
             pvals.push(res.error?NaN:(res.p));
             labels.push(`${G.groups[ctrl].name} vs ${g.name}`);
           });
@@ -3536,7 +3666,7 @@ function runAnalysis(){
         lastStatRowPairs=[];
         rowResults.forEach(r=>r.adjPvals.forEach((pa,k)=>{const st=sigStars(pa);if(st!=='ns'&&isFinite(pa))lastStatRowPairs.push({row:r.row,i:ctrl,j:others[k],stars:st});}));
         {const up=[],down=[];rowResults.forEach(r=>{let best=-1;r.adjPvals.forEach((pa,k)=>{if(isFinite(pa)&&pa<0.05&&(best<0||pa<r.adjPvals[best]))best=k;});if(best<0)return;
-          const g=others[best];const d=mean(normalize(rowsOf(g,r.row),normMethod))-mean(normalize(rowsOf(ctrl,r.row),normMethod));(d>=0?up:down).push({row:r.row,p:r.adjPvals[best]});});
+          const g=others[best];const d=mean(rowsOf(g,r.row).map(normFn).filter(isFinite))-mean(rowsOf(ctrl,r.row).map(normFn).filter(isFinite));(d>=0?up:down).push({row:r.row,p:r.adjPvals[best]});});
           up.sort((a,b)=>a.p-b.p);down.sort((a,b)=>a.p-b.p);
           let sig=true;
           if(!up.length&&!down.length){sig=false;rowResults.forEach(r=>{let best=-1;r.adjPvals.forEach((pa,k)=>{if(isFinite(pa)&&(best<0||pa<r.adjPvals[best]))best=k;});if(best<0)return;const g=others[best];const d=mean(rowsOf(g,r.row))-mean(rowsOf(ctrl,r.row));(d>=0?up:down).push({row:r.row,p:r.adjPvals[best]});});
@@ -3549,7 +3679,7 @@ function runAnalysis(){
       let html='';
       const tSigPairs=[];
       const tcorr=other.length>1?(document.getElementById('opt-tcorr')?.value||'holm_sidak'):'none';
-      const tRes=other.map(i=>atype==='ttest_ind'?ttestInd(a,getG(i)):ttestRel(a,getG(i),ptype));
+      const tRes=other.map(i=>{if(atype==='ttest_ind')return ttestInd(a,getG(i));const pr=getPair(ctrl,i);return ttestRel(pr.a,pr.b,ptype);});
       const tAdj=adjustP(tRes.map(r=>r.error?NaN:r.p),tcorr);
       other.forEach((i,k)=>{
         const res=tRes[k],pa=tAdj[k];
@@ -3565,7 +3695,8 @@ function runAnalysis(){
           <tr><td>p-value${tcorr!=='none'?' (raw)':''}</td><td>${pRow(res.p)}</td></tr>
           ${tcorr!=='none'?`<tr><td>p-value (${CORR_SHORT[tcorr]}, ${other.length} comparisons)</td><td>${pRow(pa)}</td></tr>`:''}
           ${atype==='ttest_ind'?`<tr><td>Mean (${G.groups[ctrl].name})</td><td>${fmtF(res.m1)}</td></tr><tr><td>Mean (${G.groups[i].name})</td><td>${fmtF(res.m2)}</td></tr><tr><td>Cohen's d</td><td>${fmtF(res.d)} (${eff(res.d||0)})</td></tr>`:
-          `<tr><td>Mean ${ptype==='ratio'?'ratio':'diff'}</td><td>${fmtF(res.mean_diff)}</td></tr><tr><td>SD diff</td><td>${fmtF(res.sd_diff)}</td></tr>`}
+          (ptype==='ratio'?`<tr><td>Geometric mean ratio (${G.groups[ctrl].name} / ${G.groups[i].name})</td><td>${fmtF(res.ratio)} [95% CI ${fmtF(res.ci95lo)}, ${fmtF(res.ci95hi)}]</td></tr><tr><td>Pairs</td><td>${res.n}</td></tr><tr><td colspan="2" style="color:var(--mu)">t-test on log(${G.groups[ctrl].name} / ${G.groups[i].name}) against 0 (a ratio of 1)</td></tr>`:
+          `<tr><td>Mean difference (${G.groups[ctrl].name} − ${G.groups[i].name})</td><td>${fmtF(res.mean_diff)} [95% CI ${fmtF(res.ci95lo)}, ${fmtF(res.ci95hi)}]</td></tr><tr><td>SD of differences</td><td>${fmtF(res.sd_diff)}</td></tr><tr><td>Pairs</td><td>${res.n}</td></tr>`)}
           </tbody></table></div>`;
       });
       lastStatPairs=tSigPairs;
@@ -3590,7 +3721,7 @@ function runAnalysis(){
         lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
         const html=`<div class="scard"><h3>Mann-Whitney U — ${npMode==='vsctrl'?'vs Control':'All Pairs'} (${CORR_SHORT[npCorr]})</h3>
           <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
-          ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
+          ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)} <span style="color:var(--mu);font-size:10px">${p.method}</span></td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
         addStatTab(npMode==='vsctrl'?'Mann–Whitney U (vs control)':'Mann–Whitney U (all pairs)',html);
       } else {
@@ -3602,7 +3733,7 @@ function runAnalysis(){
           <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
           <tr><td>U statistic</td><td>${fmtF(res.U,1)}</td></tr>
           <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
-          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+          <tr><td>p-value (${res.method})</td><td>${pRow(res.p)}</td></tr>
           <tr><td>n1 (${names[g1i]})</td><td>${res.n1}</td></tr>
           <tr><td>n2 (${names[g2i]})</td><td>${res.n2}</td></tr>
           </tbody></table></div>`;
@@ -3618,9 +3749,8 @@ function runAnalysis(){
       if((npMode==='allpairs'||npMode==='vsctrl')&&G.groups.length>2){
         const pairs=[];
         for(const [i,j] of _npPairs(npMode)){
-          let a=getG(i),b=getG(j);
-          if(npComp==='ratio'){const mn=Math.min(a.length,b.length);a=a.slice(0,mn).map((v,k)=>b[k]!==0?v/b[k]:NaN).filter(isFinite);b=Array(a.length).fill(1);}
-          const res=wilcoxonSR(a,b);
+          const pr=getPair(i,j);
+          const res=rankSumTest(pr.a,pr.b,npComp);
           pairs.push({i,j,na:names[i],nb:names[j],...res});
         }
         {const adj=adjustP(pairs.map(p=>p.p),npCorr);pairs.forEach((p,k)=>{p.p_adj=adj[k];});}
@@ -3628,21 +3758,20 @@ function runAnalysis(){
         lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
         const html=`<div class="scard"><h3>Wilcoxon Signed-Rank — ${npMode==='vsctrl'?'vs Control':'All Pairs'} (${CORR_SHORT[npCorr]}, ${npComp})</h3>
           <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>W</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
-          ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.W,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
+          ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.W,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)} <span style="color:var(--mu);font-size:10px">${p.method}</span></td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
         addStatTab(npMode==='vsctrl'?'Wilcoxon signed-rank (vs control)':'Wilcoxon signed-rank (all pairs)',html);
       } else {
-        let a=getG(g1i),b=getG(g2i);
-        if(npComp==='ratio'){const mn=Math.min(a.length,b.length);a=a.slice(0,mn).map((v,k)=>b[k]!==0?v/b[k]:NaN).filter(isFinite);b=Array(a.length).fill(1);}
-        const res=wilcoxonSR(a,b);
+        const pr=getPair(g1i,g2i);
+        const res=rankSumTest(pr.a,pr.b,npComp);
         if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
         const html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Wilcoxon Signed-Rank${npComp==='ratio'?' (Ratio)':''}</h3>
           <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong></div>
           <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
           <tr><td>W statistic</td><td>${fmtF(res.W,1)}</td></tr>
           <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
-          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
-          <tr><td>n (non-zero diffs)</td><td>${res.n}</td></tr>
+          <tr><td>p-value (${res.method})</td><td>${pRow(res.p)}</td></tr>
+          <tr><td>n (non-zero ${npComp==='ratio'?'log ratios':'differences'})</td><td>${res.n}${res.nZero?` (${res.nZero} zero difference(s) left out)`:''}</td></tr>
           </tbody></table></div>`;
         addStatTab('Wilcoxon signed-rank',html);
       }
@@ -3656,26 +3785,27 @@ function runAnalysis(){
       if((npMode==='allpairs'||npMode==='vsctrl')&&G.groups.length>2){
         const pairs=[];
         for(const [i,j] of _npPairs(npMode)){
-          const res=rankSumTest(getG(i),getG(j),npComp);
+          const pr=getPair(i,j);const res=rankSumTest(pr.a,pr.b,npComp);
           pairs.push({i,j,na:names[i],nb:names[j],...res});
         }
         {const adj=adjustP(pairs.map(p=>p.p),npCorr);pairs.forEach((p,k)=>{p.p_adj=adj[k];});}
         pairs.sort((a,b)=>a.i-b.i||a.j-b.j);
         lastStatPairs=pairs.map(p=>({i:p.i,j:p.j,stars:sigStars(p.p_adj)})).filter(p=>p.stars!=='ns');
         const html=`<div class="scard"><h3>Rank Sum — ${npMode==='vsctrl'?'vs Control':'All Pairs'} (${CORR_SHORT[npCorr]}, ${npComp})</h3>
-          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>U</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
-          ${pairs.map(p=>`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.U,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)}</td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
+          <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>W</th><th>z</th><th>p</th><th>p adj (${CORR_SHORT[npCorr]})</th><th>Sig</th></tr></thead><tbody>
+          ${pairs.map(p=>p.error?`<tr><td>${p.na}</td><td>${p.nb}</td><td colspan="5">${p.error}</td></tr>`:`<tr><td>${p.na}</td><td>${p.nb}</td><td>${fmtF(p.W,1)}</td><td>${fmtF(p.z)}</td><td>${pRow(p.p)} <span style="color:var(--mu);font-size:10px">${p.method}</span></td><td>${pRow(p.p_adj)}</td><td>${sigStars(p.p_adj)}</td></tr>`).join('')}
           </tbody></table></div>`;
         addStatTab(npMode==='vsctrl'?'Paired rank sum (vs control)':'Paired rank sum (all pairs)',html);
       } else {
-        const res=rankSumTest(getG(g1i),getG(g2i),npComp);
+        const pr=getPair(g1i,g2i);const res=rankSumTest(pr.a,pr.b,npComp);
         if(!res.error){const s=sigStars(res.p);if(s!=='ns')lastStatPairs=[{i:g1i,j:g2i,stars:s}];}
         const html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Rank Sum Test (${npComp})</h3>
           <div style="margin-bottom:6px;font-size:12px;color:var(--mu)">Comparing: <strong>${names[g1i]}</strong> vs <strong>${names[g2i]}</strong></div>
           <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
-          <tr><td>U</td><td>${fmtF(res.U,1)}</td></tr>
+          <tr><td>W (signed-rank, on ${npComp==='ratio'?'log ratios':'differences'})</td><td>${fmtF(res.W,1)}</td></tr>
           <tr><td>z</td><td>${fmtF(res.z)}</td></tr>
-          <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
+          <tr><td>p-value (${res.method})</td><td>${pRow(res.p)}</td></tr>
+          <tr><td>Pairs (non-zero)</td><td>${res.n}</td></tr>
           </tbody></table></div>`;
         addStatTab('Paired rank sum',html);
       }
@@ -3760,7 +3890,7 @@ function runAnalysis(){
         for(let i=0;i<nG-1;i++)for(let j=i+1;j<nG;j++)pairs.push([i,j]);
       }
       const ccorr=pairs.length>1?(document.getElementById('opt-ccorr')?.value||'holm_sidak'):'none';
-      const cRes=pairs.map(([i,j])=>corrFn(getG(i),getG(j)));
+      const cRes=pairs.map(([i,j])=>{const q=xyPairs(i,j,normFn);return corrFn(q.x,q.y);});
       const cAdj=adjustP(cRes.map(r=>r.error?NaN:r.p),ccorr);
       let html=`<div class="scard"><h3>${label} — ${pairs.length} pair(s)${ccorr!=='none'?`, ${CORR_SHORT[ccorr]}`:''}</h3>
         <table class="rtbl"><thead><tr><th>Pair</th><th>${atype==='pearson'?'r':'ρ'}</th><th>p</th>${ccorr!=='none'?`<th>p adj (${CORR_SHORT[ccorr]})</th>`:''}${atype==='pearson'?'<th>95% CI</th>':''}<th>n</th></tr></thead><tbody>`;
@@ -3773,10 +3903,13 @@ function runAnalysis(){
       addStatTab(label,html);
 
     } else if(atype==='mtc'){
-      const pvals=getGroupPooled(0);
+      const {v:pv0,row:pRowIdx}=rowFirstVals(0);
+      const nBadP=pv0.filter(p=>p<0||p>1).length;
+      const pvals=pv0.map(p=>p>=0&&p<=1?p:NaN);
       const method=document.getElementById('opt-mtc-method')?.value||'holm_sidak';
       const adj=adjustP(pvals,method);
-      const names=G.rowNames.slice(0,pvals.length);
+      const names=pRowIdx.map(r=>G.rowNames[r]);
+      if(nBadP)normWarn+=`<div class="ebox">${nBadP} value(s) outside 0–1 are not p-values and were left out.</div>`;
       let html=`<div class="scard"><h3>Multiple Testing Correction (${CORR_LABEL[method]||method}, ${pvals.length.toLocaleString()} tests, ${adj.filter(v=>v<0.05).length.toLocaleString()} with adjusted p < 0.05)</h3>
         ${pvals.length>SHOW_ROWS?`<div class="opt-hint" style="font-style:normal;margin-bottom:6px">Showing the ${SHOW_ROWS} smallest p-values. ${csvButton('adjusted_p.csv',['Test','p-raw','p-adj'],pvals.map((p,i)=>[names[i]||i+1,p,adj[i]]))}</div>`:''}
         <table class="rtbl"><thead><tr><th>Test</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
@@ -3788,38 +3921,41 @@ function runAnalysis(){
       const useGroups=G.groups.length>=2;
       const rows=[0,1].map(r=>useGroups?[0,1].map(c=>Number(G.groups[c].data[r]?.[0])||0):(G.groups[0].data[r]||[]).slice(0,2).map(Number));
       const a=rows[0]?.[0]??0,b=rows[0]?.[1]??0,c=rows[1]?.[0]??0,d=rows[1]?.[1]??0;
+      if([a,b,c,d].some(v=>!(v>=0)||!Number.isInteger(v))){addStatTab("Fisher's exact test",'<div class="ebox">Fisher\'s exact test needs four whole-number counts ≥ 0 (2 columns × 2 rows, first replicate column).</div>');return}
       const res=fishersExact(a,b,c,d);
       let html=`<div class="scard"><h3>Fisher's Exact Test</h3>
         <table class="rtbl" style="margin-bottom:8px"><thead><tr><th></th><th>${useGroups?G.groups[0].name:'Col 1'}</th><th>${useGroups?G.groups[1].name:'Col 2'}</th></tr></thead><tbody>
         <tr><td>${G.rowNames[0]||'Row 1'}</td><td>${a}</td><td>${b}</td></tr><tr><td>${G.rowNames[1]||'Row 2'}</td><td>${c}</td><td>${d}</td></tr></tbody></table>
         <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
         <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
-        <tr><td>Odds Ratio</td><td>${fmtF(res.or)}</td></tr>
+        <tr><td>Odds ratio (a·d / b·c)</td><td>${res.or===Infinity?'∞ (a zero count)':fmtF(res.or)}</td></tr>
         </tbody></table></div>`;
       addStatTab("Fisher's exact test",html);
 
     } else if(atype==='chisq'){
-      const obs=G.groups[0].data.map((row,r)=>G.groups.map((_,c)=>parseFloat(G.groups[c].data[r]?.[0])||0));
-      const res=chiSquare(obs);
+      const obs=G.groups[0].data.map((row,r)=>G.groups.map((_,c)=>{const v=cellNum(G.groups[c].data[r]?.[0]);return isFinite(v)?v:0;}));
+      const res=obs.flat().some(v=>v<0)?{error:'Counts cannot be negative'}:chiSquare(obs);
       let html=res.error?`<div class="ebox">${res.error}</div>`:`<div class="scard"><h3>Chi-Square Contingency</h3>
         <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
         <tr><td>χ²</td><td>${fmtF(res.chi)}</td></tr>
         <tr><td>df</td><td>${res.df}</td></tr>
         <tr><td>p-value</td><td>${pRow(res.p)}</td></tr>
-        </tbody></table></div>`;
+        <tr><td>Table used</td><td>${res.rows} rows × ${res.cols} columns, N = ${res.N} (empty rows/columns ignored)</td></tr>
+        </tbody></table>
+        <div class="opt-hint">Pearson chi-square without continuity (Yates) correction.${res.nLow?` <b>${res.nLow} expected count(s) are below 5</b> (smallest ${fmtF(res.minExp,2)}): the p-value may be inaccurate${res.rows===2&&res.cols===2?'; use Fisher\'s exact test':''}.`:''}</div></div>`;
       addStatTab('Chi-square test',html);
 
     } else if(atype==='norm'){
       let html='';
       G.groups.forEach((g,i)=>{
-        const res=normalityJB(getG(i));
+        const res=shapiroWilk(getG(i));
         html+=res.error?`<div class="ebox">${g.name}: ${res.error}</div>`:`<div class="scard"><h3>Normality: ${g.name}</h3>
           <table class="rtbl"><thead><tr><th>Stat</th><th>Value</th></tr></thead><tbody>
-          <tr><td>Jarque-Bera</td><td>${fmtF(res.JB)}</td></tr>
+          <tr><td>Shapiro–Wilk W</td><td>${fmtF(res.W,4)}</td></tr>
           <tr><td>Skewness</td><td>${fmtF(res.skewness)}</td></tr>
           <tr><td>Excess kurtosis</td><td>${fmtF(res.kurtosis)}</td></tr>
           <tr><td>n</td><td>${res.n}</td></tr>
-          <tr><td>p-value</td><td>${pRow(res.p)} (H₀: normal)</td></tr>
+          <tr><td>p-value</td><td>${pRow(res.p)} (H₀: normal)${res.n>5000?' (n > 5000: approximate)':''}</td></tr>
           </tbody></table></div>`;
       });
       addStatTab('Normality (Shapiro–Wilk)',html);
@@ -3895,10 +4031,11 @@ function runAnalysis(){
     } else if(atype==='volcano'){
       const fc_thresh=parseFloat(document.getElementById('opt-fc')?.value||1);
       const p_thresh=parseFloat(document.getElementById('opt-pt')?.value||0.05);
-      const fcVals=getGroupPooled(0),pVals=getGroupPooled(1);
-      const n=Math.min(fcVals.length,pVals.length);
-      const names=G.rowNames.slice(0,n);
-      const pts=volcanoData(names,fcVals.slice(0,n),pVals.slice(0,n),fc_thresh,p_thresh);
+      const vq=pairedCells(0,1);const okP=vq.b.map(p=>p>=0&&p<=1);
+      const fcVals=vq.a.filter((_,i)=>okP[i]),pVals=vq.b.filter((_,i)=>okP[i]),vRows=vq.row.filter((_,i)=>okP[i]);
+      if(okP.includes(false))normWarn+=`<div class="ebox">${okP.filter(x=>!x).length} row(s) with a p-value outside 0–1 were left out.</div>`;
+      const names=vRows.map(r=>G.rowNames[r]||'Row '+(r+1));
+      const pts=volcanoData(names,fcVals,pVals,fc_thresh,p_thresh);
       const up=pts.filter(p=>p.up),dn=pts.filter(p=>p.down);
       let html=`<div class="scard"><h3>Volcano Plot Summary</h3>
         <table class="rtbl"><thead><tr><th>Category</th><th>N</th></tr></thead><tbody>
@@ -3912,20 +4049,22 @@ function runAnalysis(){
       addStatTab('Volcano summary',html);
 
     } else if(atype==='dose'){
-      const xv=getGroupPooled(0),yv=getGroupPooled(1);
-      const n=Math.min(xv.length,yv.length);
-      if(n<4){addStatTab('Dose–response (5PL)','<div class="ebox">Need ≥ 4 data points</div>');return}
-      const res=fit5PL(xv.slice(0,n),yv.slice(0,n));
-      const [bot,top,ec50,hill,asym]=res.params;
+      const {x:xv,y:yv}=xyPairs(0,1);
+      const n=xv.length;
+      if(n<6){addStatTab('Dose–response (5PL)','<div class="ebox">Need ≥ 6 data points for 5 parameters</div>');return}
+      const res=fit5PL(xv,yv);
+      const [bot,top,cMid,hill,asym]=res.params,ec50=res.ec50;
       let html=`<div class="scard"><h3>5PL Dose-Response</h3>
         <table class="rtbl"><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>
         <tr><td>Bottom</td><td>${fmtF(bot)}</td></tr>
         <tr><td>Top</td><td>${fmtF(top)}</td></tr>
-        <tr><td>EC50 / IC50</td><td>${fmtF(ec50)}</td></tr>
+        <tr><td>EC50 / IC50 (X half-way between Bottom and Top)</td><td>${fmtF(ec50)}</td></tr>
+        <tr><td>C (curve midpoint parameter; equals EC50 when Asymmetry = 1)</td><td>${fmtF(cMid)}</td></tr>
         <tr><td>Hill slope</td><td>${fmtF(hill)}</td></tr>
         <tr><td>Asymmetry</td><td>${fmtF(asym)}</td></tr>
         <tr><td>R²</td><td>${fmtF(res.r2,4)}</td></tr>
-        </tbody></table></div>`;
+        <tr><td>Points</td><td>${n}</td></tr>
+        </tbody></table><div class="opt-hint">Model: Y = Bottom + (Top − Bottom) / (1 + (C/X)^Hill)^Asymmetry, fitted by least squares.</div></div>`;
       addStatTab('Dose–response (5PL)',html);
 
     } else if(atype==='heatmap'){
@@ -3959,7 +4098,7 @@ function runAnalysis(){
       const mse=res.MSError,dfE=res.dfError,nR=res.nRep;
       const comps=[];
       const cellM=(a,b)=>res.cellMeans[a][b];
-      const add=(label1,label2,m1,m2,n1,n2,set,cellI,cellJ)=>{const se=Math.sqrt(mse*(1/n1+1/n2));const t=(m1-m2)/se;comps.push({label1,label2,diff:m1-m2,t,q:Math.abs(t)*Math.SQRT2,p_raw:2*(1-jStat.studentt.cdf(Math.abs(t),dfE)),set,cellI,cellJ});};
+      const add=(label1,label2,m1,m2,n1,n2,set,cellI,cellJ)=>{const se=Math.sqrt(mse*(1/n1+1/n2));const t=(m1-m2)/se;comps.push({label1,label2,diff:m1-m2,t,q:Math.abs(t)*Math.SQRT2,p_raw:tP2(t,dfE),set,cellI,cellJ});};
       if(fam==='simpleB'){for(let a=0;a<nA;a++)for(let b1=0;b1<nB-1;b1++)for(let b2=b1+1;b2<nB;b2++)add(`${fA[a]}: ${fB[b1]}`,`${fA[a]}: ${fB[b2]}`,cellM(a,b1),cellM(a,b2),nR,nR,{k:nB},a*nB+b1,a*nB+b2);}
       else if(fam==='simpleA'){for(let b=0;b<nB;b++)for(let a1=0;a1<nA-1;a1++)for(let a2=a1+1;a2<nA;a2++)add(`${fB[b]}: ${fA[a1]}`,`${fB[b]}: ${fA[a2]}`,cellM(a1,b),cellM(a2,b),nR,nR,{k:nA},a1*nB+b,a2*nB+b);}
       else if(fam==='cells'){const K=nA*nB;for(let i=0;i<K-1;i++)for(let j=i+1;j<K;j++)add(`${fA[Math.floor(i/nB)]} · ${fB[i%nB]}`,`${fA[Math.floor(j/nB)]} · ${fB[j%nB]}`,cellM(Math.floor(i/nB),i%nB),cellM(Math.floor(j/nB),j%nB),nR,nR,{k:K},i,j);}
@@ -3991,10 +4130,9 @@ function runAnalysis(){
       const xi=parseInt(document.getElementById('opt-rx')?.value||0);
       const yi=parseInt(document.getElementById('opt-ry')?.value||1);
       const model=document.getElementById('opt-rmodel')?.value||'linear';
-      const xv=getG(xi),yv=getG(yi);
-      const n=Math.min(xv.length,yv.length);
+      const {x:xs,y:ys}=xyPairs(xi,yi,normFn);
+      const n=xs.length;
       if(n<3){addStatTab('Regression','<div class="ebox">Need ≥ 3 points</div>');return}
-      const xs=xv.slice(0,n),ys=yv.slice(0,n);
       const degree=model.startsWith('poly')?parseInt(model[4]):undefined;
       const res=runRegression(xs,ys,model,degree);
       if(res.error){addStatTab('Regression',`<div class="ebox">${res.error}</div>`);return}
@@ -4116,7 +4254,7 @@ function loadProject(event){
 // ═══════════════════════════════════════════════════════════
 // EXAMPLE DATA + INIT
 // ═══════════════════════════════════════════════════════════
-const EXAMPLES={"groups": {"nReps": 3, "nRows": 6, "rowNames": ["Sample 1", "Sample 2", "Sample 3", "Sample 4", "Sample 5", "Sample 6"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[2.1, 2.3, 1.9], [3.2, 2.8, 3.1], [1.8, 2.0, 2.2], [4.1, 3.9, 4.3], [2.5, 2.7, 2.3], [3.8, 3.6, 4.0]]}, {"name": "Treatment A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[4.5, 4.8, 4.2], [5.1, 5.4, 4.9], [3.9, 4.1, 4.3], [6.2, 5.8, 6.1], [4.7, 5.0, 4.6], [5.5, 5.3, 5.8]]}, {"name": "Treatment B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[3.0, 3.2, 2.8], [4.1, 3.8, 4.0], [2.7, 2.9, 3.1], [5.0, 4.7, 5.2], [3.5, 3.8, 3.3], [4.4, 4.2, 4.6]]}], "note": "3 groups × 3 replicates × 6 samples"}, "paired": {"nReps": 1, "nRows": 10, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10"], "groups": [{"name": "Before", "reps": ["Value"], "data": [[46.9], [56.1], [47.3], [46.2], [38.8], [47.4], [63.3], [55.1], [62.4], [53.0]]}, {"name": "After", "reps": ["Value"], "data": [[54.1], [62.7], [48.3], [54.8], [46.4], [54.9], [64.3], [55.9], [65.8], [57.6]]}], "note": "Paired: each row is one animal measured before and after treatment"}, "normality": {"nReps": 1, "nRows": 30, "rowNames": ["Obs 1", "Obs 2", "Obs 3", "Obs 4", "Obs 5", "Obs 6", "Obs 7", "Obs 8", "Obs 9", "Obs 10", "Obs 11", "Obs 12", "Obs 13", "Obs 14", "Obs 15", "Obs 16", "Obs 17", "Obs 18", "Obs 19", "Obs 20", "Obs 21", "Obs 22", "Obs 23", "Obs 24", "Obs 25", "Obs 26", "Obs 27", "Obs 28", "Obs 29", "Obs 30"], "groups": [{"name": "Normal-like", "reps": ["Value"], "data": [[10.61], [9.91], [11.04], [8.72], [10.62], [10.79], [8.68], [13.44], [11.11], [12.39], [8.76], [8.52], [9.31], [9.79], [11.26], [10.5], [9.11], [8.09], [8.96], [12.44], [8.38], [10.49], [10.85], [7.02], [10.1], [12.61], [5.97], [9.36], [9.79], [8.37]]}, {"name": "Right-skewed", "reps": ["Value"], "data": [[2.99], [1.98], [9.43], [8.65], [7.99], [5.35], [4.09], [7.69], [2.96], [1.54], [2.85], [2.48], [1.62], [1.8], [7.46], [2.84], [1.04], [2.7], [2.41], [5.18], [1.61], [3.12], [4.71], [5.61], [3.61], [1.22], [2.95], [3.66], [2.11], [5.26]]}], "note": "One roughly normal and one skewed sample (n = 30 each)"}, "anova2": {"nReps": 3, "nRows": 2, "rowNames": ["Litter 1", "Litter 2"], "groups": [{"name": "WT · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[20.0, 22.3, 19.2], [21.0, 24.6, 13.6]]}, {"name": "WT · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[29.2, 32.6, 33.0], [32.6, 30.9, 33.6]]}, {"name": "KO · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[21.7, 19.7, 27.1], [21.9, 19.6, 20.8]]}, {"name": "KO · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[22.4, 22.8, 16.2], [21.8, 25.5, 20.1]]}], "note": "2 × 2 design: genotype (WT, KO) × treatment (Vehicle, Drug), 6 animals per cell; nA = 2, nB = 2"}, "genes": {"nReps": 3, "nRows": 16, "rowNames": ["MYC", "FOS", "JUN", "EGR1", "IL6", "CXCL8", "TNF", "CCL2", "HMOX1", "NQO1", "GAPDH", "ACTB", "CDK1", "CCNB1", "MKI67", "TOP2A"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[7.27, 7.35, 7.5], [7.87, 7.81, 8.22], [7.1, 6.76, 7.52], [9.57, 10.09, 9.79], [8.7, 8.84, 8.72], [10.05, 9.51, 9.52], [7.8, 7.41, 7.39], [6.75, 7.43, 7.3], [10.43, 9.82, 10.06], [10.64, 11.12, 11.32], [10.04, 10.65, 10.51], [9.99, 9.54, 10.38], [10.07, 9.94, 10.19], [9.8, 10.07, 9.44], [7.42, 7.51, 7.5], [8.54, 8.4, 8.84]]}, {"name": "Drug 6 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.83, 8.84, 9.16], [10.27, 9.76, 10.24], [8.37, 9.04, 8.91], [12.51, 12.66, 12.87], [9.48, 9.79, 9.45], [11.16, 11.27, 11.3], [8.08, 8.47, 7.78], [7.54, 7.32, 8.08], [10.95, 11.25, 11.21], [11.82, 11.68, 11.88], [10.71, 10.27, 10.4], [10.38, 10.08, 9.82], [9.45, 9.86, 9.18], [9.15, 9.55, 9.5], [6.54, 6.74, 6.58], [7.79, 7.7, 7.93]]}, {"name": "Drug 24 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.04, 7.66, 7.58], [7.94, 7.75, 8.1], [7.14, 7.53, 6.85], [10.14, 9.9, 9.57], [11.44, 11.19, 10.71], [12.68, 12.97, 12.78], [10.04, 10.04, 10.01], [9.6, 9.85, 9.68], [11.97, 11.34, 12.08], [12.85, 12.45, 12.41], [10.75, 9.82, 10.38], [10.64, 9.8, 10.2], [8.56, 8.06, 8.23], [8.13, 7.67, 7.88], [5.01, 5.14, 4.93], [6.64, 6.43, 6.6]]}], "note": "16 genes (log2 expression) × 3 conditions × 3 replicates"}, "timecourse": {"nReps": 3, "nRows": 6, "rowNames": ["0 h", "2 h", "4 h", "8 h", "12 h", "24 h"], "groups": [{"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.07, 1.01, 0.93], [0.93, 1.21, 1.09], [1.05, 0.79, 1.05], [1.04, 1.13, 1.03], [0.99, 1.04, 0.84], [1.08, 1.03, 0.94]]}, {"name": "Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.27, 1.36, 0.72], [1.67, 1.86, 1.84], [2.82, 2.71, 3.32], [3.81, 3.36, 3.33], [3.44, 3.3, 3.46], [2.16, 1.83, 2.05]]}], "note": "Time course: rows = time points, 3 replicates (fold change vs 0 h)"}, "xy": {"nReps": 1, "nRows": 15, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15"], "groups": [{"name": "Body weight (g)", "reps": ["Value"], "data": [[18.7], [19.5], [19.8], [20.3], [20.8], [21.3], [21.8], [22.1], [22.3], [22.4], [25.0], [25.4], [25.7], [28.6], [31.0]]}, {"name": "Liver weight (g)", "reps": ["Value"], "data": [[0.98], [1.08], [1.08], [1.02], [1.24], [1.09], [1.01], [1.08], [0.84], [1.16], [1.42], [1.41], [1.16], [1.49], [1.61]]}], "note": "Two measurements on 15 mice: Col 1 = X, Col 2 = Y"}, "dose": {"nReps": 1, "nRows": 11, "rowNames": ["Dose 1", "Dose 2", "Dose 3", "Dose 4", "Dose 5", "Dose 6", "Dose 7", "Dose 8", "Dose 9", "Dose 10", "Dose 11"], "groups": [{"name": "Concentration (µM)", "reps": ["Value"], "data": [[0.001], [0.003], [0.01], [0.03], [0.1], [0.3], [1], [3], [10], [30], [100]]}, {"name": "Response (%)", "reps": ["Value"], "data": [[2.9], [1.3], [5.3], [9.1], [11.8], [28.8], [54.3], [80.5], [91.8], [96.3], [98.4]]}], "note": "Dose–response: Col 1 = concentration, Col 2 = % response (EC50 ≈ 0.8 µM)"}, "km": {"nReps": 1, "nRows": 30, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15", "Mouse 16", "Mouse 17", "Mouse 18", "Mouse 19", "Mouse 20", "Mouse 21", "Mouse 22", "Mouse 23", "Mouse 24", "Mouse 25", "Mouse 26", "Mouse 27", "Mouse 28", "Mouse 29", "Mouse 30"], "groups": [{"name": "Time (days)", "reps": ["Value"], "data": [[2.5], [24.3], [3.2], [33.1], [20.0], [5.0], [11.1], [10.6], [58.8], [14.3], [60.0], [7.9], [8.7], [12.6], [12.6], [13.8], [23.0], [1.0], [11.9], [33.9], [48.2], [60.0], [17.8], [7.3], [46.4], [60.0], [44.4], [60.0], [33.4], [60.0]]}, {"name": "Control", "reps": ["Value"], "data": [[0], [1], [0], [1], [1], [1], [0], [1], [1], [1], [0], [0], [1], [1], [0], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""]]}, {"name": "Treated", "reps": ["Value"], "data": [[""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [0], [0], [1], [1], [1], [1], [0], [1], [1], [0], [0], [1], [0], [1], [0]]}], "note": "Survival, Prism layout: Col 1 = time; Control / Treated columns hold 1 (death) or 0 (censored) for their own subjects, blank otherwise"}, "anova": {"nReps": 3, "nRows": 2, "rowNames": ["Exp 1", "Exp 2"], "groups": [{"name": "Untreated", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[10.7, 8.6, 11.4], [10.6, 10.1, 9.6]]}, {"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[9.3, 9.3, 9.9], [9.2, 12.6, 10.5]]}, {"name": "Drug A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[14.0, 12.6, 12.3], [13.6, 15.8, 14.8]]}, {"name": "Drug B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[11.5, 12.0, 11.3], [13.4, 12.0, 13.4]]}], "note": "4 groups × 6 values: Untreated and Vehicle are both possible controls"}, "volcano": {"nReps": 1, "nRows": 40, "rowNames": ["Gene1", "Gene2", "Gene3", "Gene4", "Gene5", "Gene6", "Gene7", "Gene8", "Gene9", "Gene10", "Gene11", "Gene12", "Gene13", "Gene14", "Gene15", "Gene16", "Gene17", "Gene18", "Gene19", "Gene20", "Gene21", "Gene22", "Gene23", "Gene24", "Gene25", "Gene26", "Gene27", "Gene28", "Gene29", "Gene30", "Gene31", "Gene32", "Gene33", "Gene34", "Gene35", "Gene36", "Gene37", "Gene38", "Gene39", "Gene40"], "groups": [{"name": "log2 fold change", "reps": ["Value"], "data": [[3.15], [2.03], [2.6], [2.47], [1.45], [1.78], [-1.69], [-1.22], [-1.63], [-2.31], [-1.67], [-0.06], [-0.61], [-0.48], [0.7], [-0.07], [0.48], [-0.1], [0.29], [-0.1], [-1.1], [-0.17], [-0.94], [-0.05], [0.42], [-0.31], [-0.49], [0.03], [-0.22], [0.33], [0.0], [-0.86], [-0.22], [-0.94], [-1.29], [1.03], [-0.32], [0.16], [0.19], [-0.32]]}, {"name": "p-value", "reps": ["Value"], "data": [[7.53e-05], [6.61e-05], [0.000821], [0.000277], [3.63e-06], [0.000667], [0.000389], [1.48e-05], [0.000761], [0.00078], [0.000279], [0.00147], [0.0171], [0.0279], [0.000111], [0.0112], [0.112], [0.0939], [0.286], [0.0766], [0.0745], [0.584], [0.411], [0.1], [0.054], [0.0507], [0.124], [0.0764], [0.62], [0.0504], [0.0718], [0.802], [0.119], [0.153], [0.292], [0.148], [0.0579], [0.068], [0.825], [0.106]]}], "note": "40 genes: Col 1 = log2 fold change, Col 2 = p-value"}, "mtc": {"nReps": 1, "nRows": 12, "rowNames": ["Test A", "Test B", "Test C", "Test D", "Test E", "Test F", "Test G", "Test H", "Test I", "Test J", "Test K", "Test L"], "groups": [{"name": "p-value", "reps": ["Value"], "data": [[0.0004], [0.0021], [0.0089], [0.012], [0.019], [0.031], [0.044], [0.06], [0.17], [0.29], [0.48], [0.83]]}], "note": "12 p-values from separate tests (row names = test labels)"}, "fisher": {"nReps": 1, "nRows": 2, "rowNames": ["Responded", "Did not respond"], "groups": [{"name": "Treated", "reps": ["Value"], "data": [[12], [5]]}, {"name": "Untreated", "reps": ["Value"], "data": [[3], [10]]}], "note": "2 × 2 counts: columns = groups, rows = outcome"}, "chisq": {"nReps": 1, "nRows": 3, "rowNames": ["No symptoms", "Mild", "Severe"], "groups": [{"name": "Genotype AA", "reps": ["Value"], "data": [[42], [11], [3]]}, {"name": "Genotype Aa", "reps": ["Value"], "data": [[30], [18], [8]]}, {"name": "Genotype aa", "reps": ["Value"], "data": [[12], [17], [14]]}], "note": "Counts: columns = genotype, rows = severity"}};
+const EXAMPLES={"groups": {"nReps": 3, "nRows": 6, "rowNames": ["Sample 1", "Sample 2", "Sample 3", "Sample 4", "Sample 5", "Sample 6"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[2.1, 2.3, 1.9], [3.2, 2.8, 3.1], [1.8, 2.0, 2.2], [4.1, 3.9, 4.3], [2.5, 2.7, 2.3], [3.8, 3.6, 4.0]]}, {"name": "Treatment A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[4.5, 4.8, 4.2], [5.1, 5.4, 4.9], [3.9, 4.1, 4.3], [6.2, 5.8, 6.1], [4.7, 5.0, 4.6], [5.5, 5.3, 5.8]]}, {"name": "Treatment B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[3.0, 3.2, 2.8], [4.1, 3.8, 4.0], [2.7, 2.9, 3.1], [5.0, 4.7, 5.2], [3.5, 3.8, 3.3], [4.4, 4.2, 4.6]]}], "note": "3 groups × 3 replicates × 6 samples"}, "paired": {"nReps": 1, "nRows": 10, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10"], "groups": [{"name": "Before", "reps": ["Value"], "data": [[46.9], [56.1], [47.3], [46.2], [38.8], [47.4], [63.3], [55.1], [62.4], [53.0]]}, {"name": "After", "reps": ["Value"], "data": [[54.1], [62.7], [48.3], [54.8], [46.4], [54.9], [64.3], [55.9], [65.8], [57.6]]}], "note": "Paired: each row is one animal measured before and after treatment"}, "normality": {"nReps": 1, "nRows": 30, "rowNames": ["Obs 1", "Obs 2", "Obs 3", "Obs 4", "Obs 5", "Obs 6", "Obs 7", "Obs 8", "Obs 9", "Obs 10", "Obs 11", "Obs 12", "Obs 13", "Obs 14", "Obs 15", "Obs 16", "Obs 17", "Obs 18", "Obs 19", "Obs 20", "Obs 21", "Obs 22", "Obs 23", "Obs 24", "Obs 25", "Obs 26", "Obs 27", "Obs 28", "Obs 29", "Obs 30"], "groups": [{"name": "Normal-like", "reps": ["Value"], "data": [[10.61], [9.91], [11.04], [8.72], [10.62], [10.79], [8.68], [13.44], [11.11], [12.39], [8.76], [8.52], [9.31], [9.79], [11.26], [10.5], [9.11], [8.09], [8.96], [12.44], [8.38], [10.49], [10.85], [7.02], [10.1], [12.61], [5.97], [9.36], [9.79], [8.37]]}, {"name": "Right-skewed", "reps": ["Value"], "data": [[2.99], [1.98], [9.43], [8.65], [7.99], [5.35], [4.09], [7.69], [2.96], [1.54], [2.85], [2.48], [1.62], [1.8], [7.46], [2.84], [1.04], [2.7], [2.41], [5.18], [1.61], [3.12], [4.71], [5.61], [3.61], [1.22], [2.95], [3.66], [2.11], [5.26]]}], "note": "One roughly normal and one skewed sample (n = 30 each)"}, "anova2": {"nReps": 3, "nRows": 2, "rowNames": ["Litter 1", "Litter 2"], "groups": [{"name": "WT · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[20.0, 22.3, 19.2], [21.0, 24.6, 13.6]]}, {"name": "WT · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[29.2, 32.6, 33.0], [32.6, 30.9, 33.6]]}, {"name": "KO · Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[21.7, 19.7, 27.1], [21.9, 19.6, 20.8]]}, {"name": "KO · Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[22.4, 22.8, 16.2], [21.8, 25.5, 20.1]]}], "note": "2 × 2 design: genotype (WT, KO) × treatment (Vehicle, Drug), 6 animals per cell; nA = 2, nB = 2"}, "genes": {"nReps": 3, "nRows": 16, "rowNames": ["MYC", "FOS", "JUN", "EGR1", "IL6", "CXCL8", "TNF", "CCL2", "HMOX1", "NQO1", "GAPDH", "ACTB", "CDK1", "CCNB1", "MKI67", "TOP2A"], "groups": [{"name": "Control", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[7.27, 7.35, 7.5], [7.87, 7.81, 8.22], [7.1, 6.76, 7.52], [9.57, 10.09, 9.79], [8.7, 8.84, 8.72], [10.05, 9.51, 9.52], [7.8, 7.41, 7.39], [6.75, 7.43, 7.3], [10.43, 9.82, 10.06], [10.64, 11.12, 11.32], [10.04, 10.65, 10.51], [9.99, 9.54, 10.38], [10.07, 9.94, 10.19], [9.8, 10.07, 9.44], [7.42, 7.51, 7.5], [8.54, 8.4, 8.84]]}, {"name": "Drug 6 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.83, 8.84, 9.16], [10.27, 9.76, 10.24], [8.37, 9.04, 8.91], [12.51, 12.66, 12.87], [9.48, 9.79, 9.45], [11.16, 11.27, 11.3], [8.08, 8.47, 7.78], [7.54, 7.32, 8.08], [10.95, 11.25, 11.21], [11.82, 11.68, 11.88], [10.71, 10.27, 10.4], [10.38, 10.08, 9.82], [9.45, 9.86, 9.18], [9.15, 9.55, 9.5], [6.54, 6.74, 6.58], [7.79, 7.7, 7.93]]}, {"name": "Drug 24 h", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[8.04, 7.66, 7.58], [7.94, 7.75, 8.1], [7.14, 7.53, 6.85], [10.14, 9.9, 9.57], [11.44, 11.19, 10.71], [12.68, 12.97, 12.78], [10.04, 10.04, 10.01], [9.6, 9.85, 9.68], [11.97, 11.34, 12.08], [12.85, 12.45, 12.41], [10.75, 9.82, 10.38], [10.64, 9.8, 10.2], [8.56, 8.06, 8.23], [8.13, 7.67, 7.88], [5.01, 5.14, 4.93], [6.64, 6.43, 6.6]]}], "note": "16 genes (log2 expression) × 3 conditions × 3 replicates"}, "timecourse": {"nReps": 3, "nRows": 6, "rowNames": ["0 h", "2 h", "4 h", "8 h", "12 h", "24 h"], "groups": [{"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.07, 1.01, 0.93], [0.93, 1.21, 1.09], [1.05, 0.79, 1.05], [1.04, 1.13, 1.03], [0.99, 1.04, 0.84], [1.08, 1.03, 0.94]]}, {"name": "Drug", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[1.27, 1.36, 0.72], [1.67, 1.86, 1.84], [2.82, 2.71, 3.32], [3.81, 3.36, 3.33], [3.44, 3.3, 3.46], [2.16, 1.83, 2.05]]}], "note": "Time course: rows = time points, 3 replicates (fold change vs 0 h)"}, "xy": {"nReps": 1, "nRows": 15, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15"], "groups": [{"name": "Body weight (g)", "reps": ["Value"], "data": [[18.7], [19.5], [19.8], [20.3], [20.8], [21.3], [21.8], [22.1], [22.3], [22.4], [25.0], [25.4], [25.7], [28.6], [31.0]]}, {"name": "Liver weight (g)", "reps": ["Value"], "data": [[0.98], [1.08], [1.08], [1.02], [1.24], [1.09], [1.01], [1.08], [0.84], [1.16], [1.42], [1.41], [1.16], [1.49], [1.61]]}], "note": "Two measurements on 15 mice: Col 1 = X, Col 2 = Y"}, "dose": {"nReps": 1, "nRows": 11, "rowNames": ["Dose 1", "Dose 2", "Dose 3", "Dose 4", "Dose 5", "Dose 6", "Dose 7", "Dose 8", "Dose 9", "Dose 10", "Dose 11"], "groups": [{"name": "Concentration (µM)", "reps": ["Value"], "data": [[0.001], [0.003], [0.01], [0.03], [0.1], [0.3], [1], [3], [10], [30], [100]]}, {"name": "Response (%)", "reps": ["Value"], "data": [[2.9], [1.3], [5.3], [9.1], [11.8], [28.8], [54.3], [80.5], [91.8], [96.3], [98.4]]}], "note": "Dose–response: Col 1 = concentration, Col 2 = % response (EC50 ≈ 0.8 µM)"}, "km": {"nReps": 1, "nRows": 30, "rowNames": ["Mouse 1", "Mouse 2", "Mouse 3", "Mouse 4", "Mouse 5", "Mouse 6", "Mouse 7", "Mouse 8", "Mouse 9", "Mouse 10", "Mouse 11", "Mouse 12", "Mouse 13", "Mouse 14", "Mouse 15", "Mouse 16", "Mouse 17", "Mouse 18", "Mouse 19", "Mouse 20", "Mouse 21", "Mouse 22", "Mouse 23", "Mouse 24", "Mouse 25", "Mouse 26", "Mouse 27", "Mouse 28", "Mouse 29", "Mouse 30"], "groups": [{"name": "Time (days)", "reps": ["Value"], "data": [[2.5], [24.3], [3.2], [33.1], [20.0], [5.0], [11.1], [10.6], [58.8], [14.3], [60.0], [7.9], [8.7], [12.6], [12.6], [13.8], [23.0], [1.0], [11.9], [33.9], [48.2], [60.0], [17.8], [7.3], [46.4], [60.0], [44.4], [60.0], [33.4], [60.0]]}, {"name": "Control", "reps": ["Value"], "data": [[0], [1], [0], [1], [1], [1], [0], [1], [1], [1], [0], [0], [1], [1], [0], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""]]}, {"name": "Treated", "reps": ["Value"], "data": [[""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [""], [0], [0], [1], [1], [1], [1], [0], [1], [1], [0], [0], [1], [0], [1], [0]]}], "note": "Survival layout: Col 1 = time; Control / Treated columns hold 1 (death) or 0 (censored) for their own subjects, blank otherwise"}, "anova": {"nReps": 3, "nRows": 2, "rowNames": ["Exp 1", "Exp 2"], "groups": [{"name": "Untreated", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[10.7, 8.6, 11.4], [10.6, 10.1, 9.6]]}, {"name": "Vehicle", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[9.3, 9.3, 9.9], [9.2, 12.6, 10.5]]}, {"name": "Drug A", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[14.0, 12.6, 12.3], [13.6, 15.8, 14.8]]}, {"name": "Drug B", "reps": ["Rep1", "Rep2", "Rep3"], "data": [[11.5, 12.0, 11.3], [13.4, 12.0, 13.4]]}], "note": "4 groups × 6 values: Untreated and Vehicle are both possible controls"}, "volcano": {"nReps": 1, "nRows": 40, "rowNames": ["Gene1", "Gene2", "Gene3", "Gene4", "Gene5", "Gene6", "Gene7", "Gene8", "Gene9", "Gene10", "Gene11", "Gene12", "Gene13", "Gene14", "Gene15", "Gene16", "Gene17", "Gene18", "Gene19", "Gene20", "Gene21", "Gene22", "Gene23", "Gene24", "Gene25", "Gene26", "Gene27", "Gene28", "Gene29", "Gene30", "Gene31", "Gene32", "Gene33", "Gene34", "Gene35", "Gene36", "Gene37", "Gene38", "Gene39", "Gene40"], "groups": [{"name": "log2 fold change", "reps": ["Value"], "data": [[3.15], [2.03], [2.6], [2.47], [1.45], [1.78], [-1.69], [-1.22], [-1.63], [-2.31], [-1.67], [-0.06], [-0.61], [-0.48], [0.7], [-0.07], [0.48], [-0.1], [0.29], [-0.1], [-1.1], [-0.17], [-0.94], [-0.05], [0.42], [-0.31], [-0.49], [0.03], [-0.22], [0.33], [0.0], [-0.86], [-0.22], [-0.94], [-1.29], [1.03], [-0.32], [0.16], [0.19], [-0.32]]}, {"name": "p-value", "reps": ["Value"], "data": [[7.53e-05], [6.61e-05], [0.000821], [0.000277], [3.63e-06], [0.000667], [0.000389], [1.48e-05], [0.000761], [0.00078], [0.000279], [0.00147], [0.0171], [0.0279], [0.000111], [0.0112], [0.112], [0.0939], [0.286], [0.0766], [0.0745], [0.584], [0.411], [0.1], [0.054], [0.0507], [0.124], [0.0764], [0.62], [0.0504], [0.0718], [0.802], [0.119], [0.153], [0.292], [0.148], [0.0579], [0.068], [0.825], [0.106]]}], "note": "40 genes: Col 1 = log2 fold change, Col 2 = p-value"}, "mtc": {"nReps": 1, "nRows": 12, "rowNames": ["Test A", "Test B", "Test C", "Test D", "Test E", "Test F", "Test G", "Test H", "Test I", "Test J", "Test K", "Test L"], "groups": [{"name": "p-value", "reps": ["Value"], "data": [[0.0004], [0.0021], [0.0089], [0.012], [0.019], [0.031], [0.044], [0.06], [0.17], [0.29], [0.48], [0.83]]}], "note": "12 p-values from separate tests (row names = test labels)"}, "fisher": {"nReps": 1, "nRows": 2, "rowNames": ["Responded", "Did not respond"], "groups": [{"name": "Treated", "reps": ["Value"], "data": [[12], [5]]}, {"name": "Untreated", "reps": ["Value"], "data": [[3], [10]]}], "note": "2 × 2 counts: columns = groups, rows = outcome"}, "chisq": {"nReps": 1, "nRows": 3, "rowNames": ["No symptoms", "Mild", "Severe"], "groups": [{"name": "Genotype AA", "reps": ["Value"], "data": [[42], [11], [3]]}, {"name": "Genotype Aa", "reps": ["Value"], "data": [[30], [18], [8]]}, {"name": "Genotype aa", "reps": ["Value"], "data": [[12], [17], [14]]}], "note": "Counts: columns = genotype, rows = severity"}};
 
 // Which example suits each plot type / test
 const EXAMPLE_FOR_PLOT={bar_sd:'groups',boxplot:'groups',violin:'groups',scatter:'xy',line:'timecourse',heatmap:'genes',volcano:'volcano',pca:'genes',km:'km',dose:'dose',qq:'normality',histogram:'normality',mtc:'mtc',ecdf:'normality'};
@@ -4230,9 +4368,9 @@ window.addEventListener('load',checkLibs);
   </div>
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
-<p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (pure JavaScript, no Python, no server) and never uploads your data anywhere.</p>
-<p>TP is a <strong>beta (v0.9.2)</strong>. Results should be sanity-checked against an established package before you rely on them in a publication.</p>
-<p><strong>Opening TP:</strong> double-click <code>Thistle_Plot_v0.9.2.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
+<p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a> (MIT licence).</p>
+<p>TP is a <strong>beta (v0.10.0)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual), but results should still be sanity-checked against an established package before you rely on them in a publication.</p>
+<p><strong>Opening TP:</strong> use the hosted copy at <a href="https://actinomycetes.github.io/thistle-plot/">https://actinomycetes.github.io/thistle-plot/</a>, double-click a downloaded <code>index.html</code> to open it in Chrome, Edge, Firefox or Safari, or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
 <ol>
@@ -4243,7 +4381,7 @@ window.addEventListener('load',checkLibs);
 <li><strong>Click ▶ Run Analysis.</strong> Results appear in a new tab on the right, headed by the options and data used. With <em>Auto-plot after run</em> ticked, a linked plot opens too; 🔗 jumps between them, and re-creates either one if you closed it.</li>
 <li><strong>Pick a plot</strong> under <strong>Visualisation</strong>, for example <em>Bar + SD + Dots</em>, set its options (normalisation, dots shown, Y-axis label) and click <strong>📈 Plot</strong>. To adjust it, change the options and click <strong>↻ Update plot</strong> (or tick <em>Live update</em> to redraw as you go); <strong>+ New</strong> keeps the figure and opens another tab.</li>
 <li><strong>Check the figure.</strong> Significance brackets (*, **, ***, ****) from your last test are drawn automatically on bar charts.</li>
-<li><strong>Choose an export style</strong> in the header: <strong>App</strong> (what you see on screen) or <strong>Publication (Prism-like)</strong> (white background, black axes, bold Arial, greyscale, about 300 dpi).</li>
+<li><strong>Choose an export style</strong> in the header: <strong>App</strong> (what you see on screen) or <strong>Publication</strong> (white background, black axes, bold Arial, greyscale, about 300 dpi).</li>
 <li><strong>Download</strong> with <strong>⬇ PNG</strong>, <strong>⬇ SVG</strong> or <strong>⬇ PDF</strong> at the top of the plot tab.</li>
 <li><strong>Save your work</strong> with <strong>💾 Save</strong>. This downloads a <code>.thistle</code> project file you can reopen later with <strong>📂 Load</strong>.</li>
 </ol>
@@ -4293,7 +4431,7 @@ window.addEventListener('load',checkLibs);
 <tbody>
 <tr>
 <td>Kaplan-Meier</td>
-<td>Col 1 = time; each further column is one group holding 1 (event) or 0 (censored) for its own subjects, blank otherwise (one subject per row, as in Prism)</td>
+<td>Col 1 = time; each further column is one group holding 1 (event) or 0 (censored) for its own subjects, blank otherwise (one subject per row)</td>
 </tr>
 <tr>
 <td>Dose-Response (5PL)</td>
@@ -4452,7 +4590,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Descriptive</td>
 <td>Normality Test (Shapiro-Wilk)</td>
-<td>Each column tested separately</td>
+<td>Each column tested separately (Royston's method, 3 to 5000 values); skewness and excess kurtosis also shown</td>
 </tr>
 <tr>
 <td>Parametric</td>
@@ -4462,7 +4600,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Parametric</td>
 <td>Paired t-test</td>
-<td>As above, plus Comparison: Difference (A−B) or Ratio (A/B)</td>
+<td>As above, plus Comparison: Difference (A−B), or Ratio (A/B) tested on log ratios and reported as a geometric mean ratio with 95% CI. Values are paired by row and replicate; a blank cell drops only its own pair</td>
 </tr>
 <tr>
 <td>Parametric</td>
@@ -4477,12 +4615,12 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Non-parametric</td>
 <td>Mann-Whitney U</td>
-<td>Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák)</td>
+<td>Exact p-value up to 60 values in total (ties allowed), normal approximation with tie and continuity corrections above; Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák)</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
 <td>Wilcoxon Signed-Rank</td>
-<td>Mode and correction as above; Difference or Ratio</td>
+<td>Exact p-value up to 60 non-zero pairs; zero differences left out; Mode and correction as above; Difference or Ratio (ranks log ratios)</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
@@ -4492,7 +4630,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Non-parametric</td>
 <td>Rank Sum (paired)</td>
-<td>Mode and correction as above; Difference or Ratio</td>
+<td>Signed-rank test of the per-pair difference or log ratio: the same result as Wilcoxon signed-rank with the same Comparison</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
@@ -4527,7 +4665,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Categorical</td>
 <td>Fisher's Exact (2×2), Chi-Square</td>
-<td>Counts tables</td>
+<td>Counts tables (first replicate column). Chi-square has no continuity correction, ignores empty rows and columns, and warns when expected counts are below 5</td>
 </tr>
 <tr>
 <td>Categorical</td>
@@ -4542,7 +4680,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Survival / XY</td>
 <td>Dose-Response (5PL)</td>
-<td>Concentration and response columns</td>
+<td>Concentration and response columns (one concentration per row with replicate responses is fine); reports EC50 (X half-way between Bottom and Top) and the midpoint parameter C</td>
 </tr>
 <tr>
 <td>Survival / XY</td>
@@ -4578,8 +4716,8 @@ window.addEventListener('load',checkLibs);
 </tr>
 <tr>
 <td>Wilcoxon signed-rank vs Rank Sum (paired)</td>
-<td>You test the paired difference</td>
-<td>You want to test ratios (fold changes) as well as differences</td>
+<td>Either: since v0.10.0 they give the same result</td>
+<td>(kept so older projects reopen)</td>
 </tr>
 <tr>
 <td>One-way ANOVA vs Kruskal–Wallis</td>
@@ -4646,7 +4784,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Holm–Šídák</td>
 <td>Family-wise error</td>
-<td>Default for a few planned comparisons (control vs groups, all pairs after Kruskal–Wallis). Slightly more power than Holm; assumes tests are independent or positively correlated. Prism's default</td>
+<td>Default for a few planned comparisons (control vs groups, all pairs after Kruskal–Wallis). Slightly more power than Holm; assumes tests are independent or positively correlated.</td>
 </tr>
 <tr>
 <td>Holm–Bonferroni</td>
@@ -4703,7 +4841,7 @@ window.addEventListener('load',checkLibs);
 <td>plot.png / plot.svg</td>
 </tr>
 <tr>
-<td>Publication (Prism-like)</td>
+<td>Publication</td>
 <td>White background; black L-shaped axes with outward ticks, no gridlines; greyscale bars with black outlines; black error bars and dots spread so they don't overlap; bold Arial labels; distinct marker shapes per series</td>
 <td>About 300 dpi: bar charts narrow (width grows with the number of groups), other plots 4:3</td>
 <td>plot_publication.png / .svg</td>
@@ -4759,17 +4897,25 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.9.2 (beta):</p>
+<p>Known limitations of v0.10.0 (beta):</p>
 <ul>
-<li>Two-Way ANOVA supports balanced designs only (equal n in every cell).</li>
+<li>Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.</li>
+<li>Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).</li>
+<li>Kolmogorov–Smirnov exact p-values assume no tied values (conservative with ties).</li>
 <li>Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.</li>
 <li>Kaplan–Meier assumes one subject per row; hazard ratios are log-rank estimates (no Cox regression).</li>
 <li>SVG export is an embedded image, not editable vectors.</li>
 <li>Publication style is greyscale only; there are no colour publication palettes yet.</li>
 <li>Project files store only the active dataset, and plots only as snapshot images.</li>
 <li>TP has not yet been formally validated against a reference package. Spot-check key results.</li>
-</ul><!--/HELP:hf--></div>
-   <div class="hpane" id="hv"><!--HELP:hv--><h2>Version History</h2><p>All releases are beta (0.x). Earlier builds were called PyPrism / PyPrism Pro; numbers before 0.6.0 are mapped from the old v1–v5 builds.</p>
+</ul>
+<h3>11. Checking the calculations</h3>
+<p>Every statistical test in TP has been compared with independent open-source software (SciPy and statsmodels for Python) on the same data: t-tests, Mann–Whitney, Wilcoxon, ANOVA with Tukey and Dunnett, Kruskal–Wallis and Dunn, two-way ANOVA, correlation and regression, 4PL/5PL fits, Shapiro–Wilk, Lilliefors and Kolmogorov–Smirnov, Fisher's exact, chi-square, Kaplan–Meier, log-rank and the multiple-comparison corrections. The script that does this is in the code repository, with step-by-step instructions: <a href="https://github.com/actinomycetes/thistle-plot/blob/main/tools/validate/README.md">tools/validate/README.md</a>. Agreement with these packages is not a formal validation, so keep spot-checking important results.</p>
+<h3>12. Source code and licences</h3>
+<p>TP is free and open source under the MIT licence: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a>. © 2026 Takanobu Tagawa (The University of Edinburgh). Report problems or suggestions there.</p>
+<p>TP loads three open-source libraries from cdnjs, each under the MIT licence: <a href="https://www.chartjs.org/">Chart.js</a> (© Chart.js contributors), <a href="https://github.com/jstat/jstat">jStat</a> (© jStat contributors) and <a href="https://www.papaparse.com/">PapaParse</a> (© Matthew Holt). Product names mentioned in this manual (for example Excel, Google Sheets and Confluence) are trademarks of their owners; TP is not affiliated with them.</p>
+<p>Methods follow their published descriptions, for example Shapiro–Wilk (Royston 1992, 1995), Dunnett (1955), Rank Product (Breitling et al. 2004), Lilliefors (1967) and the 5-parameter logistic curve (Gottschalk &amp; Dunn 2005).</p><!--/HELP:hf--></div>
+   <div class="hpane" id="hv"><!--HELP:hv--><h2>Version History</h2><p>All releases are beta (0.x). Earlier builds had a different working name; numbers before 0.6.0 are mapped from the old v1–v5 builds.</p>
 <table>
 <thead>
 <tr>
@@ -4779,6 +4925,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.10.0 (14 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Calculation review before v1.0, every test cross-checked against SciPy/statsmodels (script in <code>tools/validate</code>). Fixed: <em>Normality Test (Shapiro-Wilk)</em> now really runs Shapiro–Wilk (it ran Jarque–Bera); paired ratio t-test tests log ratios (it tested the mean ratio against 0, so was always significant) and reports a geometric mean ratio; paired tests, correlation, regression, dose-response, volcano and scatter now pair values by row and replicate (a blank cell shifted every later pair); Mann–Whitney and Wilcoxon give exact p-values for small samples (the approximation could give p &lt; 0.05 for 3 vs 3); Rank Sum (paired) is a real paired test; Z-score normalisation uses one mean/SD for the whole table (per-group z-scores made group means equal); chi-square ignores empty rows, warns on small expected counts; Fisher's exact p for very unbalanced tables and odds ratio with a zero count; one-way ANOVA on identical values is an error, not p = 0; 5PL reports the true EC50 and its equation label is corrected; 4PL keeps EC50 &gt; 0; Q-Q plot positions, box-plot whiskers (to the furthest point within 1.5 × IQR), shared histogram bins, centred heatmap colours, bracket stacking for a control after other groups, multiple-testing plot labels; very small p-values keep their precision. Removed the JavaScript badge from the header and the names of other software; Help links to the source code and lists licences</td>
+</tr>
 <tr>
 <td>0.9.2 (6 Nov 2026)</td>
 <td>Thistle Plot</td>
@@ -4807,7 +4958,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>0.8.0 (5 Nov 2026)</td>
 <td>Thistle Plot</td>
-<td>Dunnett's test for one-way ANOVA vs a control (exact multivariate t; checked against simulation and SciPy); one-way ANOVA can compare against several ticked control groups; two-way ANOVA post-hoc tests (simple effects, all cells, main effects) with brackets on the bar chart, factor labels from group names, and a check for unbalanced designs (cell-means table fixed); Kaplan–Meier with any number of groups (Prism layout), log-rank test, hazard ratio and corrected pairwise log-rank; Kolmogorov–Smirnov test (two-sample exact, or Lilliefors normality) with a new Cumulative Distribution (ECDF) plot; large datasets: data table draws only visible rows, paste grows the table and can fill row names, PCA rewritten to work on samples with tens of thousands of genes (and lists top loadings), heatmap limited to the most variable rows, long result tables show the top 200 rows with a full CSV download; Rank Product p-values now use the exact distribution of the product of rank fractions</td>
+<td>Dunnett's test for one-way ANOVA vs a control (exact multivariate t; checked against simulation and SciPy); one-way ANOVA can compare against several ticked control groups; two-way ANOVA post-hoc tests (simple effects, all cells, main effects) with brackets on the bar chart, factor labels from group names, and a check for unbalanced designs (cell-means table fixed); Kaplan–Meier with any number of groups, log-rank test, hazard ratio and corrected pairwise log-rank; Kolmogorov–Smirnov test (two-sample exact, or Lilliefors normality) with a new Cumulative Distribution (ECDF) plot; large datasets: data table draws only visible rows, paste grows the table and can fill row names, PCA rewritten to work on samples with tens of thousands of genes (and lists top loadings), heatmap limited to the most variable rows, long result tables show the top 200 rows with a full CSV download; Rank Product p-values now use the exact distribution of the product of rank fractions</td>
 </tr>
 <tr>
 <td>0.7.0 (5 Nov 2026)</td>
@@ -4827,26 +4978,26 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>0.6.0 (5 Nov 2026)</td>
 <td>Thistle Plot</td>
-<td>Renamed from PyPrism Pro, with a new thistle icon; BETA and version badges in the header; built-in ❓ Help with these manuals; Publication (Prism-like) export style rebuilt so figures are redrawn at about 300 dpi instead of stretched (fixes distorted shapes, skewed fonts and coloured outlines); Prism-like axes, greyscale fills, round-number ticks and non-overlapping dots; marker shapes per series on line and scatter plots; project files now <code>.thistle</code> (<code>.pprism</code> still loads)</td>
+<td>Renamed to Thistle Plot, with a new thistle icon; BETA and version badges in the header; built-in ❓ Help with these manuals; Publication export style rebuilt so figures are redrawn at about 300 dpi instead of stretched (fixes distorted shapes, skewed fonts and coloured outlines); plain black axes, greyscale fills, round-number ticks and non-overlapping dots; marker shapes per series on line and scatter plots; project files now <code>.thistle</code> (<code>.pprism</code> still loads)</td>
 </tr>
 <tr>
 <td>0.5</td>
-<td>PyPrism Pro v5</td>
+<td>(earlier name) v5</td>
 <td>Datasets renamed by double-click; Visualisation and Statistical Test sections visually separated</td>
 </tr>
 <tr>
 <td>0.4</td>
-<td>PyPrism Pro v4</td>
+<td>(earlier name) v4</td>
 <td>Rebuilt after file damage; PCA "All replicates" mode fixed; Bar/Boxplot "Group mean" shows one dot per sample row</td>
 </tr>
 <tr>
 <td>0.3</td>
-<td>PyPrism Pro v3 / v3b</td>
+<td>(earlier name) v3 / v3b</td>
 <td>First single-file web app in pure JavaScript, replacing Python</td>
 </tr>
 <tr>
 <td>0.1–0.2</td>
-<td>PyPrism v1–v2</td>
+<td>(earlier name) v1–v2</td>
 <td>Python desktop and Streamlit prototypes</td>
 </tr>
 </tbody>
@@ -4855,7 +5006,8 @@ window.addEventListener('load',checkLibs);
  </div>
 </div>
 <script>
-function openHelp(t){document.getElementById('help-ov').classList.add('open');if(t)helpTab(t);}
+// External links in Help open in a new tab, so following one never replaces TP (and unsaved work), e.g. inside the wiki iFrame
+function openHelp(t){document.querySelectorAll('#help-body a[href^="http"]').forEach(x=>{x.target='_blank';x.rel='noopener';});document.getElementById('help-ov').classList.add('open');if(t)helpTab(t);}
 function closeHelp(){document.getElementById('help-ov').classList.remove('open');}
 function helpTab(id){document.querySelectorAll('.hpane').forEach(e=>e.classList.toggle('active',e.id===id));document.querySelectorAll('#help-head .htab').forEach(b=>b.classList.toggle('active',b.dataset.p===id));document.getElementById('help-body').scrollTop=0;}
 document.addEventListener('keydown',e=>{if(e.key==='F1'){e.preventDefault();openHelp();}else if(e.key==='Escape'&&document.getElementById('help-ov').classList.contains('open'))closeHelp();});

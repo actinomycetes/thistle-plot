@@ -4,7 +4,7 @@ Free, single-file web app for bench statistics and publication-style figures. Ru
 **Use it online:** <https://actinomycetes.github.io/thistle-plot/> (hosted on GitHub Pages, always the latest release).
 Or download `index.html` and open it in your browser. Press **F1** inside the app for the manuals.
 
-**Status:** beta (0.x). Check important results against an established package before publishing.
+**Status:** beta (0.x; current v0.10.0). Every statistical test is cross-checked against SciPy and statsmodels (see [`tools/validate/`](tools/validate/README.md)). Check important results against an established package before publishing.
 
 ## For developers
 See `CLAUDE.md` for architecture, rules and the release checklist.
@@ -16,7 +16,7 @@ npm test
 ```
 
 Layout: `index.html` (the app) · `docs/` (manual sources) · `tools/build_help.py` (builds Help into `index.html`) ·
-`tests/` (Playwright tests) · `.github/workflows/ci.yml` (runs everything on each push).
+`tests/` (Playwright tests) · `tools/validate/` (cross-check against SciPy/statsmodels) · `.github/workflows/ci.yml` (runs everything on each push).
 
 ## Citing
 See [`CITATION.cff`](CITATION.cff), or use GitHub's "Cite this repository" button.

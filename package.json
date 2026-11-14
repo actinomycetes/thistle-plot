@@ -1,6 +1,6 @@
 {
   "name": "thistle-plot",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "private": true,
   "description": "Thistle Plot (TP): single-file stats and plotting web app for bench scientists (beta).",
   "author": "Takanobu Tagawa (The University of Edinburgh)",
@@ -9,7 +9,8 @@
     "test": "node --test --test-concurrency=1 --test-timeout=240000 \"tests/*.test.js\"",
     "test:quick": "node --test --test-timeout=240000 tests/smoke.test.js tests/links.test.js tests/replot.test.js tests/clipboard.test.js",
     "help": "python3 tools/build_help.py",
-    "help:check": "python3 tools/build_help.py --check"
+    "help:check": "python3 tools/build_help.py --check",
+    "validate": "bash tools/validate/run.sh"
   },
   "devDependencies": {
     "chart.js": "4.4.1",

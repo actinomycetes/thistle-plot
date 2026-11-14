@@ -10,7 +10,7 @@ before(async () => { app = await openApp(); });
 after(async () => { await app.close(); });
 
 for (const plot of ['bar_sd', 'boxplot', 'scatter', 'heatmap', 'pca']) {
-  for (const style of ['app', 'prism']) {
+  for (const style of ['app', 'publication']) {
     test(`${plot} exports a PNG (${style} style)`, async () => {
       await selectPlot(app.page, plot);
       await app.page.evaluate(async () => { loadExampleFor('plot'); await new Promise(r => setTimeout(r, 80)); runPlot(); });

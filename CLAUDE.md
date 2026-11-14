@@ -1,6 +1,6 @@
 # Thistle Plot (TP): project guide for Claude Code
 
-TP is a **beta** (0.x) GraphPad-Prism-style statistics and plotting web app for bench scientists
+TP is a **beta** (0.x) statistics and plotting web app for bench scientists
 (UoE TT ncRNA lab). It is a **single self-contained `index.html`** (about 300 KB), plain JavaScript,
 no framework, no build step. Libraries come from cdnjs: Chart.js 4.4.1, jStat 1.9.6, PapaParse 5.4.1.
 It is served by GitHub Pages straight from `index.html` and embedded on a Confluence wiki through an iFrame macro.
@@ -24,6 +24,7 @@ npm test              # full suite (~2 min): smoke, stats, links, large data, ex
 npm run test:quick    # smoke + links only
 python3 tools/build_help.py          # rebuild the in-app Help from docs/*.md
 python3 tools/build_help.py --check  # CI check that Help is up to date
+npm run validate      # cross-check the statistics against SciPy/statsmodels (tools/validate)
 ```
 Open `index.html` directly in a browser to try it. Tests load the CDN libraries from `node_modules`, so they run offline.
 
@@ -62,23 +63,30 @@ Versioning: 0.MINOR.PATCH. Fixes bump PATCH, new features bump MINOR (0.8.2 -> 0
 - **Results tables:** `table.rtbl`; long tables show `SHOW_ROWS=200` with a full CSV (`csvButton`, `downloadCSV`);
   `exportStatTables(tabId)` produces the per-result CSV.
 - **Export:** `_renderExport(pageId, mode)`. App style = screen look at 2x on an opaque background (Chart.js canvases are transparent,
-  so they are flattened). Publication (Prism-like) style redraws the chart at `PRISM_SCALE=3` with `_exportTheme=PRISM_THEME`
-  via `_prismifyConfig`, a Proxy-wrapped `Chart` constructor, `_prismDotsPlugin` (beeswarm dots) and `_niceAxis`. SVG is an embedded raster.
+  so they are flattened). Publication style (value `publication`) redraws the chart at `PUB_SCALE=3` with `_exportTheme=PUB_THEME`
+  via `_pubifyConfig`, a Proxy-wrapped `Chart` constructor, `_pubDotsPlugin` (beeswarm dots) and `_niceAxis`. SVG is an embedded raster.
 - **Help:** a modal (F1 or the Help button) with three panes generated from `docs/*.md` (see Release checklist).
 
+## Names, licences, provenance
+- Do not name commercial software in the UI, Help or code comments (no "Prism-like"); describe the behaviour instead.
+  `.pprism` project files from early builds still load.
+- Write algorithms from their published descriptions, never by porting code from GPL software (e.g. R). Cite the paper.
+- Paired data (paired tests, correlation, regression, dose, volcano, scatter) must be paired by row and replicate with
+  `pairedCells` / `xyPairs`, never by zipping two `getGroupPooled` lists (a blank cell shifts every later pair).
+
 ## Hard-won pitfalls (do not reintroduce)
-- Setting Chart.js options through setters in the Prism export caused infinite recursion: modify the config BEFORE constructing the chart.
+- Setting Chart.js options through setters in the Publication export caused infinite recursion: modify the config BEFORE constructing the chart.
 - Chart.js canvases are transparent: PNG export must composite on an opaque background (the App-style PNG was blank once).
 - Kaplan-Meier must handle censoring correctly (plot on a time axis with censor ticks); the estimate was wrong before.
 - Power-iteration PCA crashed the page on 20,000 rows; keep the Gram-matrix method.
-- Heatmap labels must not overlap the colour key; Prism heatmap group strips are greyscale.
+- Heatmap labels must not overlap the colour key; Publication heatmap group strips are greyscale.
 - Option IDs used by `captureOptState` / `restoreOptState` must be stable, or 🔗 re-creation breaks.
 - Clear / new dataset must reset to the default empty 2-group table (names too).
 - Do not fetch from the network at runtime beyond the three cdnjs libraries.
 
 ## Known gaps (candidates for future work)
 Dunnett only for a single control; Kaplan-Meier has no Cox regression; two-way ANOVA needs a balanced design; SVG export is an
-embedded raster; Prism style is greyscale only; project files store only the active dataset and plots only as snapshots;
+embedded raster; Publication style is greyscale only; project files store only the active dataset and plots only as snapshots;
 Fisher/chi-square have no plot; paired rank-sum and Wilcoxon "by sample" figures are not specially handled; TP has not been formally validated.
 
 ## Testing notes

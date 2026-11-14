@@ -20,6 +20,9 @@ jobs:
       - run: npm install
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - run: pip install numpy scipy pandas statsmodels
+      - name: Statistics agree with SciPy/statsmodels (tools/validate)
+        run: node tools/validate/dump_tp.js | python3 -I tools/validate/compare.py
       - name: Keep exported PNGs from the run
         if: always()
         uses: actions/upload-artifact@v4
