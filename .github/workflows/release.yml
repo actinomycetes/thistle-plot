@@ -33,7 +33,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
+          # no pipefail: a reader that stops early (head, grep -q) would make the writer fail with SIGPIPE (exit 141)
+          set -eu
           git fetch --tags --force
           main=$(git rev-parse origin/main)
           # every version that index.html has ever had, oldest first
@@ -41,10 +42,10 @@ jobs:
           for v in $versions; do
             tag="v$v"
             if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then continue; fi
-            first=$(git log --reverse --format=%H -S"APP_VERSION='$v'" -- index.html | head -1)
+            first=$(git log --reverse --format=%H -S"APP_VERSION='$v'" -- index.html | sed -n 1p)
             sha=""
-            for c in $(git rev-list --reverse "$first^..HEAD"); do
-              git show "$c:index.html" | grep -q "const APP_VERSION='$v'" || continue
+            for c in "$first" $(git rev-list --reverse "$first..HEAD"); do
+              git show "$c:index.html" | grep "const APP_VERSION='$v'" >/dev/null || continue
               git diff --quiet "$c" "$main" -- .github/workflows || continue
               sha=$c
             done
