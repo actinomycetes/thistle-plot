@@ -12,8 +12,13 @@ fs.mkdirSync(OUT, { recursive: true });
 function lib(rel) { return fs.readFileSync(path.join(ROOT, 'node_modules', rel)); }
 
 async function openApp(opts = {}) {
-  const browser = await playwright[process.env.TP_BROWSER || 'chromium'].launch();
-  const ctx = await browser.newContext({ viewport: { width: 1500, height: 950 }, acceptDownloads: true });
+  // TP_DEVICE=ipad emulates Safari on an iPad (WebKit engine, touch screen, iPad user agent and screen size);
+  // TP_DEVICE=ipad-portrait for the narrower upright screen.
+  const dev = { ipad: 'iPad Pro 11 landscape', 'ipad-portrait': 'iPad Pro 11' }[process.env.TP_DEVICE || ''];
+  const engine = dev ? 'webkit' : (process.env.TP_BROWSER || 'chromium');
+  const browser = await playwright[engine].launch();
+  const ctx = await browser.newContext(dev ? { ...playwright.devices[dev], acceptDownloads: true }
+    : { viewport: { width: 1500, height: 950 }, acceptDownloads: true });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));

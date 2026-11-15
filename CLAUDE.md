@@ -1,6 +1,6 @@
 # Thistle Plot (TP): project guide for Claude Code
 
-TP is a **beta** (0.x) GraphPad-Prism-style statistics and plotting web app for bench scientists
+TP is a **beta** (0.x) statistics and plotting web app for bench scientists
 (UoE TT ncRNA lab). It is a **single self-contained `index.html`** (about 300 KB), plain JavaScript,
 no framework, no build step. Libraries come from cdnjs: Chart.js 4.4.1, jStat 1.9.6, PapaParse 5.4.1.
 It is served by GitHub Pages straight from `index.html` and embedded on a Confluence wiki through an iFrame macro.
@@ -11,7 +11,8 @@ Data never leaves the browser.
 - No `localStorage`/`sessionStorage` for data (projects are saved as `.thistle` JSON files; `.pprism` still loads).
 - Statistics must be correct before they are pretty. When adding or changing a test, validate it against SciPy or
   statsmodels (generate reference numbers with Python), then add a regression test in `tests/stats.test.js`.
-- Everything is **beta 0.x**. Do not call it validated; the Help says results must be spot-checked.
+- TP is cross-checked against SciPy/statsmodels (`npm run validate`) but not formally validated: do not call it validated;
+  the Help says important results must be spot-checked.
 - Explain tests and options in the UI in plain words (blue hint box, `data-hint`, `CORR_HINT`); results must list the
   options used (`runOptionsSummary`). Keep wording consistent across similar tests.
 - User-facing tone: bench scientists, not statisticians. British spelling is fine.
@@ -24,6 +25,7 @@ npm test              # full suite (~2 min): smoke, stats, links, large data, ex
 npm run test:quick    # smoke + links only
 python3 tools/build_help.py          # rebuild the in-app Help from docs/*.md
 python3 tools/build_help.py --check  # CI check that Help is up to date
+npm run validate      # cross-check the statistics against SciPy/statsmodels (tools/validate)
 ```
 Open `index.html` directly in a browser to try it. Tests load the CDN libraries from `node_modules`, so they run offline.
 
@@ -35,8 +37,9 @@ Open `index.html` directly in a browser to try it. Tests load the CDN libraries 
 3. Edit manual text only in `docs/*.md`, then run `python3 tools/build_help.py`. Never edit the HTML between the
    `<!--HELP:..-->` markers by hand (it is regenerated).
 4. `npm test` must pass. New feature means new test.
-5. Commit with a message like `v0.8.3: <summary>`; tag releases `v0.8.3`.
-Versioning: 0.MINOR.PATCH. Fixes bump PATCH, new features bump MINOR (0.8.2 -> 0.9.0 is the next big step; 1.0 only after validation).
+5. Commit with a message like `v0.11.1: <summary>`; tag releases `v0.11.1`.
+Versioning: 0.MINOR.PATCH while in beta. Fixes bump PATCH, new features bump MINOR. 1.0.0 comes after the maintainer has
+tested on iPad and decides to leave beta; after that, MAJOR only for changes that break saved projects or remove features.
 
 ## Architecture map (search for these names in index.html)
 - **State:** `G = {nReps, groups:[{name, reps, data[row][rep]}], rowNames, nRows}` is the active data table; `datasets[]` holds
@@ -62,24 +65,31 @@ Versioning: 0.MINOR.PATCH. Fixes bump PATCH, new features bump MINOR (0.8.2 -> 0
 - **Results tables:** `table.rtbl`; long tables show `SHOW_ROWS=200` with a full CSV (`csvButton`, `downloadCSV`);
   `exportStatTables(tabId)` produces the per-result CSV.
 - **Export:** `_renderExport(pageId, mode)`. App style = screen look at 2x on an opaque background (Chart.js canvases are transparent,
-  so they are flattened). Publication (Prism-like) style redraws the chart at `PRISM_SCALE=3` with `_exportTheme=PRISM_THEME`
-  via `_prismifyConfig`, a Proxy-wrapped `Chart` constructor, `_prismDotsPlugin` (beeswarm dots) and `_niceAxis`. SVG is an embedded raster.
+  so they are flattened). Publication style (value `publication`) redraws the chart at `PUB_SCALE=3` with `_exportTheme=PUB_THEME`
+  via `_pubifyConfig`, a Proxy-wrapped `Chart` constructor, `_pubDotsPlugin` (beeswarm dots) and `_niceAxis`. SVG is an embedded raster.
 - **Help:** a modal (F1 or the Help button) with three panes generated from `docs/*.md` (see Release checklist).
 
+## Names, licences, provenance
+- Do not name commercial software in the UI, Help or code comments (no "Prism-like"); describe the behaviour instead.
+  `.pprism` project files from early builds still load.
+- Write algorithms from their published descriptions, never by porting code from GPL software (e.g. R). Cite the paper.
+- Paired data (paired tests, correlation, regression, dose, volcano, scatter) must be paired by row and replicate with
+  `pairedCells` / `xyPairs`, never by zipping two `getGroupPooled` lists (a blank cell shifts every later pair).
+
 ## Hard-won pitfalls (do not reintroduce)
-- Setting Chart.js options through setters in the Prism export caused infinite recursion: modify the config BEFORE constructing the chart.
+- Setting Chart.js options through setters in the Publication export caused infinite recursion: modify the config BEFORE constructing the chart.
 - Chart.js canvases are transparent: PNG export must composite on an opaque background (the App-style PNG was blank once).
 - Kaplan-Meier must handle censoring correctly (plot on a time axis with censor ticks); the estimate was wrong before.
 - Power-iteration PCA crashed the page on 20,000 rows; keep the Gram-matrix method.
-- Heatmap labels must not overlap the colour key; Prism heatmap group strips are greyscale.
+- Heatmap labels must not overlap the colour key; Publication heatmap group strips are greyscale.
 - Option IDs used by `captureOptState` / `restoreOptState` must be stable, or 🔗 re-creation breaks.
 - Clear / new dataset must reset to the default empty 2-group table (names too).
 - Do not fetch from the network at runtime beyond the three cdnjs libraries.
 
 ## Known gaps (candidates for future work)
 Dunnett only for a single control; Kaplan-Meier has no Cox regression; two-way ANOVA needs a balanced design; SVG export is an
-embedded raster; Prism style is greyscale only; project files store only the active dataset and plots only as snapshots;
-Fisher/chi-square have no plot; paired rank-sum and Wilcoxon "by sample" figures are not specially handled; TP has not been formally validated.
+embedded raster; Publication style is greyscale only; project files store only the active dataset and plots only as snapshots;
+Fisher/chi-square have no plot; Wilcoxon "by sample" figures are not specially handled; TP has not been formally validated.
 
 ## Testing notes
 - `tests/helpers.js` provides `openApp()`, `selectTest`, `selectPlot`, `loadGenes(N)`. Tests drive the app through its global functions
@@ -87,4 +97,7 @@ Fisher/chi-square have no plot; paired rank-sum and Wilcoxon "by sample" figures
 - When fixing a bug, first write the failing test, then fix.
 - Tests run in Chromium by default. Set `TP_BROWSER=firefox` (or `webkit`) to run the same suite in another engine
   (`npx playwright install firefox` once). Mouse/clipboard behaviour differs: Firefox keeps mouse events on the text box
-  where a drag began, and ignores `clipboardData` passed to a synthetic `ClipboardEvent`. Lab users run Firefox and Safari.
+  where a drag began, and ignores `clipboardData` passed to a synthetic `ClipboardEvent`. Lab users run Firefox and Safari (Mac, and iPad with keyboard and trackpad).
+- `TP_DEVICE=ipad` (or `ipad-portrait`) runs the suite in WebKit emulating Safari on an iPad (`npx playwright install webkit`,
+  plus `npx playwright install-deps webkit` on Linux). iPad notes: Safari ignores theme colours on native `<select>` (we draw our own),
+  the iOS file picker cannot filter `.thistle` (`IS_IOS` drops `accept`), keep object URLs alive (`_saveBlob`), no F1 key (Cmd+/).
