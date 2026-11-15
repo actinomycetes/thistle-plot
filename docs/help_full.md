@@ -56,8 +56,8 @@ Choose a plot type, set its options, then click **📈 Plot**. The figure opens 
 | Plot | Best for | Main options |
 | --- | --- | --- |
 | Bar + SD + Dots | Group means with spread and individual points | Normalisation; Show data (Mean + dots, Mean only, Dots only); Dots show (Raw replicates, or Group mean = one dot per sample row); Group by (group or sample); Y-axis label |
-| Boxplot | Distributions and outliers (red dots) | Same as Bar |
-| Violin | Distribution shape | Same as Bar |
+| Boxplot | Distributions and outliers (red dots) | Same as Bar; significance brackets when made by a test's Auto-plot |
+| Violin | Distribution shape | Same as Bar; significance brackets when made by a test's Auto-plot |
 | Paired (before–after lines) | Matched measurements: each subject is a line, so you see every pair change (filled circle → open square) | Join: every group in order (before / day 1 / day 7), or groups in pairs 1–2, 3–4, … (e.g. control and treated at several ratios: order the groups so each pair sits side by side); show each group's mean; normalisation; Y-axis label. A subject is one row and replicate; a blank cell drops only that subject's line. Opens automatically after a paired t-test or Wilcoxon signed-rank, with its significance bracket |
 | Scatter (X vs Y) | Two variables against each other | X group, Y group, optional trend line |
 | Line | Values across rows (time course, samples) | Normalisation, Y-axis label, show points |
@@ -79,7 +79,7 @@ Choose a test, set its options, then click **▶ Run Analysis**. The blue box un
 
 Every result tab has a **⬇ Tables (CSV)** button that saves all of its tables in one file (significance stars dropped so numbers stay numeric). Gene-level results (per-row t-test, Rank Product, Multiple Testing, Volcano, PCA loadings) also offer the **full table** for every row.
 
-Tick **Auto-plot after run** to open a linked plot. Significance marks and gene lists appear only on the figure created by that run (not on plots you make by hand later). The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).
+Tick **Auto-plot after run** to open a linked plot, and choose which figure in the menu next to it: it lists every plot that suits the test, with the recommended one first (the default). For example Mann–Whitney offers a box plot (recommended), bar chart or violin plot, and a paired t-test offers paired lines (recommended), bar chart or box plot. Bar, box, violin and paired plots carry the test's significance brackets. Significance marks and gene lists appear only on the figure created by that run (not on plots you make by hand later). The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).
 
 | Category | Test | Key options |
 | --- | --- | --- |
@@ -132,7 +132,7 @@ Tick **Auto-plot after run** to open a linked plot. Significance marks and gene 
 | Benjamini–Hochberg (FDR) | False discovery rate | Many tests (per-row, genes, screens): more power, accepts a small fraction of false positives. Default for per-row t-tests |
 | None | Nothing | Single planned comparison, or exploratory use only |
 
-**Significance brackets.** After you run a test that compares pairs, the linked Bar + SD + Dots plot shows brackets with stars using the corrected p-values: \* p < 0.05, \*\* p < 0.01, \*\*\* p < 0.001, \*\*\*\* p < 0.0001. Non-significant pairs get no bracket. A **per-row** t-test on up to 40 rows opens Bar + SD + Dots *By sample*, with brackets inside each sample; on larger tables it opens a heatmap of the significant up and down genes (or the top-ranked ones if none pass the cutoff).
+**Significance brackets.** After you run a test that compares pairs, the linked bar, box, violin or paired plot shows brackets with stars using the corrected p-values: \* p < 0.05, \*\* p < 0.01, \*\*\* p < 0.001, \*\*\*\* p < 0.0001. Non-significant pairs get no bracket. A **per-row** t-test on up to 40 rows opens Bar + SD + Dots *By sample*, with brackets inside each sample; on larger tables it opens a heatmap of the significant up and down genes (or the top-ranked ones if none pass the cutoff).
 
 ### 5b. Large datasets (RNA-seq and similar)
 
@@ -192,7 +192,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.12.0 (beta):
+Known limitations of v0.13.0 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).

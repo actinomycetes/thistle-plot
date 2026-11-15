@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.12.0 (Beta)</title>
+<!-- Thistle suite icon: the thistle with a badge per app (Thistle Plot: a table) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg transform='translate%28-1 0%29 scale%281.08%29'%3E%3Cg stroke=%22%23a855f7%22 stroke-width=%221.6%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M12 10V2%22/%3E%3Cpath d=%22M12 10L7 3%22/%3E%3Cpath d=%22M12 10L17 3%22/%3E%3Cpath d=%22M12 10L4.5 6%22/%3E%3Cpath d=%22M12 10L19.5 6%22/%3E%3Cpath d=%22M12 10L9.5 2.3%22/%3E%3Cpath d=%22M12 10L14.5 2.3%22/%3E%3C/g%3E%3Cellipse cx=%2212%22 cy=%2213.5%22 rx=%225%22 ry=%224.2%22 fill=%22%2322c55e%22/%3E%3Cpath d=%22M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4%22 stroke=%22%2315803d%22 stroke-width=%221.1%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M12 17.5V25%22 stroke=%22%2316a34a%22 stroke-width=%221.8%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8%22 stroke=%22%2316a34a%22 stroke-width=%221.4%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/g%3E%3Crect x='14' y='15' width='17' height='16' rx='2.5' fill='%23ffffff' stroke='%232563eb' stroke-width='2'/%3E%3Cpath d='M14 17.5a2.5 2.5 0 0 1 2.5-2.5h12a2.5 2.5 0 0 1 2.5 2.5v3h-17z' fill='%232563eb'/%3E%3Cpath d='M14 25.7h17M22.5 20.5v10.5' stroke='%232563eb' stroke-width='1.8'/%3E%3C/svg%3E">
+<title>Thistle Plot v0.13.0 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -194,7 +196,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.12.0</span>
+  <span class="badge" id="app-version" title="Version">v0.13.0</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
   <button class="btn" onclick="document.getElementById('fi-load').click()">📂 Load</button>
@@ -1696,12 +1698,32 @@ function npModeChange(){
   const cw=document.getElementById('np-corr-wrap');if(cw)cw.style.display=(mode==='pair')?'none':'block';
 }
 
-const AUTO_PLOT_FOR_TYPE={ttest_ind:'bar_sd',ttest_rel:'paired',mw:'bar_sd',wilcoxon:'paired',anova:'bar_sd',kruskal:'bar_sd',pearson:'scatter',spearman:'scatter',desc:'bar_sd',norm:'qq',anova2:'bar_sd',pca:'pca',dose:'dose',regress:'scatter',rankprod:'heatmap',heatmap:'heatmap',mtc:'mtc',km:'km',volcano:'volcano',ks:'ecdf'};
+// Figures offered for Auto-plot after each test, the recommended one first (it is the default).
+// Bar, box, violin and paired plots carry the test's significance brackets.
+const AUTO_PLOT_CHOICES={
+  desc:['bar_sd','boxplot','violin','histogram','ecdf'],
+  norm:['qq','histogram','ecdf'],
+  ttest_ind:['bar_sd','boxplot','violin'],
+  ttest_rel:['paired','bar_sd','boxplot'],
+  anova:['bar_sd','boxplot','violin'],
+  anova2:['bar_sd','boxplot'],
+  mw:['boxplot','bar_sd','violin'],
+  wilcoxon:['paired','boxplot','bar_sd'],
+  kruskal:['boxplot','bar_sd','violin'],
+  rankprod:['heatmap','pca'],
+  ks:['ecdf','histogram','qq','boxplot'],
+  pearson:['scatter'],spearman:['scatter'],
+  regress:['scatter'], // regression draws its own fit and residual plots
+  pca:['pca','heatmap'],heatmap:['heatmap','pca'],
+  mtc:['mtc','histogram'],km:['km'],dose:['dose','scatter'],volcano:['volcano']
+};
+const AUTO_PLOT_FOR_TYPE=Object.fromEntries(Object.entries(AUTO_PLOT_CHOICES).map(([k,v])=>[k,v[0]]));
 
 function renderAnalysisOpts(t){
   const el=document.getElementById('aopts');
   const autoPlotType=AUTO_PLOT_FOR_TYPE[t];
-  const autoPlotHint=autoPlotType?`<div class="full-col" style="margin-top:4px"><label class="check-row"><input type="checkbox" id="opt-autoplot" checked> <span style="color:var(--mu);font-size:11px">Auto-plot after run (${PLOT_TYPES.find(p=>p.v===autoPlotType)?.l||autoPlotType})</span></label></div>`:'';
+  const apChoices=AUTO_PLOT_CHOICES[t]||[],plName=v=>PLOT_TYPES.find(p=>p.v===v)?.l||v;
+  const autoPlotHint=autoPlotType?`<div class="full-col" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label class="check-row" style="flex:none"><input type="checkbox" id="opt-autoplot" checked> <span style="color:var(--mu);font-size:11px">Auto-plot after run${apChoices.length>1?':':` (${plName(autoPlotType)})`}</span></label>${apChoices.length>1?`<select id="opt-autoplot-type" title="Figure made after the test (the first is recommended)" style="flex:1;min-width:150px">${apChoices.map((v,k)=>`<option value="${v}">${plName(v)}${k?'':' (recommended)'}</option>`).join('')}</select>`:''}</div>`:'';
 
   if(t==='ttest_ind'||t==='ttest_rel'){
     el.innerHTML=`<div class="opts-grid">
@@ -2089,7 +2111,7 @@ function runOptionsSummary(){
   const asel=document.getElementById('asel');
   if(asel)parts.push(`<b>${asel.options[asel.selectedIndex]?.text||asel.value}</b>`);
   document.querySelectorAll('#aopts select,#aopts input').forEach(el=>{
-    if(!el.id||el.id==='opt-autoplot'||el.disabled||el.classList.contains('ctrl-cb'))return;
+    if(!el.id||el.id==='opt-autoplot'||el.id==='opt-autoplot-type'||el.disabled||el.classList.contains('ctrl-cb'))return;
     if(el.type==='hidden'){if(el.dataset.label&&el.value&&!el.closest('[style*="display:none"]'))parts.push(`${el.dataset.label}: ${el.value}`);return;}
     if(el.closest('[style*="display:none"]')||el.closest('[style*="display: none"]'))return;
     let lbl='';
@@ -2675,7 +2697,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.12.0';
+const APP_VERSION='0.13.0';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -2909,6 +2931,7 @@ function plotResiduals(){
 }
 
 function plotBoxplot(normMethod, title){
+  const sigPairs=lastStatPairs?[...lastStatPairs]:null;
   const yLab=document.getElementById('popt-ylab')?.value||'';
   const dispMode=document.getElementById('popt-dispmode')?.value||'both';
   const dotType=document.getElementById('popt-dottype')?.value||'raw';
@@ -2997,7 +3020,8 @@ function plotBoxplot(normMethod, title){
     const allVals=groups.flatMap(g=>g.vals).filter(isFinite);
     if(!allVals.length)return;
     const mn=Math.min(...allVals),mx=Math.max(...allVals);
-    const pad={l:yLab?75:62,r:20,t:20,b:_exportTheme?46:40};
+    const {br,nLev}=_bracketLevels(sigPairs,groups.length);canvas._brackets=br.length;
+    const pad={l:yLab?75:62,r:20,t:20+nLev*24,b:_exportTheme?46:40};
     const bw=Math.min(60,(W-pad.l-pad.r)/groups.length-20);
     const [_n0,_n1,_tk]=_niceAxis(mn,mx);const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
     // Y axis line
@@ -3048,10 +3072,12 @@ function plotBoxplot(normMethod, title){
       // X label
       ctx.fillStyle=txc;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+(_exportTheme?24:16));
     });
+    _drawBrackets(ctx,br,i=>pad.l+(i+0.5)*(W-pad.l-pad.r)/groups.length,pad.t);
   });
 }
 
 function plotViolin(normMethod, title){
+  const sigPairs=lastStatPairs?[...lastStatPairs]:null;
   const yLab=document.getElementById('popt-ylab')?.value||'';
   const dispMode=document.getElementById('popt-dispmode')?.value||'both';
   canvasTab(title,(canvas,pa)=>{
@@ -3064,7 +3090,8 @@ function plotViolin(normMethod, title){
     const allVals=groups.flatMap(g=>g.vals);
     if(!allVals.length)return;
     const mn=Math.min(...allVals),mx=Math.max(...allVals);
-    const pad={l:yLab?75:62,r:20,t:20,b:_exportTheme?46:40};
+    const {br,nLev}=_bracketLevels(sigPairs,groups.length);canvas._brackets=br.length;
+    const pad={l:yLab?75:62,r:20,t:20+nLev*24,b:_exportTheme?46:40};
     const [_n0,_n1,_tk]=_niceAxis(mn,mx);const toY=v=>pad.t+(_n1-v)/(_n1-_n0||1)*(H-pad.t-pad.b);
     const nSteps=50;
     function kde(vals,bw){
@@ -3112,9 +3139,25 @@ function plotViolin(normMethod, title){
       }
       ctx.fillStyle=txc;ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'11px system-ui';ctx.textAlign='center';ctx.fillText(g.name,cx,H-pad.b+(_exportTheme?24:16));
     });
+    _drawBrackets(ctx,br,i=>pad.l+(i+0.5)*(W-pad.l-pad.r)/groups.length,pad.t);
   });
 }
 
+// Significance brackets on canvas plots (box, violin, paired). pairs = [{i,j,stars}] captured when the figure is made
+// (only figures made for a test run carry them). Short brackets sit lowest; overlapping ones stack 24 px apart.
+function _bracketLevels(pairs,nG){
+  const br=(pairs||[]).filter(p=>p.i<nG&&p.j<nG).map(p=>({a:Math.min(p.i,p.j),b:Math.max(p.i,p.j),stars:p.stars}))
+    .sort((p,q)=>(p.b-p.a)-(q.b-q.a)||p.a-q.a);
+  const placed=[];br.forEach(p=>{let l=0;while(placed.some(q=>q.l===l&&!(p.b<=q.a||p.a>=q.b)))l++;p.l=l;placed.push(p);}); // sharing only an end group is fine
+  return{br,nLev:br.length?Math.max(...br.map(p=>p.l))+1:0};
+}
+function _drawBrackets(ctx,br,toX,yTop){ // yTop = top of the plot area; brackets go above it
+  ctx.save();ctx.strokeStyle=_exportTheme?'#000':axCol();ctx.fillStyle=ctx.strokeStyle;ctx.lineWidth=1.2;ctx.textAlign='center';
+  ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'bold 12px system-ui';
+  br.forEach(p=>{const y=yTop-8-p.l*24,x1=toX(p.a)+3,x2=toX(p.b)-3; // ends inset so brackets sharing a group don't touch
+    ctx.beginPath();ctx.moveTo(x1,y+5);ctx.lineTo(x1,y);ctx.lineTo(x2,y);ctx.lineTo(x2,y+5);ctx.stroke();ctx.fillText(p.stars,(x1+x2)/2,y-3);});
+  ctx.restore();
+}
 // Paired plot (before–after): each subject (one row and replicate) is drawn as points joined by a line across the
 // groups, so the pairing is visible. 'all' joins every group in order (repeated measures); 'pairs' joins groups
 // 1–2, 3–4, … as separate blocks (e.g. two conditions at each of several ratios).
@@ -3143,10 +3186,8 @@ function plotPaired(normMethod,title){
     const allV=subj.flat().filter(isFinite);if(!allV.length)return;
     const {pos,xMax}=pairedPlotLayout(nG,join);
     // brackets: greedy levels so overlapping pairs stack
-    const br=(sigPairs||[]).filter(p=>p.i<nG&&p.j<nG).map(p=>({a:Math.min(p.i,p.j),b:Math.max(p.i,p.j),stars:p.stars}));
-    const placed=[];br.forEach(p=>{let l=0;while(placed.some(q=>q.l===l&&!(p.b<q.a||p.a>q.b)))l++;p.l=l;placed.push(p);});
-    const nLev=br.length?Math.max(...br.map(p=>p.l))+1:0;
-    const pad={l:yLab?62:48,r:16,t:16+nLev*20,b:_exportTheme?52:40};
+    const {br,nLev}=_bracketLevels(sigPairs,nG);
+    const pad={l:yLab?62:48,r:16,t:16+nLev*24,b:_exportTheme?52:40};
     const [y0,y1,tk]=_niceAxis(Math.min(...allV),Math.max(...allV));
     const toY=v=>pad.t+(y1-v)/(y1-y0||1)*(H-pad.t-pad.b);
     const unit=Math.min((W-pad.l-pad.r)/(xMax+1),UNIT),xEnd=pad.l+unit*(xMax+1),toX=g=>pad.l+unit*(0.5+pos(g));
@@ -3174,11 +3215,7 @@ function plotPaired(normMethod,title){
     // optional group mean: a short thick bar
     if(showMean)G.groups.forEach((_,g)=>{const m=mean(subj.map(v=>v[g]).filter(isFinite));if(!isFinite(m))return;
       ctx.strokeStyle=_exportTheme?'#000':plotMed();ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(toX(g)-14,toY(m));ctx.lineTo(toX(g)+14,toY(m));ctx.stroke();});
-    // significance brackets
-    ctx.strokeStyle=_exportTheme?'#000':axc;ctx.fillStyle=_exportTheme?'#000':axc;ctx.lineWidth=1.2;ctx.textAlign='center';
-    ctx.font=_exportTheme?'bold 11px Arial,Helvetica,sans-serif':'bold 12px system-ui';
-    br.forEach(p=>{const y=pad.t-8-p.l*20,x1=toX(p.a),x2=toX(p.b);
-      ctx.beginPath();ctx.moveTo(x1,y+6);ctx.lineTo(x1,y);ctx.lineTo(x2,y);ctx.lineTo(x2,y+6);ctx.stroke();ctx.fillText(p.stars,(x1+x2)/2,y-3);});
+    _drawBrackets(ctx,br,toX,pad.t);
     canvas._pairedInfo={unit,subjects:subj.length,lines:subj.reduce((s,v)=>{let n=0;for(let g=0;g<nG-1;g++)if(joined(g,g+1)&&isFinite(v[g])&&isFinite(v[g+1]))n++;return s+n;},0),brackets:br.length,pos:G.groups.map((_,g)=>pos(g))};
   };
   // Publication export: as wide as the groups need (about 2 inches for two groups)
@@ -4229,8 +4266,9 @@ function runAnalysis(){
   if(_suppressAutoPlot){_suppressAutoPlot=false;return;}
   // Auto-plot: if the checkbox is ticked and this test has a natural plot, run it
   const gby=_autoPlotGroupBy;_autoPlotGroupBy=null;
-  // per-row paired t-tests keep the By-sample bar chart (or gene heatmap); a single comparison gets the paired-lines plot
-  const autoPlotType=(gby&&AUTO_PLOT_FOR_TYPE[atype]==='paired')?'bar_sd':AUTO_PLOT_FOR_TYPE[atype];
+  // the figure chosen under the test (recommended one by default); per-row t-tests draw By sample, so only bar or box
+  let autoPlotType=document.getElementById('opt-autoplot-type')?.value||AUTO_PLOT_FOR_TYPE[atype];
+  if(gby==='sample'&&!['bar_sd','boxplot'].includes(autoPlotType))autoPlotType='bar_sd';
   if(autoPlotType&&document.getElementById('opt-autoplot')?.checked){
     const psel=document.getElementById('psel');
     if(psel){psel.value=autoPlotType;renderPlotOpts(autoPlotType);}
@@ -4453,7 +4491,7 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a> (MIT licence).</p>
-<p>TP is a <strong>beta (v0.12.0)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
+<p>TP is a <strong>beta (v0.13.0)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
 <p><strong>Opening TP:</strong> use the hosted copy at <a href="https://actinomycetes.github.io/thistle-plot/">https://actinomycetes.github.io/thistle-plot/</a>, double-click a downloaded <code>index.html</code> to open it in Chrome, Edge, Firefox or Safari (Mac or iPad), or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
@@ -4462,7 +4500,7 @@ window.addEventListener('load',checkLibs);
 <li><strong>Set the shape of your table.</strong> In the Data panel, set <strong>Reps/group</strong> (replicates per group) and <strong>Groups</strong> (conditions). Use <strong>+Row / −Row</strong> for samples.</li>
 <li><strong>Enter data.</strong> Paste a block straight from Excel or Google Sheets with Ctrl/Cmd+V, or click <strong>⬆ CSV</strong> to import a file. Double-click a group header or row name to rename it.</li>
 <li><strong>Pick a test</strong> under <strong>Statistical Test</strong>, for example <em>One-Way ANOVA</em> or <em>Unpaired t-test (Welch)</em>. Read the blue box under the menu: it says what the test does, how it expects the columns, and which similar test to use instead. Each option also shows a one-line explanation.</li>
-<li><strong>Click ▶ Run Analysis.</strong> Results appear in a new tab on the right, headed by the options and data used. With <em>Auto-plot after run</em> ticked, a linked plot opens too; 🔗 jumps between them, and re-creates either one if you closed it.</li>
+<li><strong>Click ▶ Run Analysis.</strong> Results appear in a new tab on the right, headed by the options and data used. With <em>Auto-plot after run</em> ticked, a linked plot opens too (pick which figure in the menu beside it; the recommended one is preselected); 🔗 jumps between them, and re-creates either one if you closed it.</li>
 <li><strong>Pick a plot</strong> under <strong>Visualisation</strong>, for example <em>Bar + SD + Dots</em>, set its options (normalisation, dots shown, Y-axis label) and click <strong>📈 Plot</strong>. To adjust it, change the options and click <strong>↻ Update plot</strong> (or tick <em>Live update</em> to redraw as you go); <strong>+ New</strong> keeps the figure and opens another tab.</li>
 <li><strong>Check the figure.</strong> Significance brackets (*, **, ***, ****) from your last test are drawn automatically on bar charts.</li>
 <li><strong>Choose an export style</strong> in the header: <strong>App</strong> (what you see on screen) or <strong>Publication</strong> (white background, black axes, bold Arial, greyscale, about 300 dpi).</li>
@@ -4588,12 +4626,12 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Boxplot</td>
 <td>Distributions and outliers (red dots)</td>
-<td>Same as Bar</td>
+<td>Same as Bar; significance brackets when made by a test's Auto-plot</td>
 </tr>
 <tr>
 <td>Violin</td>
 <td>Distribution shape</td>
-<td>Same as Bar</td>
+<td>Same as Bar; significance brackets when made by a test's Auto-plot</td>
 </tr>
 <tr>
 <td>Paired (before–after lines)</td>
@@ -4661,7 +4699,7 @@ window.addEventListener('load',checkLibs);
 <h3>5. Statistical tests</h3>
 <p>Choose a test, set its options, then click <strong>▶ Run Analysis</strong>. The blue box under the test menu says what the test does, how it reads the columns and which similar test to consider; each option shows a one-line explanation of the current choice. Every result tab starts with a grey header listing the test, all options used, the dataset and its size, and the time of the run.</p>
 <p>Every result tab has a <strong>⬇ Tables (CSV)</strong> button that saves all of its tables in one file (significance stars dropped so numbers stay numeric). Gene-level results (per-row t-test, Rank Product, Multiple Testing, Volcano, PCA loadings) also offer the <strong>full table</strong> for every row.</p>
-<p>Tick <strong>Auto-plot after run</strong> to open a linked plot. Significance marks and gene lists appear only on the figure created by that run (not on plots you make by hand later). The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).</p>
+<p>Tick <strong>Auto-plot after run</strong> to open a linked plot, and choose which figure in the menu next to it: it lists every plot that suits the test, with the recommended one first (the default). For example Mann–Whitney offers a box plot (recommended), bar chart or violin plot, and a paired t-test offers paired lines (recommended), bar chart or box plot. Bar, box, violin and paired plots carry the test's significance brackets. Significance marks and gene lists appear only on the figure created by that run (not on plots you make by hand later). The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).</p>
 <table>
 <thead>
 <tr>
@@ -4887,7 +4925,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p><strong>Significance brackets.</strong> After you run a test that compares pairs, the linked Bar + SD + Dots plot shows brackets with stars using the corrected p-values: * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001, **** p &lt; 0.0001. Non-significant pairs get no bracket. A <strong>per-row</strong> t-test on up to 40 rows opens Bar + SD + Dots <em>By sample</em>, with brackets inside each sample; on larger tables it opens a heatmap of the significant up and down genes (or the top-ranked ones if none pass the cutoff).</p>
+<p><strong>Significance brackets.</strong> After you run a test that compares pairs, the linked bar, box, violin or paired plot shows brackets with stars using the corrected p-values: * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001, **** p &lt; 0.0001. Non-significant pairs get no bracket. A <strong>per-row</strong> t-test on up to 40 rows opens Bar + SD + Dots <em>By sample</em>, with brackets inside each sample; on larger tables it opens a heatmap of the significant up and down genes (or the top-ranked ones if none pass the cutoff).</p>
 <h3>5b. Large datasets (RNA-seq and similar)</h3>
 <p>TP handles tables with tens of thousands of rows (tested with 20,000 genes × 6 samples).</p>
 <ul>
@@ -4977,7 +5015,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.12.0 (beta):</p>
+<p>Known limitations of v0.13.0 (beta):</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.</li>
 <li>Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).</li>
@@ -5014,6 +5052,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.13.0 (15 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Auto-plot: a menu beside the tick box lists every figure that suits the test, the recommended one first and preselected (e.g. Mann–Whitney and Kruskal–Wallis now default to a box plot); box and violin plots now carry the test's significance brackets (short brackets lowest, brackets sharing a group side by side); a browser-tab icon (the thistle with a small table)</td>
+</tr>
 <tr>
 <td>0.12.0 (15 Nov 2026)</td>
 <td>Thistle Plot</td>

@@ -58,7 +58,8 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   made for a specific run of a test. `runPlot()` clears `lastStat*` unless `_linkedPlotCtx` is true, which only
   Auto-plot (end of `runAnalysis`) and `goLinkedPlot` set. A plot drawn by hand must never show a test's marks.
   `tests/links.test.js` guards this. 🔗 buttons: `goLinkedPlot(statId)` and `goLinkedStat(plotId)` re-create a closed partner from `optState`.
-  `AUTO_PLOT_FOR_TYPE` maps test -> linked figure; Rank Product and large per-row t-tests link a heatmap of significant up/down genes.
+  `AUTO_PLOT_CHOICES` lists the figures offered per test (first = recommended = `AUTO_PLOT_FOR_TYPE`), chosen in `#opt-autoplot-type`;
+  canvas plots draw brackets with `_bracketLevels` / `_drawBrackets` from `lastStatPairs` captured at creation; Rank Product and large per-row t-tests link a heatmap of significant up/down genes.
 - **Multiple comparisons:** `adjustP(p, method)` with bonferroni, holm, holm_sidak, fdr, none; labels in `CORR_LABEL/SHORT/HINT`, UI via `corrSelect`.
   Dunnett: `dunnettP` (numerical integral of the multivariate t); Tukey via `jStat.tukey`; ANOVA `onewayANOVA(groups, method, ctrls[])`;
   two-way ANOVA post-hoc uses pooled MSE; Kaplan-Meier `kaplanMeier`, `kmGroups`, `logRankK`; KS `ks2Sample` (exact), `lillieforsTest` (seeded Monte Carlo);
@@ -74,6 +75,8 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 ## Names, licences, provenance
 - Do not name commercial software in the UI, Help or code comments (no "Prism-like"); describe the behaviour instead.
   `.pprism` project files from early builds still load.
+- Thistle suite icon: the favicon is the thistle with an app badge in the bottom-right corner (TP: a blue table;
+  Thistle Flow: a laser hitting a cell). Keep the shared thistle identical across the suite.
 - Thistle suite file types: each app saves its own extension (`.tplot` here, `.tflow` for Thistle Flow) and writes
   `app` (its name) and `format` into the file. `identifyProjectFile` turns another Thistle app's file into a plain
   "open it in …" message (`THISTLE_APPS`; app names compared without spaces; Flow wrote `ThistleFlow` (format 2) and `FlowLite` (format 1),
