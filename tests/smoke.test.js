@@ -14,6 +14,29 @@ test('app loads, version is consistent', async () => {
   assert.deepStrictEqual(app.errors, []);
 });
 
+test('Thistle suite icon: header logo and tab icon are the same thistle with the table badge', async () => {
+  const r = await app.page.evaluate(() => {
+    const fav = document.querySelector('link[rel="icon"]').getAttribute('href');
+    const logo = document.querySelector('#hdr svg.app-logo');
+    const touch = document.querySelector('link[rel="apple-touch-icon"]');
+    return { fav, logo: logo && logo.innerHTML, viewBox: logo && logo.getAttribute('viewBox'), touch: touch && touch.getAttribute('href') };
+  });
+  // fully percent-encoded (no raw spaces or quotes), which Safari on iPad reads reliably
+  assert.match(r.fav, /^data:image\/svg\+xml,%3Csvg[^ '"]*$/);
+  const svg = decodeURIComponent(r.fav.slice('data:image/svg+xml,'.length));
+  assert.match(svg, /viewBox="0 0 32 32"/);
+  assert.match(svg, /<circle cx="9\.7" cy="12\.7" r="\.95"\/>/, 'dotted thistle head');
+  assert.match(svg, /stroke="#2563eb"/, 'blue table badge');
+  assert.strictEqual(r.viewBox, '0 0 32 32');
+  const same = await app.page.evaluate(([a, b]) => {
+    const d = s => new DOMParser().parseFromString(s, 'image/svg+xml').documentElement;
+    const x = d(a), y = d(new XMLSerializer().serializeToString(new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg">' + b + '</svg>', 'image/svg+xml').documentElement));
+    return x.innerHTML === y.innerHTML;
+  }, [svg, r.logo]);
+  assert.ok(same, 'header logo draws the same picture as the tab icon');
+  assert.match(r.touch || '', /^data:image\/png;base64,iVBOR/, 'apple-touch-icon PNG for Safari');
+});
+
 test('every statistical test runs on its example data', async () => {
   const types = await app.page.evaluate(() => ANALYSIS_TYPES.map(t => t.v));
   assert.ok(types.length >= 20);
