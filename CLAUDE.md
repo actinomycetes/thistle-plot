@@ -52,6 +52,8 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   and sets `lastStatPairs` / `lastStatRowPairs` / `lastStatGeneSet` for significance marks. Tab-level data lives in `statTabs[]`
   (`sigPairs`, `rowPairs`, `geneSet`, `optState`, `linkedPlotId`) and `plotTabs[]` (`linkedStatId`, `optState`).
 - **Plots:** `runPlot()` dispatches to `plotBarSD`, `plotHeatmapCustom`, `plotPCACustom`, ... built with `canvasTab` / `chartTab`.
+  `plotPaired` (paired before–after lines, `pairedPlotLayout`) is a canvas plot: subjects = row × replicate cells, brackets from
+  `lastStatPairs` captured at creation; a draw function's `_pubW` sets its Publication export width.
 - **Stat-to-figure links (important rule):** significance stars, brackets and gene lists belong ONLY to the figure
   made for a specific run of a test. `runPlot()` clears `lastStat*` unless `_linkedPlotCtx` is true, which only
   Auto-plot (end of `runAnalysis`) and `goLinkedPlot` set. A plot drawn by hand must never show a test's marks.
@@ -74,7 +76,8 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   `.pprism` project files from early builds still load.
 - Thistle suite file types: each app saves its own extension (`.tplot` here, `.tflow` for Thistle Flow) and writes
   `app` (its name) and `format` into the file. `identifyProjectFile` turns another Thistle app's file into a plain
-  "open it in …" message (`THISTLE_APPS`; app names compared without spaces: Flow writes `ThistleFlow`).
+  "open it in …" message (`THISTLE_APPS`; app names compared without spaces; Flow wrote `ThistleFlow` (format 2) and `FlowLite` (format 1),
+  and since TF v0.17.0 writes `.tflow` with `"app": "Thistle Flow", "format": 3, "kind": "workspace"|"template"`, zip when it holds FCS files).
 - Write algorithms from their published descriptions, never by porting code from GPL software (e.g. R). Cite the paper.
 - Paired data (paired tests, correlation, regression, dose, volcano, scatter) must be paired by row and replicate with
   `pairedCells` / `xyPairs`, never by zipping two `getGroupPooled` lists (a blank cell shifts every later pair).
@@ -92,7 +95,7 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 ## Known gaps (candidates for future work)
 Dunnett only for a single control; Kaplan-Meier has no Cox regression; two-way ANOVA needs a balanced design; SVG export is an
 embedded raster; Publication style is greyscale only; project files store only the active dataset and plots only as snapshots;
-Fisher/chi-square have no plot; Wilcoxon "by sample" figures are not specially handled; TP has not been formally validated.
+Fisher/chi-square have no plot; TP has not been formally validated.
 
 ## Testing notes
 - `tests/helpers.js` provides `openApp()`, `selectTest`, `selectPlot`, `loadGenes(N)`. Tests drive the app through its global functions
