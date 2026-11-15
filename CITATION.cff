@@ -6,13 +6,13 @@ authors:
   - given-names: Takanobu
     family-names: Tagawa
     affiliation: "The University of Edinburgh"
-version: 1.0.0
+version: 0.11.0
 license: MIT
 repository-code: "https://github.com/actinomycetes/thistle-plot"
 url: "https://actinomycetes.github.io/thistle-plot/"
 abstract: >-
   Free, single-file web app for bench statistics and publication-style figures.
-  Runs entirely in the browser; data never leaves the user's computer.
+  Runs entirely in the browser; data never leaves the user's computer. Beta (0.x).
 keywords:
   - statistics
   - data visualisation

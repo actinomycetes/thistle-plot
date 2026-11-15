@@ -1,8 +1,8 @@
 {
   "name": "thistle-plot",
-  "version": "1.0.0",
+  "version": "0.11.0",
   "private": true,
-  "description": "Thistle Plot (TP): single-file stats and plotting web app for bench scientists.",
+  "description": "Thistle Plot (TP): single-file stats and plotting web app for bench scientists (beta).",
   "author": "Takanobu Tagawa (The University of Edinburgh)",
   "license": "MIT",
   "scripts": {

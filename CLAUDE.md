@@ -1,6 +1,6 @@
 # Thistle Plot (TP): project guide for Claude Code
 
-TP (v1.x) is a statistics and plotting web app for bench scientists
+TP is a **beta** (0.x) statistics and plotting web app for bench scientists
 (UoE TT ncRNA lab). It is a **single self-contained `index.html`** (about 300 KB), plain JavaScript,
 no framework, no build step. Libraries come from cdnjs: Chart.js 4.4.1, jStat 1.9.6, PapaParse 5.4.1.
 It is served by GitHub Pages straight from `index.html` and embedded on a Confluence wiki through an iFrame macro.
@@ -37,8 +37,9 @@ Open `index.html` directly in a browser to try it. Tests load the CDN libraries 
 3. Edit manual text only in `docs/*.md`, then run `python3 tools/build_help.py`. Never edit the HTML between the
    `<!--HELP:..-->` markers by hand (it is regenerated).
 4. `npm test` must pass. New feature means new test.
-5. Commit with a message like `v1.0.1: <summary>`; tag releases `v1.0.1`.
-Versioning: MAJOR.MINOR.PATCH. Fixes bump PATCH, new features bump MINOR; MAJOR only for changes that break saved projects or remove features.
+5. Commit with a message like `v0.11.1: <summary>`; tag releases `v0.11.1`.
+Versioning: 0.MINOR.PATCH while in beta. Fixes bump PATCH, new features bump MINOR. 1.0.0 comes after the maintainer has
+tested on iPad and decides to leave beta; after that, MAJOR only for changes that break saved projects or remove features.
 
 ## Architecture map (search for these names in index.html)
 - **State:** `G = {nReps, groups:[{name, reps, data[row][rep]}], rowNames, nRows}` is the active data table; `datasets[]` holds

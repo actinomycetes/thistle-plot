@@ -4,7 +4,7 @@ TP has a header bar, a left panel for data and settings, and a right panel of re
 
 | Area | What it holds |
 | --- | --- |
-| Header | Name and version badge, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu |
+| Header | Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu |
 | Left panel, top | Dataset tabs and the data grid |
 | Left panel, Visualisation | Plot type, 📋 Example (data suited to that plot), plot options, Live update, 📈 Plot (↻ Update plot and + New when a figure of that type is open) |
 | Left panel, Statistical Test | Test type, 📋 Example (data suited to that test), description, test options, ▶ Run Analysis |
@@ -189,7 +189,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v1.0.0:
+Known limitations of v0.11.0 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
