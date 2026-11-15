@@ -2,6 +2,7 @@ All releases are beta (0.x). Earlier builds had a different working name; number
 
 | Version | Name | Changes |
 | --- | --- | --- |
+| 0.13.3 (15 Nov 2026) | Thistle Plot | New Thistle suite icon at the top left of the app (the thistle with a blue table badge, as on the browser tab); the browser-tab icon is stored in a form Safari on iPad reads reliably, and is also given to Safari as a picture for the home screen and bookmarks |
 | 0.13.2 (15 Nov 2026) | Thistle Plot | The thistle in the header and the browser-tab icon now matches Thistle Flow's (dotted flower head), so the suite shares one thistle |
 | 0.13.1 (15 Nov 2026) | Thistle Plot | Plot settings are kept per plot type while you browse figures for a result: switching the plot menu away and back brings back the same figure with its settings (or the settings you last used for that type), instead of the defaults. Selecting a result tab no longer overwrites the plot settings with those in use when the test was run |
 | 0.13.0 (15 Nov 2026) | Thistle Plot | Auto-plot: a menu beside the tick box lists every figure that suits the test, the recommended one first and preselected (e.g. Mann–Whitney and Kruskal–Wallis now default to a box plot); box and violin plots now carry the test's significance brackets (short brackets lowest, brackets sharing a group side by side); a browser-tab icon (the thistle with a small table) |

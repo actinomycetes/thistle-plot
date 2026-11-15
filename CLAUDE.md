@@ -78,9 +78,12 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 ## Names, licences, provenance
 - Do not name commercial software in the UI, Help or code comments (no "Prism-like"); describe the behaviour instead.
   `.pprism` project files from early builds still load.
-- Thistle suite icon: the favicon is the thistle (32×32 viewBox, `translate(-1 0) scale(1.08)`) with an app badge in the
-  bottom-right corner (TP: a blue table; Thistle Flow: a laser hitting a cell, TF v0.17.1). The whole thistle is identical
-  across the suite (header logo and favicon), including the head of five `#15803d` dots as in Thistle Flow.
+- Thistle suite icon: the thistle (32×32 viewBox, `translate(-1 0) scale(1.08)`) with an app badge in the
+  bottom-right corner (TP: a blue table; Thistle Flow: a laser hitting a cell). The whole thistle is identical
+  across the suite, including the head of five `#15803d` dots as in Thistle Flow. Since v0.13.3 (TF v0.17.2) the same
+  badged picture is both the favicon and the header logo (`#hdr svg.app-logo`, 30 px). The favicon data: URI is fully
+  percent-encoded (no raw spaces or quotes; Safari on iPad reads it reliably) and a 180×180 PNG on the slate background
+  is the `apple-touch-icon`. `tests/smoke.test.js` checks logo and favicon match.
 - Thistle suite file types: each app saves its own extension (`.tplot` here, `.tflow` for Thistle Flow) and writes
   `app` (its name) and `format` into the file. `identifyProjectFile` turns another Thistle app's file into a plain
   "open it in …" message (`THISTLE_APPS`; app names compared without spaces; Flow wrote `ThistleFlow` (format 2) and `FlowLite` (format 1),
