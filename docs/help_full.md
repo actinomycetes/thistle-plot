@@ -162,7 +162,9 @@ The **Export** menu in the header sets the style for every download button.
 
 ### 7. Saving and loading projects
 
-**💾 Save** downloads `thistle_project.thistle`, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. **📂 Load** reopens it. Projects saved by earlier versions (`.pprism`) still load.
+**💾 Save** downloads `thistle_project.tplot`, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. **📂 Load** reopens it. Projects saved by earlier versions (`.thistle`, `.pprism`) still load.
+
+Each app of the Thistle suite has its own file type: Thistle Plot projects are `.tplot` and Thistle Flow workspaces are `.tflow` (or `.zip` with the FCS files included). If you open a Thistle Flow file here, TP says so and leaves your table unchanged; open it in [Thistle Flow](https://actinomycetes.github.io/thistle-flow/) instead.
 
 Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, draw it again with 📈 Plot (↻ Update does not apply to snapshots).
 
@@ -189,7 +191,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.11.0 (beta):
+Known limitations of v0.11.1 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
@@ -207,7 +209,7 @@ TP runs in Safari on iPadOS 16 or later. It is laid out for a large screen, so i
 
 - **Shortcuts:** Cmd+C / Cmd+X / Cmd+V in the table, Cmd+Z / Cmd+Shift+Z for undo and redo. iPad keyboards have no F1 key, so open Help with **Cmd+/** (or the ❓ Help button).
 - **Downloads** (PNG, SVG, CSV, 💾 Save): Safari asks whether to download; tap **Download**. Files go to the Downloads folder in the Files app.
-- **📂 Load** and **⬆ CSV** open the Files app; every file is selectable (iPadOS cannot filter on the `.thistle` extension), so pick the right one.
+- **📂 Load** and **⬆ CSV** open the Files app; every file is selectable (iPadOS cannot filter on the `.tplot` extension), so pick the right one.
 - **⬇ PDF** opens the figure in a new tab with the print options; tap the Share button at the top of that sheet and choose **Save to Files** to keep a PDF. Close the tab to return to TP.
 - Very large tables (tens of thousands of rows) are slower than on a computer, and an iPad has less memory, so close plot tabs you no longer need.
 

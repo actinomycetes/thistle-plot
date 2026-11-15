@@ -8,7 +8,7 @@ Data never leaves the browser.
 
 ## Ground rules
 - Keep it ONE file with no build step for users. Do not introduce a bundler or split `index.html` unless the maintainer asks.
-- No `localStorage`/`sessionStorage` for data (projects are saved as `.thistle` JSON files; `.pprism` still loads).
+- No `localStorage`/`sessionStorage` for data (projects are saved as `.tplot` JSON files; `.thistle` and `.pprism` still load).
 - Statistics must be correct before they are pretty. When adding or changing a test, validate it against SciPy or
   statsmodels (generate reference numbers with Python), then add a regression test in `tests/stats.test.js`.
 - TP is cross-checked against SciPy/statsmodels (`npm run validate`) but not formally validated: do not call it validated;
@@ -72,6 +72,9 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 ## Names, licences, provenance
 - Do not name commercial software in the UI, Help or code comments (no "Prism-like"); describe the behaviour instead.
   `.pprism` project files from early builds still load.
+- Thistle suite file types: each app saves its own extension (`.tplot` here, `.tflow` for Thistle Flow) and writes
+  `app` (its name) and `format` into the file. `identifyProjectFile` turns another Thistle app's file into a plain
+  "open it in …" message (`THISTLE_APPS`; app names compared without spaces: Flow writes `ThistleFlow`).
 - Write algorithms from their published descriptions, never by porting code from GPL software (e.g. R). Cite the paper.
 - Paired data (paired tests, correlation, regression, dose, volcano, scatter) must be paired by row and replicate with
   `pairedCells` / `xyPairs`, never by zipping two `getGroupPooled` lists (a blank cell shifts every later pair).
@@ -100,4 +103,4 @@ Fisher/chi-square have no plot; Wilcoxon "by sample" figures are not specially h
   where a drag began, and ignores `clipboardData` passed to a synthetic `ClipboardEvent`. Lab users run Firefox and Safari (Mac, and iPad with keyboard and trackpad).
 - `TP_DEVICE=ipad` (or `ipad-portrait`) runs the suite in WebKit emulating Safari on an iPad (`npx playwright install webkit`,
   plus `npx playwright install-deps webkit` on Linux). iPad notes: Safari ignores theme colours on native `<select>` (we draw our own),
-  the iOS file picker cannot filter `.thistle` (`IS_IOS` drops `accept`), keep object URLs alive (`_saveBlob`), no F1 key (Cmd+/).
+  the iOS file picker cannot filter `.tplot` (`IS_IOS` drops `accept`), keep object URLs alive (`_saveBlob`), no F1 key (Cmd+/).

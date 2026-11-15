@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.11.0 (Beta)</title>
+<title>Thistle Plot v0.11.1 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -194,7 +194,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.11.0</span>
+  <span class="badge" id="app-version" title="Version">v0.11.1</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
   <button class="btn" onclick="document.getElementById('fi-load').click()">📂 Load</button>
@@ -208,7 +208,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
     <option value="publication">Publication</option>
   </select></span>
 </header>
-<input type="file" id="fi-load" accept=".thistle,.pprism,.json" style="display:none" onchange="loadProject(event)">
+<input type="file" id="fi-load" accept=".tplot,.thistle,.pprism,.json" style="display:none" onchange="loadProject(event)">
 <input type="file" id="fi-csv" accept=".csv" style="display:none" onchange="onCSV(event)">
 
 <div id="main" style="display:none">
@@ -2665,7 +2665,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.11.0';
+const APP_VERSION='0.11.1';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -4178,7 +4178,7 @@ function runAnalysis(){
 // ═══════════════════════════════════════════════════════════
 function saveProject(){
   const snap={
-    app:'Thistle Plot',version:2,appVersion:APP_VERSION,
+    app:'Thistle Plot',format:2,version:2,appVersion:APP_VERSION, // version = format, kept for older TP builds
     G:{nReps:G.nReps,nRows:G.nRows,rowNames:[...G.rowNames],
        groups:G.groups.map(g=>({name:g.name,reps:[...g.reps],data:g.data.map(r=>[...r])}))},
     statTabs:statTabs.map(t=>({id:t.id,title:t.title,html:t.html})),
@@ -4189,15 +4189,36 @@ function saveProject(){
     activePT,activeST
   };
   const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
-  _saveBlob(blob,'thistle_project.thistle');
+  _saveBlob(blob,'thistle_project.tplot');
 }
 
+// Thistle suite file types: each app saves its own extension and names itself in the file ("app"),
+// so a file opened in the wrong app gets a plain message instead of a parse error.
+const THISTLE_APPS={'Thistle Plot':{ext:'.tplot',url:'https://actinomycetes.github.io/thistle-plot/'},
+  'Thistle Flow':{ext:'.tflow',url:'https://actinomycetes.github.io/thistle-flow/'}};
+// What a loaded file is: {ok:true, snap} for a Thistle Plot project, else {ok:false, msg}
+function identifyProjectFile(name,text){
+  const lower=(name||'').toLowerCase();
+  const other=(app,what)=>({ok:false,msg:`“${name}” is a ${app} ${what}. Open it in ${app}${THISTLE_APPS[app]?' ('+THISTLE_APPS[app].url+')':''}; Thistle Plot opens .tplot projects.`});
+  if(lower.endsWith('.tflow'))return other('Thistle Flow','workspace');
+  if(text.startsWith('PK'))return lower.endsWith('.zip')?other('Thistle Flow','workspace (with its FCS files)')
+    :{ok:false,msg:`“${name}” is a compressed (zip) file, not a Thistle Plot project.`};
+  let snap;try{snap=JSON.parse(text);}catch(e){return{ok:false,msg:`“${name}” is not a Thistle Plot project (.tplot). To bring in a table of numbers, use ⬆ CSV.`};}
+  if(snap&&typeof snap.app==='string'){ // 'Thistle Flow' and 'ThistleFlow' are the same app
+    const key=snap.app.replace(/\s+/g,'').toLowerCase(),known=Object.keys(THISTLE_APPS).find(a=>a.replace(/\s+/g,'').toLowerCase()===key);
+    if(key!=='thistleplot')return other(known||snap.app,known==='Thistle Flow'?'workspace':'file');
+  }
+  if(!snap||!snap.G||!Array.isArray(snap.G.groups))return{ok:false,msg:`“${name}” is not a Thistle Plot project (.tplot).`};
+  return{ok:true,snap};
+}
 function loadProject(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
     try{
-      const snap=JSON.parse(e.target.result);
+      const id=identifyProjectFile(file.name,e.target.result);
+      if(!id.ok){alert(id.msg);return;}
+      const snap=id.snap;
       G.nReps=snap.G.nReps||3;G.nRows=snap.G.nRows||6;
       G.rowNames=snap.G.rowNames||[];
       G.groups=snap.G.groups.map(g=>({name:g.name,reps:g.reps||[],data:g.data||[]}));
@@ -4312,7 +4333,7 @@ function populateSelects(){
 // iPhone/iPad (iPadOS reports itself as a Mac, but with a touch screen)
 const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function checkLibs(){
-  if(IS_IOS){ // the iOS file picker greys out extensions it does not know (.thistle), so let it offer every file
+  if(IS_IOS){ // the iOS file picker greys out extensions it does not know (.thistle), (.tplot), so let it offer every file
     document.getElementById('fi-load')?.removeAttribute('accept');
     document.getElementById('fi-csv')?.setAttribute('accept','.csv,text/csv,text/comma-separated-values,text/plain');
   }
@@ -4349,7 +4370,7 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a> (MIT licence).</p>
-<p>TP is a <strong>beta (v0.11.0)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
+<p>TP is a <strong>beta (v0.11.1)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
 <p><strong>Opening TP:</strong> use the hosted copy at <a href="https://actinomycetes.github.io/thistle-plot/">https://actinomycetes.github.io/thistle-plot/</a>, double-click a downloaded <code>index.html</code> to open it in Chrome, Edge, Firefox or Safari (Mac or iPad), or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
@@ -4363,7 +4384,7 @@ window.addEventListener('load',checkLibs);
 <li><strong>Check the figure.</strong> Significance brackets (*, **, ***, ****) from your last test are drawn automatically on bar charts.</li>
 <li><strong>Choose an export style</strong> in the header: <strong>App</strong> (what you see on screen) or <strong>Publication</strong> (white background, black axes, bold Arial, greyscale, about 300 dpi).</li>
 <li><strong>Download</strong> with <strong>⬇ PNG</strong>, <strong>⬇ SVG</strong> or <strong>⬇ PDF</strong> at the top of the plot tab.</li>
-<li><strong>Save your work</strong> with <strong>💾 Save</strong>. This downloads a <code>.thistle</code> project file you can reopen later with <strong>📂 Load</strong>.</li>
+<li><strong>Save your work</strong> with <strong>💾 Save</strong>. This downloads a <code>.tplot</code> project file you can reopen later with <strong>📂 Load</strong>.</li>
 </ol>
 <p>Tip: Ctrl/Cmd+Z undoes and Ctrl/Cmd+Y redoes any change to the data table.</p><!--/HELP:hq--></div>
    <div class="hpane" id="hf"><!--HELP:hf--><h2>Full Manual</h2><h3>1. Screen layout</h3>
@@ -4824,7 +4845,8 @@ window.addEventListener('load',checkLibs);
 <li><strong>⬇ PDF</strong> opens a print window; choose "Save as PDF". Allow pop-ups for TP if nothing happens.</li>
 </ul>
 <h3>7. Saving and loading projects</h3>
-<p><strong>💾 Save</strong> downloads <code>thistle_project.thistle</code>, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. <strong>📂 Load</strong> reopens it. Projects saved by earlier versions (<code>.pprism</code>) still load.</p>
+<p><strong>💾 Save</strong> downloads <code>thistle_project.tplot</code>, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. <strong>📂 Load</strong> reopens it. Projects saved by earlier versions (<code>.thistle</code>, <code>.pprism</code>) still load.</p>
+<p>Each app of the Thistle suite has its own file type: Thistle Plot projects are <code>.tplot</code> and Thistle Flow workspaces are <code>.tflow</code> (or <code>.zip</code> with the FCS files included). If you open a Thistle Flow file here, TP says so and leaves your table unchanged; open it in <a href="https://actinomycetes.github.io/thistle-flow/">Thistle Flow</a> instead.</p>
 <p>Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, draw it again with 📈 Plot (↻ Update does not apply to snapshots).</p>
 <h3>8. Light and dark theme</h3>
 <p>The 🌙/☀️ button switches the on-screen theme and redraws all open plots. It only affects App-style exports; Publication exports are always white.</p>
@@ -4867,7 +4889,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.11.0 (beta):</p>
+<p>Known limitations of v0.11.1 (beta):</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.</li>
 <li>Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).</li>
@@ -4884,7 +4906,7 @@ window.addEventListener('load',checkLibs);
 <ul>
 <li><strong>Shortcuts:</strong> Cmd+C / Cmd+X / Cmd+V in the table, Cmd+Z / Cmd+Shift+Z for undo and redo. iPad keyboards have no F1 key, so open Help with <strong>Cmd+/</strong> (or the ❓ Help button).</li>
 <li><strong>Downloads</strong> (PNG, SVG, CSV, 💾 Save): Safari asks whether to download; tap <strong>Download</strong>. Files go to the Downloads folder in the Files app.</li>
-<li><strong>📂 Load</strong> and <strong>⬆ CSV</strong> open the Files app; every file is selectable (iPadOS cannot filter on the <code>.thistle</code> extension), so pick the right one.</li>
+<li><strong>📂 Load</strong> and <strong>⬆ CSV</strong> open the Files app; every file is selectable (iPadOS cannot filter on the <code>.tplot</code> extension), so pick the right one.</li>
 <li><strong>⬇ PDF</strong> opens the figure in a new tab with the print options; tap the Share button at the top of that sheet and choose <strong>Save to Files</strong> to keep a PDF. Close the tab to return to TP.</li>
 <li>Very large tables (tens of thousands of rows) are slower than on a computer, and an iPad has less memory, so close plot tabs you no longer need.</li>
 </ul>
@@ -4904,6 +4926,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.11.1 (15 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Projects are saved as <code>.tplot</code> (Thistle Plot's own file type in the Thistle suite; Thistle Flow uses <code>.tflow</code>). <code>.thistle</code> and <code>.pprism</code> projects still load. Opening a Thistle Flow workspace or another file that is not a Thistle Plot project now shows a plain message and leaves the table unchanged (it gave a parse error)</td>
+</tr>
 <tr>
 <td>0.11.0 (15 Nov 2026)</td>
 <td>Thistle Plot</td>
