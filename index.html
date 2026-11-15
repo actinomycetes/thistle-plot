@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- Thistle suite icon: the thistle with a badge per app (Thistle Plot: a table) -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg transform='translate%28-1 0%29 scale%281.08%29'%3E%3Cg stroke=%22%23a855f7%22 stroke-width=%221.6%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M12 10V2%22/%3E%3Cpath d=%22M12 10L7 3%22/%3E%3Cpath d=%22M12 10L17 3%22/%3E%3Cpath d=%22M12 10L4.5 6%22/%3E%3Cpath d=%22M12 10L19.5 6%22/%3E%3Cpath d=%22M12 10L9.5 2.3%22/%3E%3Cpath d=%22M12 10L14.5 2.3%22/%3E%3C/g%3E%3Cellipse cx=%2212%22 cy=%2213.5%22 rx=%225%22 ry=%224.2%22 fill=%22%2322c55e%22/%3E%3Cpath d=%22M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4%22 stroke=%22%2315803d%22 stroke-width=%221.1%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M12 17.5V25%22 stroke=%22%2316a34a%22 stroke-width=%221.8%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8%22 stroke=%22%2316a34a%22 stroke-width=%221.4%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/g%3E%3Crect x='14' y='15' width='17' height='16' rx='2.5' fill='%23ffffff' stroke='%232563eb' stroke-width='2'/%3E%3Cpath d='M14 17.5a2.5 2.5 0 0 1 2.5-2.5h12a2.5 2.5 0 0 1 2.5 2.5v3h-17z' fill='%232563eb'/%3E%3Cpath d='M14 25.7h17M22.5 20.5v10.5' stroke='%232563eb' stroke-width='1.8'/%3E%3C/svg%3E">
-<title>Thistle Plot v0.13.1 (Beta)</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg transform='translate%28-1 0%29 scale%281.08%29'%3E%3Cg stroke=%22%23a855f7%22 stroke-width=%221.6%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M12 10V2%22/%3E%3Cpath d=%22M12 10L7 3%22/%3E%3Cpath d=%22M12 10L17 3%22/%3E%3Cpath d=%22M12 10L4.5 6%22/%3E%3Cpath d=%22M12 10L19.5 6%22/%3E%3Cpath d=%22M12 10L9.5 2.3%22/%3E%3Cpath d=%22M12 10L14.5 2.3%22/%3E%3C/g%3E%3Cellipse cx=%2212%22 cy=%2213.5%22 rx=%225%22 ry=%224.2%22 fill=%22%2322c55e%22/%3E%3Cg fill=%22%2315803d%22%3E%3Ccircle cx=%229.7%22 cy=%2212.7%22 r=%22.95%22/%3E%3Ccircle cx=%2212.3%22 cy=%2211.9%22 r=%22.95%22/%3E%3Ccircle cx=%2214.7%22 cy=%2213.3%22 r=%22.95%22/%3E%3Ccircle cx=%2210.8%22 cy=%2215.3%22 r=%22.95%22/%3E%3Ccircle cx=%2213.5%22 cy=%2215.5%22 r=%22.95%22/%3E%3C/g%3E%3Cpath d=%22M12 17.5V25%22 stroke=%22%2316a34a%22 stroke-width=%221.8%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8%22 stroke=%22%2316a34a%22 stroke-width=%221.4%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/g%3E%3Crect x='14' y='15' width='17' height='16' rx='2.5' fill='%23ffffff' stroke='%232563eb' stroke-width='2'/%3E%3Cpath d='M14 17.5a2.5 2.5 0 0 1 2.5-2.5h12a2.5 2.5 0 0 1 2.5 2.5v3h-17z' fill='%232563eb'/%3E%3Cpath d='M14 25.7h17M22.5 20.5v10.5' stroke='%232563eb' stroke-width='1.8'/%3E%3C/svg%3E">
+<title>Thistle Plot v0.13.2 (Beta)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -193,10 +193,10 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
 <div id="loading"><div class="spin"></div><div id="lmsg" style="color:var(--mu)">Loading…</div></div>
 
 <header id="hdr" style="display:none">
-  <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><path d="M8 12.2l2 2M10.5 11l2.2 2.4M13.2 11l2.2 2.4M8.5 15l1.6 1.4" stroke="#15803d" stroke-width="1.1" stroke-linecap="round"/><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
+  <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true" style="flex:none"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><g fill="#15803d"><circle cx="9.7" cy="12.7" r=".95"/><circle cx="12.3" cy="11.9" r=".95"/><circle cx="14.7" cy="13.3" r=".95"/><circle cx="10.8" cy="15.3" r=".95"/><circle cx="13.5" cy="15.5" r=".95"/></g><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge" style="background:#7c2d12;color:#fed7aa">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.13.1</span>
+  <span class="badge" id="app-version" title="Version">v0.13.2</span>
   <span class="spacer"></span>
   <button class="btn" onclick="saveProject()">💾 Save</button>
   <button class="btn" onclick="document.getElementById('fi-load').click()">📂 Load</button>
@@ -2725,7 +2725,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.13.1';
+const APP_VERSION='0.13.2';
 function isLightTheme(){return document.documentElement.getAttribute('data-theme')==='light'}
 // ── Export-theme support ─────────────────────────────────────────────────
 let _exportTheme=null;
@@ -4519,7 +4519,7 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a> (MIT licence).</p>
-<p>TP is a <strong>beta (v0.13.1)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
+<p>TP is a <strong>beta (v0.13.2)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
 <p><strong>Opening TP:</strong> use the hosted copy at <a href="https://actinomycetes.github.io/thistle-plot/">https://actinomycetes.github.io/thistle-plot/</a>, double-click a downloaded <code>index.html</code> to open it in Chrome, Edge, Firefox or Safari (Mac or iPad), or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
@@ -5044,7 +5044,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.13.1 (beta):</p>
+<p>Known limitations of v0.13.2 (beta):</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.</li>
 <li>Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).</li>
@@ -5081,6 +5081,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.13.2 (15 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>The thistle in the header and the browser-tab icon now matches Thistle Flow's (dotted flower head), so the suite shares one thistle</td>
+</tr>
 <tr>
 <td>0.13.1 (15 Nov 2026)</td>
 <td>Thistle Plot</td>
