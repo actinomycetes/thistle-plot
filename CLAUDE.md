@@ -81,9 +81,10 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 - Thistle suite icon: the thistle (32×32 viewBox, `translate(-1 0) scale(1.08)`) with an app badge in the
   bottom-right corner (TP: a blue table; Thistle Flow: a laser hitting a cell). The whole thistle is identical
   across the suite, including the head of five `#15803d` dots as in Thistle Flow. Since v0.13.3 (TF v0.17.2) the same
-  badged picture is both the favicon and the header logo (`#hdr svg.app-logo`, 30 px). The favicon data: URI is fully
-  percent-encoded (no raw spaces or quotes; Safari on iPad reads it reliably) and a 180×180 PNG on the slate background
-  is the `apple-touch-icon`. `tests/smoke.test.js` checks logo and favicon match.
+  badged picture is both the favicon and the header logo (`#hdr svg.app-logo`, 30 px). Write the favicon exactly as
+  `<link rel="icon" href="data:image/svg+xml,...">` after `<title>`: NO `type` attribute and every character escaped
+  (`encodeURIComponent`, then `(`→`%28`, `)`→`%29`); with `type="image/svg+xml"` Safari on iPad never showed it.
+  A 180×180 PNG on the slate background is the `apple-touch-icon`. `tests/smoke.test.js` checks all of this.
 - Thistle suite file types: each app saves its own extension (`.tplot` here, `.tflow` for Thistle Flow) and writes
   `app` (its name) and `format` into the file. `identifyProjectFile` turns another Thistle app's file into a plain
   "open it in …" message (`THISTLE_APPS`; app names compared without spaces; Flow wrote `ThistleFlow` (format 2) and `FlowLite` (format 1),
@@ -99,6 +100,11 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 - Power-iteration PCA crashed the page on 20,000 rows; keep the Gram-matrix method.
 - Heatmap labels must not overlap the colour key; Publication heatmap group strips are greyscale.
 - Option IDs used by `captureOptState` / `restoreOptState` must be stable, or 🔗 re-creation breaks.
+- Colours must work in BOTH themes and for colour-blind readers (TP v0.13.4): text reaches WCAG AA (4.5:1) on its real
+  background in dark and light mode; boxes use theme variables (`--ac` fills with white text, `--act` blue text,
+  `--ok`/`--wa`/`--er`, `--hint-*`, `--badge-bg`, `--err-*`), never a hard-coded dark colour (the hint box and version
+  badge stayed dark in light mode). `tests/theme.test.js` audits start, every test's hint, a result and Help in both
+  themes. Group colours are the Okabe–Ito palette (`COLORS`); never put red next to green to carry meaning.
 - Clear / new dataset must reset to the default empty 2-group table (names too).
 - Do not fetch from the network at runtime beyond the three cdnjs libraries.
 

@@ -2,6 +2,7 @@ All releases are beta (0.x). Earlier builds had a different working name; number
 
 | Version | Name | Changes |
 | --- | --- | --- |
+| 0.13.4 (15 Nov 2026) | Thistle Plot | Colours readable for everyone: groups use the Okabe–Ito colour-blind-safe palette (blue, orange, bluish green, reddish purple, …) instead of blue, red, green, which look alike to many colour-blind readers; the blue hint box, the version badge and error messages now switch to light colours in light mode; blue text, buttons, significant p-values and stars have stronger contrast in both themes. The browser-tab icon is written in the form Safari on iPad shows (as Thistle Flow v0.17.1) |
 | 0.13.3 (15 Nov 2026) | Thistle Plot | New Thistle suite icon at the top left of the app (the thistle with a blue table badge, as on the browser tab); the browser-tab icon is stored in a form Safari on iPad reads reliably, and is also given to Safari as a picture for the home screen and bookmarks |
 | 0.13.2 (15 Nov 2026) | Thistle Plot | The thistle in the header and the browser-tab icon now matches Thistle Flow's (dotted flower head), so the suite shares one thistle |
 | 0.13.1 (15 Nov 2026) | Thistle Plot | Plot settings are kept per plot type while you browse figures for a result: switching the plot menu away and back brings back the same figure with its settings (or the settings you last used for that type), instead of the defaults. Selecting a result tab no longer overwrites the plot settings with those in use when the test was run |

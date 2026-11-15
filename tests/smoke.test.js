@@ -19,10 +19,11 @@ test('Thistle suite icon: header logo and tab icon are the same thistle with the
     const fav = document.querySelector('link[rel="icon"]').getAttribute('href');
     const logo = document.querySelector('#hdr svg.app-logo');
     const touch = document.querySelector('link[rel="apple-touch-icon"]');
-    return { fav, logo: logo && logo.innerHTML, viewBox: logo && logo.getAttribute('viewBox'), touch: touch && touch.getAttribute('href') };
+    return { fav, type: document.querySelector('link[rel="icon"]').getAttribute('type'), logo: logo && logo.innerHTML, viewBox: logo && logo.getAttribute('viewBox'), touch: touch && touch.getAttribute('href') };
   });
   // fully percent-encoded (no raw spaces or quotes), which Safari on iPad reads reliably
-  assert.match(r.fav, /^data:image\/svg\+xml,%3Csvg[^ '"]*$/);
+  assert.match(r.fav, /^data:image\/svg\+xml,%3Csvg[^ '"()]*$/, 'every character escaped, brackets too');
+  assert.strictEqual(r.type, null, 'no type attribute (Safari on iPad skipped the icon when it said image/svg+xml)');
   const svg = decodeURIComponent(r.fav.slice('data:image/svg+xml,'.length));
   assert.match(svg, /viewBox="0 0 32 32"/);
   assert.match(svg, /<circle cx="9\.7" cy="12\.7" r="\.95"\/>/, 'dotted thistle head');

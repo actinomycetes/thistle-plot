@@ -6,7 +6,7 @@ authors:
   - given-names: Takanobu
     family-names: Tagawa
     affiliation: "The University of Edinburgh"
-version: 0.13.3
+version: 0.13.4
 license: MIT
 repository-code: "https://github.com/actinomycetes/thistle-plot"
 url: "https://actinomycetes.github.io/thistle-plot/"
