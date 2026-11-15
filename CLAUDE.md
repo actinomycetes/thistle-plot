@@ -51,6 +51,9 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 - **Tests run in `runAnalysis()`**, one big if/else chain on `atype`; each branch builds HTML, calls `addStatTab(title, html)`
   and sets `lastStatPairs` / `lastStatRowPairs` / `lastStatGeneSet` for significance marks. Tab-level data lives in `statTabs[]`
   (`sigPairs`, `rowPairs`, `geneSet`, `optState`, `linkedPlotId`) and `plotTabs[]` (`linkedStatId`, `optState`).
+- **Plot settings memory:** figures belong to a context `_plotCtx` (the stat tab they were made for; tab.ctx). Switching
+  `#psel` re-activates that context's open figure of the type, else restores `_plotOptMem` (saved on every #popts edit).
+  Activating a stat tab restores only `asel`/`ao_*` (never plot options).
 - **Plots:** `runPlot()` dispatches to `plotBarSD`, `plotHeatmapCustom`, `plotPCACustom`, ... built with `canvasTab` / `chartTab`.
   `plotPaired` (paired before–after lines, `pairedPlotLayout`) is a canvas plot: subjects = row × replicate cells, brackets from
   `lastStatPairs` captured at creation; a draw function's `_pubW` sets its Publication export width.
