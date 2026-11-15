@@ -1,0 +1,57 @@
+# Publishes a GitHub pre-release for every version of APP_VERSION (index.html) that has no tag yet:
+# tag vX.Y.Z on the last commit carrying that version (so later fixes are included) whose workflow files
+# are identical to those on main (the workflow token may not create refs that would bring in different
+# workflow files, so versions released before this workflow existed are skipped and must be tagged by hand),
+# with index.html attached as thistle-plot.html and notes from the newest row of docs/help_hist.md.
+# Runs after CI passes on main, so a version-bump commit is all a release needs.
+# It can also be started by hand: Actions -> Release -> Run workflow.
+name: Release
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # the commit CI tested (or the tip of main when started by hand)
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Create missing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          main=$(git rev-parse origin/main)
+          # every version that index.html has ever had, oldest first
+          versions=$(git log --reverse -p -- index.html | sed -n "s/^+const APP_VERSION='\([0-9.]*\)';.*/\1/p" | awk '!seen[$0]++')
+          for v in $versions; do
+            tag="v$v"
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then continue; fi
+            first=$(git log --reverse --format=%H -S"APP_VERSION='$v'" -- index.html | head -1)
+            sha=""
+            for c in $(git rev-list --reverse "$first^..HEAD"); do
+              git show "$c:index.html" | grep -q "const APP_VERSION='$v'" || continue
+              git diff --quiet "$c" "$main" -- .github/workflows || continue
+              sha=$c
+            done
+            if [ -z "$sha" ]; then echo "$tag: released before this workflow existed; tag it by hand if needed"; continue; fi
+            echo "Releasing $tag from $sha"
+            git show "$sha:index.html" > "$RUNNER_TEMP/thistle-plot.html"
+            node tools/release-notes.mjs "$v" > "$RUNNER_TEMP/notes-$v.md"
+            gh release create "$tag" "$RUNNER_TEMP/thistle-plot.html" --target "$sha" --prerelease \
+              --title "Thistle Plot $tag (beta)" --notes-file "$RUNNER_TEMP/notes-$v.md"
+          done

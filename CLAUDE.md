@@ -37,7 +37,12 @@ Open `index.html` directly in a browser to try it. Tests load the CDN libraries 
 3. Edit manual text only in `docs/*.md`, then run `python3 tools/build_help.py`. Never edit the HTML between the
    `<!--HELP:..-->` markers by hand (it is regenerated).
 4. `npm test` must pass. New feature means new test.
-5. Commit with a message like `v0.11.1: <summary>`; tag releases `v0.11.1`.
+5. Commit with a message like `v0.11.1: <summary>` and push to `main`. Do not tag by hand: after CI passes on `main`,
+   `.github/workflows/release.yml` tags the last commit carrying the version and publishes a GitHub pre-release with
+   `index.html` attached as `thistle-plot.html` and notes from the `docs/help_hist.md` row (`tools/release-notes.mjs`,
+   checked by `tests/release.test.js`). The workflow token can only tag commits whose `.github/workflows/` files match
+   `main`, so change workflows before (not after) bumping a version you still want released; versions before v0.13.4
+   were tagged by hand. (If the release step is refused: Settings → Actions → General → Workflow permissions → Read and write.)
 Versioning: 0.MINOR.PATCH while in beta. Fixes bump PATCH, new features bump MINOR. 1.0.0 comes after the maintainer has
 tested on iPad and decides to leave beta; after that, MAJOR only for changes that break saved projects or remove features.
 
