@@ -15,7 +15,7 @@ for (const plot of ['bar_sd', 'boxplot', 'scatter', 'heatmap', 'pca']) {
       await selectPlot(app.page, plot);
       await app.page.evaluate(async () => { loadExampleFor('plot'); await new Promise(r => setTimeout(r, 80)); runPlot(); });
       await wait(app.page, 800);
-      await app.page.selectOption('#export-style', style);
+      await app.page.evaluate(s => setExportStyle(s), style);
       const [dl] = await Promise.all([app.page.waitForEvent('download'),
         app.page.evaluate(() => downloadTabPlot(plotTabs[plotTabs.length - 1].id))]);
       const f = path.join(OUT, `${plot}_${style}.png`); await dl.saveAs(f);

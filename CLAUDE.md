@@ -75,7 +75,10 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   PCA: `pcaCompute` uses the Gram matrix + Jacobi (`_jacobiEig`) so it scales to tens of thousands of genes; `buildPCAMatrix`.
 - **Results tables:** `table.rtbl`; long tables show `SHOW_ROWS=200` with a full CSV (`csvButton`, `downloadCSV`);
   `exportStatTables(tabId)` produces the per-result CSV.
-- **Export:** `_renderExport(pageId, mode)`. App style = screen look at 2x on an opaque background (Chart.js canvases are transparent,
+- **Export:** each plot tab's bar has `_exportTools(id)`: the style menu (`select.exp-style`, global `_exportStyle` via
+  `setExportStyle`) and ⤓ Export, which opens `exportMenu` in a Thistle Flow-style `popover` (PNG / SVG / PDF).
+  The header follows Thistle Flow: brand, `.hdr-actions` (⬆ Open CSV… primary, `.sep`, Save/Load project, Clear), Help + theme right.
+  `_renderExport(pageId, mode)`. App style = screen look at 2x on an opaque background (Chart.js canvases are transparent,
   so they are flattened). Publication style (value `publication`) redraws the chart at `PUB_SCALE=3` with `_exportTheme=PUB_THEME`
   via `_pubifyConfig`, a Proxy-wrapped `Chart` constructor, `_pubDotsPlugin` (beeswarm dots) and `_niceAxis`. SVG is an embedded raster.
 - **Help:** a modal (F1 or the Help button) with three panes generated from `docs/*.md` (see Release checklist).

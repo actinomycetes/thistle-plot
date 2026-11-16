@@ -24,7 +24,7 @@ test('layout fits an upright iPad without sideways scrolling', async () => {
   await app.page.setViewportSize({ width: 834, height: 1194 });
   await selectTest(app.page, 'anova');
   const w = await app.page.evaluate(async () => { loadExampleFor('stat'); await new Promise(r => setTimeout(r, 80)); runAnalysis(); await new Promise(r => setTimeout(r, 1200));
-    const ex = document.getElementById('export-style').getBoundingClientRect();
+    const ex = document.getElementById('theme-btn').getBoundingClientRect();
     return { sw: document.documentElement.scrollWidth, iw: innerWidth, exRight: ex.right }; });
   assert.ok(w.sw <= w.iw, JSON.stringify(w));
   assert.ok(w.exRight <= w.iw, 'Export menu visible ' + JSON.stringify(w));

@@ -4,7 +4,7 @@ TP has a header bar, a left panel for data and settings, and a right panel of re
 
 | Area | What it holds |
 | --- | --- |
-| Header | Name, BETA and version badges, 💾 Save, 📂 Load, ⬆ CSV, 🗑 Clear, ❓ Help, 🌙/☀️ theme toggle, Export style menu |
+| Header | Name, BETA and version badges; ⬆ Open CSV…, 💾 Save project, 📂 Load project, 🗑 Clear; on the right ❓ Help and the 🌙/☀️ theme toggle |
 | Left panel, top | Dataset tabs and the data grid |
 | Left panel, Visualisation | Plot type, 📋 Example (data suited to that plot), plot options, Live update, 📈 Plot (↻ Update plot and + New when a figure of that type is open) |
 | Left panel, Statistical Test | Test type, 📋 Example (data suited to that test), description, test options, ▶ Run Analysis |
@@ -32,12 +32,12 @@ Most tests pool all values in a group's columns. Some tests read columns positio
 
 - **Type** into any cell. Arrow keys move between cells.
 - **Select** a block of cells by dragging across them with the mouse, or click one cell and Shift+click another.
-- **Copy / cut** the selection with Ctrl/Cmd+C or X (or the right-click menu); it pastes into Excel or Sheets as a table. Cut is undoable with Ctrl/Cmd+Z. **Delete** or Backspace clears selected cells.
-- **Paste** a block from Excel, Sheets or TP with Ctrl/Cmd+V; it fills from the selected cell (the top-left cell of a selected block), and the table grows to fit. Pasting a single value into a selected block fills every cell with it.
+- **Copy / cut** the selection with Ctrl/Cmd+C or X (or the right-click menu); it pastes into a spreadsheet as a table. Cut is undoable with Ctrl/Cmd+Z. **Delete** or Backspace clears selected cells.
+- **Paste** a block from a spreadsheet or TP with Ctrl/Cmd+V; it fills from the selected cell (the top-left cell of a selected block), and the table grows to fit. Pasting a single value into a selected block fills every cell with it.
 - **Resize** with Reps/group and Groups, or with +Grp, −Grp, +Row, −Row.
 - **Rename** a group, row or dataset by double-clicking its name; Enter confirms, Esc cancels.
 - **Undo / Redo** with the ↩/↪ buttons or Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Ctrl/Cmd+Z).
-- **Import CSV** with ⬆ CSV. A first row of text becomes group names; a first column of text becomes row names. Each column becomes a group with one replicate.
+- **Import CSV** with ⬆ Open CSV…. A first row of text becomes group names; a first column of text becomes row names. Each column becomes a group with one replicate.
 - **Paste a whole table**: the table grows to fit the pasted block. Paste into the **Row** column to use the first pasted column as row names (e.g. gene IDs) and the rest as values.
 - **Multiple datasets:** click **+** beside the dataset tabs to add another table; it starts empty (Group1, Group2) and keeps its own data.
 - **Clear** resets the current table to the empty default (2 groups × 3 replicates × 6 rows, names reset). Undo with Ctrl/Cmd+Z.
@@ -79,7 +79,7 @@ Choose a plot type, set its options, then click **📈 Plot**. The figure opens 
 
 Choose a test, set its options, then click **▶ Run Analysis**. The blue box under the test menu says what the test does, how it reads the columns and which similar test to consider; each option shows a one-line explanation of the current choice. Every result tab starts with a grey header listing the test, all options used, the dataset and its size, and the time of the run.
 
-Every result tab has a **⬇ Tables (CSV)** button that saves all of its tables in one file (significance stars dropped so numbers stay numeric). Gene-level results (per-row t-test, Rank Product, Multiple Testing, Volcano, PCA loadings) also offer the **full table** for every row.
+Every result tab has a **⤓ Export CSV** button that saves all of its tables in one file (significance stars dropped so numbers stay numeric). Gene-level results (per-row t-test, Rank Product, Multiple Testing, Volcano, PCA loadings) also offer the **full table** for every row.
 
 Tick **Auto-plot after run** to open a linked plot, and choose which figure in the menu next to it: it lists every plot that suits the test, with the recommended one first (the default). For example Mann–Whitney offers a box plot (recommended), bar chart or violin plot, and a paired t-test offers paired lines (recommended), bar chart or box plot. Bar, box, violin and paired plots carry the test's significance brackets. Significance marks and gene lists appear only on the figure created by that run (not on plots you make by hand later). The 🔗 button on a result jumps to its plot and on a plot jumps to its result. If the partner tab was closed, 🔗 re-creates it with the original settings (using the data as it is now).
 
@@ -141,7 +141,7 @@ Tick **Auto-plot after run** to open a linked plot, and choose which figure in t
 TP handles tables with tens of thousands of rows (tested with 20,000 genes × 6 samples).
 
 - The data table only draws the rows in view, so scrolling stays fast; the line under the table shows the full size.
-- Paste the table straight from Excel (paste into the Row column to include gene IDs), or use ⬆ CSV.
+- Paste the table straight from a spreadsheet (paste into the Row column to include gene IDs), or use ⬆ Open CSV….
 - Per-row t-tests (with FDR by default) and Multiple Testing show the 200 most significant rows and offer the **full table as CSV**; Rank Product, Volcano and PCA loadings also export every gene.
 - Rank Product and per-row t-tests open a heatmap of the significant up and down genes across every replicate.
 - Heatmaps cluster and draw only the most variable rows (25–500, chosen in the plot options).
@@ -152,20 +152,20 @@ TP handles tables with tens of thousands of rows (tested with 20,000 genes × 6 
 
 ### 6. Exporting figures
 
-The **Export** menu in the header sets the style for every download button.
+Each plot tab has a style menu (**App style** or **Publication style**, shared by all plots) and a **⤓ Export** button that opens a small dialog with PNG, SVG and PDF.
 
 | Style | Look | Size | File names |
 | --- | --- | --- | --- |
 | App | Exactly as on screen, in the current light or dark theme | Screen size | plot.png / plot.svg |
 | Publication | White background; black L-shaped axes with outward ticks, no gridlines; greyscale bars with black outlines; black error bars and dots spread so they don't overlap; bold Arial labels; distinct marker shapes per series | About 300 dpi: bar charts narrow (width grows with the number of groups), other plots 4:3 | plot_publication.png / .svg |
 
-- **⬇ PNG** saves a raster image. Use it for slides and most journal submissions.
-- **⬇ SVG** saves an SVG file that wraps the same high-resolution image. It opens in Illustrator or Inkscape but is **not** editable vector art.
-- **⬇ PDF** opens a print window; choose "Save as PDF". Allow pop-ups for TP if nothing happens.
+- **PNG (high resolution)** saves a raster image. Use it for slides and most journal submissions.
+- **SVG** saves an SVG file that holds the same high-resolution image. It opens in vector-drawing programs but is **not** editable vector art.
+- **PDF** opens a print window; choose "Save as PDF". Allow pop-ups for TP if nothing happens.
 
 ### 7. Saving and loading projects
 
-**💾 Save** downloads `thistle_project.tplot`, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. **📂 Load** reopens it. Projects saved by earlier versions (`.thistle`, `.pprism`) still load.
+**💾 Save project** downloads `thistle_project.tplot`, a text (JSON) file holding the current dataset (values, group, replicate and row names), the result tabs, and a snapshot image of each plot tab. **📂 Load project** reopens it. Projects saved by earlier versions (`.thistle`, `.pprism`) still load.
 
 Each app of the Thistle suite has its own file type: Thistle Plot projects are `.tplot` and Thistle Flow workspaces are `.tflow` (or `.zip` with the FCS files included). If you open a Thistle Flow file here, TP says so and leaves your table unchanged; open it in [Thistle Flow](https://actinomycetes.github.io/thistle-flow/) instead.
 
@@ -194,7 +194,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.13.4 (beta):
+Known limitations of v0.13.5 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
@@ -211,9 +211,9 @@ Known limitations of v0.13.4 (beta):
 TP runs in Safari on iPadOS 16 or later. It is laid out for a large screen, so it works best in landscape with a keyboard and trackpad (Magic Keyboard or similar); portrait works too, with a narrower left panel. Fingers work for buttons, menus and single cells; selecting a block of cells and dragging the panel dividers need the trackpad (or a mouse).
 
 - **Shortcuts:** Cmd+C / Cmd+X / Cmd+V in the table, Cmd+Z / Cmd+Shift+Z for undo and redo. iPad keyboards have no F1 key, so open Help with **Cmd+/** (or the ❓ Help button).
-- **Downloads** (PNG, SVG, CSV, 💾 Save): Safari asks whether to download; tap **Download**. Files go to the Downloads folder in the Files app.
-- **📂 Load** and **⬆ CSV** open the Files app; every file is selectable (iPadOS cannot filter on the `.tplot` extension), so pick the right one.
-- **⬇ PDF** opens the figure in a new tab with the print options; tap the Share button at the top of that sheet and choose **Save to Files** to keep a PDF. Close the tab to return to TP.
+- **Downloads** (PNG, SVG, CSV, 💾 Save project): Safari asks whether to download; tap **Download**. Files go to the Downloads folder in the Files app.
+- **📂 Load project** and **⬆ Open CSV…** open the Files app; every file is selectable (iPadOS cannot filter on the `.tplot` extension), so pick the right one.
+- **⤓ Export → PDF** opens the figure in a new tab with the print options; tap the Share button at the top of that sheet and choose **Save to Files** to keep a PDF. Close the tab to return to TP.
 - Very large tables (tens of thousands of rows) are slower than on a computer, and an iPad has less memory, so close plot tabs you no longer need.
 
 ### 11. Checking the calculations
@@ -224,6 +224,6 @@ Every statistical test in TP has been compared with independent open-source soft
 
 TP is free and open source under the MIT licence: <https://github.com/actinomycetes/thistle-plot>. © 2026 Takanobu Tagawa (The University of Edinburgh). Report problems or suggestions there.
 
-TP loads three open-source libraries from cdnjs, each under the MIT licence: [Chart.js](https://www.chartjs.org/) (© Chart.js contributors), [jStat](https://github.com/jstat/jstat) (© jStat contributors) and [PapaParse](https://www.papaparse.com/) (© Matthew Holt). Product names mentioned in this manual (for example Excel, Google Sheets and Confluence) are trademarks of their owners; TP is not affiliated with them.
+TP loads three open-source libraries from cdnjs, each under the MIT licence: [Chart.js](https://www.chartjs.org/) (© Chart.js contributors), [jStat](https://github.com/jstat/jstat) (© jStat contributors) and [PapaParse](https://www.papaparse.com/) (© Matthew Holt). Product names mentioned in this manual (for example Confluence) are trademarks of their owners; TP is not affiliated with them.
 
 Methods follow their published descriptions, for example Shapiro–Wilk (Royston 1992, 1995), Dunnett (1955), Rank Product (Breitling et al. 2004), Lilliefors (1967) and the 5-parameter logistic curve (Gottschalk & Dunn 2005).

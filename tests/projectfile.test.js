@@ -44,7 +44,7 @@ test('Thistle Flow files and other files get a plain message and leave the table
   assert.match(await load('old.json', JSON.stringify({ app: 'FlowLite', version: 1 })), /Thistle Flow workspace.*thistle-flow/);
   assert.match(await load('gates.json', JSON.stringify({ app: 'Thistle Flow', format: 3, kind: 'template' })), /Thistle Flow template/);
   assert.match(await load('notes.json', '{"hello": 1}'), /not a Thistle Plot project/);
-  assert.match(await load('data.txt', '1,2,3'), /use ⬆ CSV/);
+  assert.match(await load('data.txt', '1,2,3'), /use ⬆ Open CSV/);
   assert.strictEqual(await app.page.evaluate(() => JSON.stringify(G)), before);
   assert.deepStrictEqual(app.errors, []);
 });
