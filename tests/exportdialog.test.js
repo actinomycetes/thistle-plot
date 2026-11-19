@@ -41,3 +41,22 @@ test('⤓ Export dialog: three formats, the chosen style, closes on Escape, down
   await app.page.evaluate(() => setExportStyle('app'));
   assert.deepStrictEqual(app.errors, []);
 });
+
+test('Publication export: long x labels are angled, short ones stay level, the legend wraps inside the figure', async () => {
+  const r = await app.page.evaluate(async () => {
+    const long = ['JJhan_Uninfected.fcs', 'JJhan_P6 3dpi 1-4.fcs', 'JJhan_StA_P6_C1.fcs', 'JJhan_StA_P6_C2.fcs', 'JJhan_StA_P6_C3.fcs', 'JJhan_StA_P6_C4.fcs', 'JJhan_StA_P6_DMSO.fcs'];
+    const cv = document.createElement('canvas').getContext('2d');
+    _exportTheme = PUB_THEME;
+    try {
+      const a = _xLabelLayout(cv, long, 70, 420), b = _xLabelLayout(cv, ['WT', 'KO'], 200, 420);
+      const lg = _legendLayout(cv, ['JJ/Singlets/GFP- RFP+ | % Parent', 'JJ/Singlets/GFP+ RFP+ | % Parent', 'JJ/Singlets/GFP+ RFP- | % Parent'], 520);
+      // the by-sample bar chart from the report draws without errors in both styles
+      applyG({ nReps: 1, nRows: 7, rowNames: long, groups: [0, 1, 2].map(k => ({ name: 'JJ/Singlets/G' + k + ' | % Parent', reps: ['Rep1'], data: long.map((_, i) => [i + k]) })) });
+      return { a: a.rot, b: b.rot, lines: Math.max(...lg.items.map(i => i.line)) + 1, fits: lg.items.every(i => i.x < 520) };
+    } finally { _exportTheme = null; }
+  });
+  assert.strictEqual(r.a, true, 'long labels angled'); assert.strictEqual(r.b, false, 'short labels level');
+  assert.ok(r.lines >= 2 && r.fits, 'legend wraps');
+  await app.page.evaluate(async () => { const ps = document.getElementById('psel'); ps.value = 'bar_sd'; renderPlotOpts('bar_sd'); document.getElementById('popt-groupby').value = 'sample'; runPlot(); await new Promise(r => setTimeout(r, 400)); _renderExport(activePT, 'publication'); });
+  assert.deepStrictEqual(app.errors, []);
+});

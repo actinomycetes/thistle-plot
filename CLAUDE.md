@@ -105,6 +105,12 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   "open it in …" message (`THISTLE_APPS`; app names compared without spaces; Flow wrote `ThistleFlow` (format 2) and `FlowLite` (format 1),
   and since TF v0.17.0 writes `.tflow` with `"app": "Thistle Flow", "format": 3, "kind": "workspace"|"template"`, zip when it holds FCS files).
 - Write algorithms from their published descriptions, never by porting code from GPL software (e.g. R). Cite the paper.
+- Tables between apps (TF v0.20.0 → TP v0.15.0): Thistle Flow's "📊 Open in Thistle Plot" opens TP at `#from=thistle-flow`
+  with `window.open`; after `restoreSession` TP sends `{type:'thistle-ready'}` to `window.opener` (`thistleHandshake`), accepts
+  ONLY `{type:'thistle-table', version:1, csv}` from `window.opener` on its own origin or `THISTLE_ORIGINS`, imports the csv
+  with `importRows` (shared with ⬆ Open CSV…) into a new dataset (`importFlowTable`; the empty starting table is reused),
+  replies `{type:'thistle-table-received', rows, columns}` and clears the hash. Never eval the csv or insert it as HTML.
+  `tests/flowtable.test.js` with `tests/fixtures/fake-flow.html`. `transposeTable` (⇄ Transpose) swaps rows and groups.
 - Paired data (paired tests, correlation, regression, dose, volcano, scatter) must be paired by row and replicate with
   `pairedCells` / `xyPairs`, never by zipping two `getGroupPooled` lists (a blank cell shifts every later pair).
 

@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>Stand-in for Thistle Flow</title>
+<!-- Test page for tests/flowtable.test.js: follows Thistle Flow's "Open in Thistle Plot" handshake.
+     ?target=<url of TP> opens TP at #from=thistle-flow, waits for thistle-ready and sends a statistics table. -->
+<script>
+window.__log = [];
+const target = new URLSearchParams(location.search).get('target') || '../../index.html';
+const csv = 'Sample,Lymphocytes | %Parent,CD4+ | Median | FITC-A,CD8+ | Count\nUnstimulated.fcs,62.5,1520.3,4100\nStim_6h.fcs,58.1,,3890\nStim_24h.fcs,55.0,2250.8,3600\n';
+function open_() { window.tp = window.open(target + '#from=thistle-flow', 'tp'); }
+window.addEventListener('message', e => {
+  if (e.source !== window.tp) return;
+  window.__log.push(e.data);
+  if (e.data && e.data.type === 'thistle-ready')
+    e.source.postMessage({ type: 'thistle-table', version: 1, from: 'Thistle Flow', appVersion: '0.20.0', title: 'Workspace 1: statistics', csv, rows: 3, columns: 3 }, e.origin === 'null' ? '*' : e.origin);
+});
+</script>
+<button id="open" onclick="open_()">📊 Open in Thistle Plot</button>
