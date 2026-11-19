@@ -9,6 +9,13 @@ Data never leaves the browser.
 ## Ground rules
 - Keep it ONE file with no build step for users. Do not introduce a bundler or split `index.html` unless the maintainer asks.
 - No `localStorage`/`sessionStorage` for data (projects are saved as `.tplot` JSON files; `.thistle` and `.pprism` still load).
+- **Kept session (v0.14.0, as in Thistle Notebook and Thistle Flow v0.19.0):** all datasets, stat tabs and plot tabs (as
+  pictures plus `ptype`/`optState`, so ↻ Update redraws them) are copied to IndexedDB (`thistle-plot-session`, key
+  `session`; `sessionSnapshot` / `keepSession` / `restoreSession`) about 1.2 s after any input/click and on `pagehide`,
+  and reopen on load with a notice offering **Start fresh** (`startFresh` clears it and reloads). Off when embedded by a
+  same-site page (Thistle Notebook) and with `?nosession`; on inside Confluence (another site). New tab or dataset state
+  must be plain data on the tab objects (fields starting with `_` and functions are not kept). `tests/keep.test.js`.
+  The maintainer may revert this if it confuses users.
 - Statistics must be correct before they are pretty. When adding or changing a test, validate it against SciPy or
   statsmodels (generate reference numbers with Python), then add a regression test in `tests/stats.test.js`.
 - TP is cross-checked against SciPy/statsmodels (`npm run validate`) but not formally validated: do not call it validated;

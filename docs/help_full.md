@@ -171,6 +171,13 @@ Each app of the Thistle suite has its own file type: Thistle Plot projects are `
 
 Only the dataset that is active when you click Save is stored, so save each dataset separately. Plot snapshots are pictures: to change or re-export a plot after loading, draw it again with 📈 Plot (↻ Update does not apply to snapshots).
 
+**Your work is kept in this browser.** TP keeps a copy of all data tables, result tabs and figures in this browser on this computer, updated a moment after each change. If you refresh the page, close the tab by mistake or the browser restarts, your work reopens where you left off, and a note at the bottom says so. Figures come back as pictures; click **↻ Update** on one to draw it again with its settings. **Start fresh** in that note closes everything and starts with an empty table (🗑 Clear only empties the current table). The copy never leaves this computer and does not replace saving: save a `.tplot` project to keep your work for later, move it to another computer or share it.
+
+- **Shared computers:** anyone who opens TP in the same browser on this computer sees the kept work. When you finish, use **Start fresh**. Private or incognito windows keep nothing after they close.
+- **Two windows:** if TP is open in two browser windows or tabs, the one changed last is what reopens next time.
+- Undo history is not kept. You are told if the browser could not keep a copy (storage full or blocked); then save a project.
+- TP shown inside Thistle Notebook keeps and reopens nothing. On the Confluence wiki the copy depends on the browser's settings for embedded pages.
+
 ### 8. Light and dark theme
 
 The 🌙/☀️ button switches the on-screen theme and redraws all open plots. It only affects App-style exports; Publication exports are always white.
@@ -194,7 +201,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.13.5 (beta):
+Known limitations of v0.14.0 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).

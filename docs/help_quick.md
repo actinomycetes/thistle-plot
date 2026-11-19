@@ -2,7 +2,7 @@
 
 Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <https://github.com/actinomycetes/thistle-plot> (MIT licence).
 
-TP is a **beta (v0.13.5)**. Its calculations are cross-checked against SciPy and statsmodels (see *Checking the calculations* in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.
+TP is a **beta (v0.14.0)**. Its calculations are cross-checked against SciPy and statsmodels (see *Checking the calculations* in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.
 
 **Opening TP:** use the hosted copy at <https://actinomycetes.github.io/thistle-plot/>, double-click a downloaded `index.html` to open it in Chrome, Edge, Firefox or Safari (Mac or iPad), or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.
 
@@ -19,6 +19,6 @@ From raw numbers to a journal-style figure in ten steps, about five minutes.
 7. **Check the figure.** Significance brackets (\*, \*\*, \*\*\*, \*\*\*\*) from your last test are drawn automatically on bar charts.
 8. **Choose an export style** at the top of the plot tab: **App style** (what you see on screen) or **Publication style** (white background, black axes, bold Arial, greyscale, about 300 dpi).
 9. **Download** with **⤓ Export** next to it and choose PNG, SVG or PDF.
-10. **Save your work** with **💾 Save project**. This downloads a `.tplot` project file you can reopen later with **📂 Load project**.
+10. **Save your work** with **💾 Save project**. This downloads a `.tplot` project file you can reopen later with **📂 Load project**. Until then, TP also keeps a copy in this browser, so a refresh or a closed tab reopens your work (use **Start fresh** in the note that appears to begin again).
 
 Tip: Ctrl/Cmd+Z undoes and Ctrl/Cmd+Y redoes any change to the data table.
