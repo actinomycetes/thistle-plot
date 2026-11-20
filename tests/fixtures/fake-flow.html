@@ -4,7 +4,7 @@
 <script>
 window.__log = [];
 const target = new URLSearchParams(location.search).get('target') || '../../index.html';
-const csv = 'Sample,Lymphocytes | %Parent,CD4+ | Median | FITC-A,CD8+ | Count\nUnstimulated.fcs,62.5,1520.3,4100\nStim_6h.fcs,58.1,,3890\nStim_24h.fcs,55.0,2250.8,3600\n';
+const csv = 'Sample,Lymphocytes | %Parent,CD4+ | Median | FITC-A,CD8+ | Count\n001_control.fcs,62.5,1520.3,4100\n002_treated.fcs,58.1,,3890\n003,55.0,2250.8,3600\n';
 function open_() { window.tp = window.open(target + '#from=thistle-flow', 'tp'); }
 window.addEventListener('message', e => {
   if (e.source !== window.tp) return;

@@ -41,10 +41,11 @@ test('a statistics table from Thistle Flow opens as a new dataset', async () => 
     const got = await flow.evaluate(() => window.__log.find(m => m.type === 'thistle-table-received'));
     assert.deepStrictEqual({ rows: got.rows, columns: got.columns }, { rows: 3, columns: 3 });
     const r = await tp.evaluate(() => ({ name: datasets[activeDS].name, n: datasets.length, rows: G.rowNames, groups: G.groups.map(g => g.name),
-      missing: G.groups[1].data[1][0], hash: location.hash, note: document.getElementById('data-note').textContent }));
+      counts: G.groups[2].data.map(row => row[0]), missing: G.groups[1].data[1][0], hash: location.hash, note: document.getElementById('data-note').textContent }));
     assert.strictEqual(r.name, 'Workspace 1: statistics');
-    assert.deepStrictEqual(r.rows, ['Unstimulated.fcs', 'Stim_6h.fcs', 'Stim_24h.fcs']);
+    assert.deepStrictEqual(r.rows, ['001_control.fcs', '002_treated.fcs', '003']);
     assert.deepStrictEqual(r.groups, ['Lymphocytes | %Parent', 'CD4+ | Median | FITC-A', 'CD8+ | Count']);
+    assert.deepStrictEqual(r.counts, [4100, 3890, 3600], 'measurement values stay numeric');
     assert.strictEqual(r.missing, '', 'an empty cell stays empty');
     assert.strictEqual(r.hash, '', 'the hash is cleared so a refresh does not wait for Flow');
     assert.match(r.note, /Imported 3 rows × 3 columns from Thistle Flow/);
