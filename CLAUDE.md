@@ -78,7 +78,7 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 - **Multiple comparisons:** `adjustP(p, method)` with bonferroni, holm, holm_sidak, fdr, none; labels in `CORR_LABEL/SHORT/HINT`, UI via `corrSelect`.
   Dunnett: `dunnettP` (numerical integral of the multivariate t); Tukey via `jStat.tukey`; ANOVA `onewayANOVA(groups, method, ctrls[])`;
   two-way ANOVA post-hoc uses pooled MSE; Kaplan-Meier `kaplanMeier`, `kmGroups`, `logRankK`; KS `ks2Sample` (exact), `lillieforsTest` (seeded Monte Carlo);
-  Rank Product `rankProductTest(aRows, bRows, mode)` ranks up and down separately with exact product p-values and per-direction FDR.
+  Rank Product `rankProductTest(aRows, bRows, mode)` ranks up and down separately (average ranks for ties, Heskes 2014 p-values) with per-direction FDR.
   PCA: `pcaCompute` uses the Gram matrix + Jacobi (`_jacobiEig`) so it scales to tens of thousands of genes; `buildPCAMatrix`.
 - **Results tables:** `table.rtbl`; long tables show `SHOW_ROWS=200` with a full CSV (`csvButton`, `downloadCSV`);
   `exportStatTables(tabId)` produces the per-result CSV.
@@ -122,7 +122,11 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   and refuses X < 0, one-way ANOVA drops empty groups with a note, `onewayANOVA` refuses Dunnett without one control,
   two-way ANOVA requires groups = nA × nB and names the correction family, paired Ratio refuses a normalization.
   `tools/validate/compare.py` checks Spearman against an exact permutation reference (scipy's default is the t approximation).
-  Rank Product tie handling and p-value method are still open (RankProd 3.x itself breaks ties by row order).
+- Rank Product (v0.17.0, review case 01): `rankProductTest` gives tied effects their average rank within each replicate
+  (deliberately unlike RankProd 3.x, whose `order()` breaks ties by row order; RankProd 2.x averaged) and computes p with
+  `rankProductP(rho, n, k)` = Heskes, Eisinga & Breitling (2014) Eq. 4, geometric mean of exact lower/upper bounds
+  (`_rpBoundPieces`, piecewise P(u)+e^u·Q(u) in local coordinates). Checked against the paper's Table 1 and exact
+  enumeration; `res.tiedShare` drives the "tied" note.
 
 ## Hard-won pitfalls (do not reintroduce)
 - Setting Chart.js options through setters in the Publication export caused infinite recursion: modify the config BEFORE constructing the chart.

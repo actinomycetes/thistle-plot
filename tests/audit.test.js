@@ -166,3 +166,28 @@ test('13 Dunnett without one control is refused instead of silently becoming Hol
   }, G);
   assert.match(r, /class="ebox"/); assert.match(r, /vs control/); assert.ok(!/Holm–Šídák/.test(r), 'no silent fallback');
 });
+
+test('01 Rank Product: average ranks for ties (no row-order artefact) and Heskes et al. (2014) p-values', async () => {
+  const r = await app.page.evaluate(() => {
+    const z = Array.from({ length: 100 }, () => [0, 0, 0]);
+    const zeros = rankProductTest(z, z, 'delta');
+    // partly tied data, run forward and with the rows reversed
+    const rnd = _mulberry32(11), A = [], B = [];
+    for (let i = 0; i < 100; i++) { A.push([0, 0, 0]); B.push([0, 1, 2].map(() => Math.round((rnd() - 0.5) * 4) / 2)); }
+    const fw = rankProductTest(A, B, 'delta'), rv = rankProductTest([...A].reverse(), [...B].reverse(), 'delta');
+    let maxDiff = 0; fw.forEach((x, i) => { const y = rv[99 - i]; maxDiff = Math.max(maxDiff, Math.abs(x.pUp - y.pUp), Math.abs(x.pDown - y.pDown)); });
+    return { z0: zeros[0], z99: zeros[99], zMinQ: Math.min(...zeros.map(x => Math.min(x.qUp, x.qDown))), tied: zeros.tiedShare,
+      maxDiff, both: fw.some(x => x.qUp < 0.05 && x.qDown < 0.05),
+      heskes: rankProductP(9282, 9047, 4), untied: rankProductP(1, 10, 3).p, small: rankProductP(8, 20, 3).p };
+  });
+  // all-zero data: every row shares midrank 50.5 in every replicate, so nothing is significant and row 1 = row 100
+  assert.strictEqual(r.z0.pUp, r.z99.pUp); assert.ok(r.zMinQ >= 0.05, 'no discoveries, min q ' + r.zMinQ);
+  close(r.z0.pUp, 0.6571119, 1e-6); assert.strictEqual(r.tied, 1);
+  assert.ok(r.maxDiff < 1e-12, 'row order does not change p: ' + r.maxDiff); assert.ok(!r.both, 'no row called both up and down');
+  // Heskes, Eisinga & Breitling 2014, Table 1 (n = 9047, k = 4, rho = 9282): upper 3.888e-10, geometric 2.709e-10, lower 1.887e-10
+  close(r.heskes.upper, 3.888e-10, 1e-3); close(r.heskes.p, 2.709e-10, 1e-3); close(r.heskes.lower, 1.887e-10, 1e-3);
+  close(r.untied, 0.001, 1e-9);            // exact enumeration: 1/10^3 (the continuous formula gave 0.0318)
+  close(r.small, 0.004811345, 1e-6);       // n = 20, k = 3, rho = 8 (exact 0.00475; RankProd 3.x 0.00481)
+  const ui = await run(tbl([col('A', Array.from({ length: 20 }, () => [0, 0, 0])), col('B', Array.from({ length: 20 }, () => [0, 0, 0]))]), 'rankprod');
+  assert.match(ui.text, /tied/i); assert.match(ui.text, /Heskes/);
+});

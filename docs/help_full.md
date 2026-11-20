@@ -96,7 +96,7 @@ Tick **Auto-plot after run** to open a linked plot, and choose which figure in t
 | Non-parametric | Mann-Whitney U | Exact p-value up to 60 values in total (ties allowed), normal approximation with tie and continuity corrections above; Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák) |
 | Non-parametric | Wilcoxon Signed-Rank | Exact p-value up to 60 non-zero pairs; zero differences left out; Mode and correction as above; Difference or Ratio (ranks log ratios) |
 | Non-parametric | Kruskal-Wallis H | Dunn's post-hoc with a choice of correction (default Holm–Šídák) |
-| Non-parametric | Rank Product | Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV |
+| Non-parametric | Rank Product | Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; tied values share their average rank; p-values by the Heskes et al. (2014) method; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV |
 | Non-parametric | Kolmogorov–Smirnov | Two-sample (exact p for small samples) or one-sample vs normal (Lilliefors, p by simulation) The exact p assumes no tied values; the result says so when the data contain ties (the p-value is then conservative). |
 | Correlation / XY | Pearson, Spearman | All pairs or vs Control; correction when there are several pairs X and Y are paired replicate by replicate: a row where the two columns hold values in different replicate columns is refused (fill in the missing value, or give both one value per row). Spearman's p-value is exact for 10 or fewer pairs (every ordering of the data) and uses the t approximation above that. |
 | Correlation / XY | Regression / Curve Fitting | X and Y columns; Linear, Polynomial (degree 2–4), Logarithmic, Exponential, Power, 4PL, 5PL; fit and residual plots made automatically X and Y are paired as for correlation. A polynomial of degree d needs at least d + 1 different X values. |
@@ -203,14 +203,14 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.16.0 (beta):
+Known limitations of v0.17.0 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each level of the other factor, not across all simple effects (the result says which).
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
 - Kolmogorov–Smirnov exact p-values assume no tied values (conservative with ties; the result says when the data contain ties).
 - Dunnett's test is for one-way ANOVA with a single control; with several controls, or all pairs, choose another correction (TP refuses Dunnett there).
 - One-way ANOVA leaves out a group with no values and names it in the result.
-- Rank Product ranks tied values by their row order, and its p-values use a continuous approximation that is conservative (too large) for untied data. Both are under review; treat Rank Product results on data with many identical values with caution.
+- Rank Product gives tied values (equal effects, e.g. many zeros) their average rank, so the result does not depend on the order of the rows. The current R package RankProd (3.x) instead breaks ties by row order, so rows with many tied values can rank differently there (RankProd 2.x used average ranks, as TP does). p-values use the Heskes, Eisinga & Breitling (2014) approximation (the geometric mean of exact lower and upper bounds, typically within a few per cent of the exact value); with ties they are approximate, and the result says what share of values is tied.
 - Kaplan–Meier assumes one subject per row; hazard ratios are log-rank estimates (no Cox regression).
 - SVG export is an embedded image, not editable vectors.
 - Publication style is greyscale only; there are no colour publication palettes yet.
@@ -237,4 +237,4 @@ TP is free and open source under the MIT licence: <https://github.com/actinomyce
 
 TP loads three open-source libraries from cdnjs, each under the MIT licence: [Chart.js](https://www.chartjs.org/) (© Chart.js contributors), [jStat](https://github.com/jstat/jstat) (© jStat contributors) and [PapaParse](https://www.papaparse.com/) (© Matthew Holt). Product names mentioned in this manual (for example Confluence) are trademarks of their owners; TP is not affiliated with them.
 
-Methods follow their published descriptions, for example Shapiro–Wilk (Royston 1992, 1995), Dunnett (1955), Rank Product (Breitling et al. 2004), Lilliefors (1967) and the 5-parameter logistic curve (Gottschalk & Dunn 2005).
+Methods follow their published descriptions, for example Shapiro–Wilk (Royston 1992, 1995), Dunnett (1955), Rank Product (Breitling et al. 2004; p-values Heskes et al. 2014), Lilliefors (1967) and the 5-parameter logistic curve (Gottschalk & Dunn 2005).
