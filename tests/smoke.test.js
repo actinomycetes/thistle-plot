@@ -1,6 +1,7 @@
 // Every statistical test and every plot type must run on its own example data without errors.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs'), path = require('path');
 const { openApp, selectTest, selectPlot, wait } = require('./helpers');
 
 let app;
@@ -11,6 +12,7 @@ test('app loads, version is consistent', async () => {
   const v = await app.page.evaluate(() => ({ js: APP_VERSION, badge: document.getElementById('app-version').textContent, title: document.title }));
   assert.strictEqual(v.badge, 'v' + v.js);
   assert.ok(v.title.includes(v.js), 'document title carries the version: ' + v.title);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8'), /document\.title=`Thistle Plot v\$\{APP_VERSION\} \(Beta\)`/, 'title is set again from script (Orion shows the favicon only then)');
   assert.deepStrictEqual(app.errors, []);
 });
 

@@ -99,6 +99,7 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   badged picture is both the favicon and the header logo (`#hdr svg.app-logo`, 30 px). Write the favicon exactly as
   `<link rel="icon" href="data:image/svg+xml,...">` after `<title>`: NO `type` attribute and every character escaped
   (`encodeURIComponent`, then `(`→`%28`, `)`→`%29`); with `type="image/svg+xml"` Safari on iPad never showed it.
+  The script also sets `document.title` again (next to `APP_VERSION`): Orion 1.1 (WebKit) showed the icon only then (v0.17.1).
   A 180×180 PNG on the slate background is the `apple-touch-icon`. `tests/smoke.test.js` checks all of this.
 - Thistle suite file types: each app saves its own extension (`.tplot` here, `.tflow` for Thistle Flow) and writes
   `app` (its name) and `format` into the file. `identifyProjectFile` turns another Thistle app's file into a plain
