@@ -111,6 +111,9 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   ONLY `{type:'thistle-table', version:1, csv}` from `window.opener` on its own origin or `THISTLE_ORIGINS`, imports the csv
   with `importRows` (shared with ⬆ Open CSV…) into a new dataset (`importFlowTable`; the empty starting table is reused),
   replies `{type:'thistle-table-received', rows, columns}` and clears the hash. Never eval the csv or insert it as HTML.
+  Flow tables are imported with `importRows(rows, name, {sampleColumn:true})` (first column = text sample names, v0.17.2).
+  ⬆ Open CSV… parses without dynamicTyping; `importRows` counts a cell as a number only if all of it is one (`Number`, not
+  `parseFloat`), and a first column headed Sample/Name/ID/Row is names (v0.17.3, `tests/csvimport.test.js`).
   `tests/flowtable.test.js` with `tests/fixtures/fake-flow.html`. `transposeTable` (⇄ Transpose) swaps rows and groups.
 - Paired data (paired tests, correlation, regression, dose, volcano, scatter) must be paired by row and replicate with
   `pairedCells` / `xyPairs`, never by zipping two `getGroupPooled` lists (a blank cell shifts every later pair).

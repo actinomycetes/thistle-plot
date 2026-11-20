@@ -37,7 +37,7 @@ Most tests pool all values in a group's columns. Some tests read columns positio
 - **Resize** with Reps/group and Groups, or with +Grp, −Grp, +Row, −Row.
 - **Rename** a group, row or dataset by double-clicking its name; Enter confirms, Esc cancels.
 - **Undo / Redo** with the ↩/↪ buttons or Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Ctrl/Cmd+Z).
-- **Import CSV** with ⬆ Open CSV…. A first row of text becomes group names; a first column of text becomes row names. Each column becomes a group with one replicate.
+- **Import CSV** with ⬆ Open CSV…. A first row of text becomes group names; a first column of text (such as `001_control.fcs`), or a first column headed Sample, Name or ID (such as `003`), becomes row names. Each column becomes a group with one replicate.
 - **From Thistle Flow:** in Thistle Flow's Statistics, **📊 Open in Thistle Plot** opens TP in a new browser tab with the statistics table already in it: one row per sample, one column per statistic. It goes into a new dataset named after the Flow workspace, so the table you had open (and any work TP reopened from your last visit) stays as it was; blank cells stay blank. Only the Thistle Flow tab that opened TP can send a table.
 - **⇄ Transpose** (in the Data bar) swaps rows and columns: each row becomes a group and each group becomes a row. With several replicates, each replicate column becomes its own row (named *Group · Rep*). Useful for tables with samples as rows, such as those from Thistle Flow, when you want the samples as groups. Ctrl/Cmd+Z undoes it. Tables of up to 500 rows can be transposed.
 - **Paste a whole table**: the table grows to fit the pasted block. Paste into the **Row** column to use the first pasted column as row names (e.g. gene IDs) and the rest as values.
@@ -203,7 +203,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.17.2 (beta):
+Known limitations of v0.17.3 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each level of the other factor, not across all simple effects (the result says which).
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
