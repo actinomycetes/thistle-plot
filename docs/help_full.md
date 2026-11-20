@@ -23,10 +23,10 @@ Most tests pool all values in a group's columns. Some tests read columns positio
 | Volcano Plot | Col 1 = log2 fold change, Col 2 = p-value, one gene per row |
 | Regression | Col 1 = X, Col 2 = Y |
 | Multiple Testing Correction | Col 1 = p-values, Col 2 (optional) = labels |
-| Fisher's Exact | 2×2 counts: 2 groups (columns) × 2 rows, one value per cell |
+| Fisher's Exact | 2×2 counts: 2 groups (columns) × 2 rows, one value per cell (a larger table is refused: use Chi-Square) |
 | Chi-Square | Counts: columns = groups, rows = categories |
 | PCA, Heatmap | Rows = features/genes, columns = groups/samples (PCA can use every replicate column as a sample) |
-| Two-Way ANOVA | Balanced design, columns ordered A1B1, A1B2 … A2B1 …; set nA and nB in options |
+| Two-Way ANOVA | Balanced design, columns ordered A1B1, A1B2 … A2B1 …; set nA and nB in options so that nA × nB equals the number of groups |
 
 ### 3. Entering and editing data
 
@@ -90,22 +90,22 @@ Tick **Auto-plot after run** to open a linked plot, and choose which figure in t
 | Descriptive | Descriptive Statistics | — |
 | Descriptive | Normality Test (Shapiro-Wilk) | Each column tested separately (Royston's method, 3 to 5000 values); skewness and excess kurtosis also shown |
 | Parametric | Unpaired t-test (Welch) | Normalisation; control group; correction when 3+ groups (default Holm–Šídák); Run per row with its own correction (default FDR) |
-| Parametric | Paired t-test | As above, plus Comparison: Difference (A−B), or Ratio (A/B) tested on log ratios and reported as a geometric mean ratio with 95% CI. Values are paired by row and replicate; a blank cell drops only its own pair |
+| Parametric | Paired t-test | As above, plus Comparison: Difference (A−B), or Ratio (A/B) tested on log ratios and reported as a geometric mean ratio with 95% CI. Values are paired by row and replicate; a blank cell drops only its own pair Ratio cannot be combined with a normalization (it already works on the log scale; with log-transformed values choose Difference). Each row × replicate cell counts as a pair, so average technical repeats per row first. |
 | Parametric | One-Way ANOVA | Comparisons: all pairs (Tukey HSD by default) or vs one or more ticked control groups (Dunnett for one control; Holm–Šídák etc. for several); also Holm, Bonferroni, FDR, none |
-| Parametric | Two-Way ANOVA | nA, nB; post-hoc: simple effects (B within each A, or A within each B), all cell means, or main effects; Tukey, Holm–Šídák, Holm, Bonferroni, FDR. Balanced designs only |
+| Parametric | Two-Way ANOVA | nA, nB; post-hoc: simple effects (B within each A, or A within each B), all cell means, or main effects; Tukey, Holm–Šídák, Holm, Bonferroni, FDR. Balanced designs only The result names what each correction covers: Tukey corrects within each level of the other factor (no correction when a level holds one comparison), Holm, Holm–Šídák, Bonferroni and FDR across all the comparisons listed. |
 | Non-parametric | Mann-Whitney U | Exact p-value up to 60 values in total (ties allowed), normal approximation with tie and continuity corrections above; Single pair, All pairs, or vs Control; correction for the multi-pair modes (default Holm–Šídák) |
 | Non-parametric | Wilcoxon Signed-Rank | Exact p-value up to 60 non-zero pairs; zero differences left out; Mode and correction as above; Difference or Ratio (ranks log ratios) |
 | Non-parametric | Kruskal-Wallis H | Dunn's post-hoc with a choice of correction (default Holm–Šídák) |
 | Non-parametric | Rank Product | Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV |
-| Non-parametric | Kolmogorov–Smirnov | Two-sample (exact p for small samples) or one-sample vs normal (Lilliefors, p by simulation) |
-| Correlation / XY | Pearson, Spearman | All pairs or vs Control; correction when there are several pairs |
-| Correlation / XY | Regression / Curve Fitting | X and Y columns; Linear, Polynomial (degree 2–4), Logarithmic, Exponential, Power, 4PL, 5PL; fit and residual plots made automatically |
+| Non-parametric | Kolmogorov–Smirnov | Two-sample (exact p for small samples) or one-sample vs normal (Lilliefors, p by simulation) The exact p assumes no tied values; the result says so when the data contain ties (the p-value is then conservative). |
+| Correlation / XY | Pearson, Spearman | All pairs or vs Control; correction when there are several pairs X and Y are paired replicate by replicate: a row where the two columns hold values in different replicate columns is refused (fill in the missing value, or give both one value per row). Spearman's p-value is exact for 10 or fewer pairs (every ordering of the data) and uses the t approximation above that. |
+| Correlation / XY | Regression / Curve Fitting | X and Y columns; Linear, Polynomial (degree 2–4), Logarithmic, Exponential, Power, 4PL, 5PL; fit and residual plots made automatically X and Y are paired as for correlation. A polynomial of degree d needs at least d + 1 different X values. |
 | Multivariate | PCA | Samples = group means or every replicate column; optional Z-score per feature; reports variance explained and scores for every component, and top loadings for any chosen PC (CSV of the first 10) |
 | Multivariate | Hierarchical Heatmap | Rows = features, columns = groups |
-| Categorical | Fisher's Exact (2×2), Chi-Square | Counts tables (first replicate column). Chi-square has no continuity correction, ignores empty rows and columns, and warns when expected counts are below 5 |
+| Categorical | Fisher's Exact (2×2), Chi-Square | Counts tables (first replicate column). Chi-square has no continuity correction, ignores empty rows and columns, and warns when expected counts are below 5 Every cell inside the table must hold a whole-number count: a blank or text cell is refused, not read as 0 (enter 0 for a zero count). |
 | Categorical | Multiple Testing Correction | Holm–Šídák, Holm, Bonferroni, FDR (BH) |
 | Survival / XY | Kaplan-Meier + log-rank | Any number of groups: median survival, log-rank χ², hazard ratio (2 groups), corrected pairwise log-rank (3+ groups) |
-| Survival / XY | Dose-Response (5PL) | Concentration and response columns (one concentration per row with replicate responses is fine); reports EC50 (X half-way between Bottom and Top) and the midpoint parameter C |
+| Survival / XY | Dose-Response (5PL) | Concentration and response columns (one concentration per row with replicate responses is fine); reports EC50 (X half-way between Bottom and Top) and the midpoint parameter C Needs at least 5 different concentrations (with fewer, many curves fit equally well); negative concentrations are refused, a zero dose is allowed. |
 | Survival / XY | Volcano Plot | &#124;log2FC&#124; and p-value thresholds |
 
 **Choosing between similar tests**
@@ -203,12 +203,14 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.15.0 (beta):
+Known limitations of v0.16.0 (beta):
 
-- Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each set of simple effects, not across all of them.
+- Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each level of the other factor, not across all simple effects (the result says which).
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
-- Kolmogorov–Smirnov exact p-values assume no tied values (conservative with ties).
-- Dunnett's test is for one-way ANOVA with a single control; with several controls TP uses the chosen correction instead.
+- Kolmogorov–Smirnov exact p-values assume no tied values (conservative with ties; the result says when the data contain ties).
+- Dunnett's test is for one-way ANOVA with a single control; with several controls, or all pairs, choose another correction (TP refuses Dunnett there).
+- One-way ANOVA leaves out a group with no values and names it in the result.
+- Rank Product ranks tied values by their row order, and its p-values use a continuous approximation that is conservative (too large) for untied data. Both are under review; treat Rank Product results on data with many identical values with caution.
 - Kaplan–Meier assumes one subject per row; hazard ratios are log-rank estimates (no Cox regression).
 - SVG export is an embedded image, not editable vectors.
 - Publication style is greyscale only; there are no colour publication palettes yet.

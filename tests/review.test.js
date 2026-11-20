@@ -68,13 +68,15 @@ test('correlation and regression pair X and Y by row, not by position in the poo
     return xyPairs(0, 1);
   });
   assert.deepStrictEqual(r.x, [1, 2, 4, 5]); assert.deepStrictEqual(r.y, [2, 4, 8, 10]);
-  // one X value per row with replicate Y columns: X is repeated for each Y replicate
+  // one X value per row with replicate Y columns: since v0.16.0 correlation/regression pair strictly replicate by
+  // replicate and flag the row (reusing X invented pairs); only dose-response asks for the X to be repeated
   const r2 = await ev(() => {
     applyG({ nReps: 2, nRows: 2, rowNames: ['a', 'b'], groups: [
       { name: 'X', reps: ['R1', 'R2'], data: [[1, ''], [2, '']] }, { name: 'Y', reps: ['R1', 'R2'], data: [[5, 6], [7, '']] }] });
-    return xyPairs(0, 1);
+    return { strict: xyPairs(0, 1), dose: xyPairs(0, 1, undefined, { broadcast: true }) };
   });
-  assert.deepStrictEqual(r2.x, [1, 1, 2]); assert.deepStrictEqual(r2.y, [5, 6, 7]);
+  assert.deepStrictEqual(r2.strict.x, [1, 2]); assert.deepStrictEqual(r2.strict.y, [5, 7]); assert.match(r2.strict.problem, /^a: X has 1 value and Y has 2/);
+  assert.deepStrictEqual(r2.dose.x, [1, 1, 2]); assert.deepStrictEqual(r2.dose.y, [5, 6, 7]);
 });
 
 test('chi-square ignores empty rows (they inflated the degrees of freedom) and warns on small counts', async () => {

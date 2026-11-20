@@ -113,6 +113,16 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   `tests/flowtable.test.js` with `tests/fixtures/fake-flow.html`. `transposeTable` (⇄ Transpose) swaps rows and groups.
 - Paired data (paired tests, correlation, regression, dose, volcano, scatter) must be paired by row and replicate with
   `pairedCells` / `xyPairs`, never by zipping two `getGroupPooled` lists (a blank cell shifts every later pair).
+- Independent statistical review (v0.16.0, `tests/audit.test.js`, references in `tools/validate/audit_refs.py`): `xyPairs`
+  pairs replicate by replicate and returns `problem` for a row where X and Y hold values in different replicate columns;
+  correlation and regression refuse it (only dose-response passes `{broadcast:true}`). Contingency tests read the table with
+  `countTable` (blank, text or fractional counts are errors, never 0; Fisher only 2×2). Spearman p is exact for n ≤ 10
+  (`_spearmanExactP`), KS uses `_ksPge` (P(D ≥ d) summed directly, no 1 − P cancellation) and flags ties, Holm–Šídák uses
+  `-expm1(j·log1p(−p))`, `fitPolynomial` is Householder QR on centred/scaled X, `fit5PL` needs ≥ 5 distinct concentrations
+  and refuses X < 0, one-way ANOVA drops empty groups with a note, `onewayANOVA` refuses Dunnett without one control,
+  two-way ANOVA requires groups = nA × nB and names the correction family, paired Ratio refuses a normalization.
+  `tools/validate/compare.py` checks Spearman against an exact permutation reference (scipy's default is the t approximation).
+  Rank Product tie handling and p-value method are still open (RankProd 3.x itself breaks ties by row order).
 
 ## Hard-won pitfalls (do not reintroduce)
 - Setting Chart.js options through setters in the Publication export caused infinite recursion: modify the config BEFORE constructing the chart.

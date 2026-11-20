@@ -103,8 +103,24 @@ x, y = np.array(CASES['x']), np.array(CASES['y'])
 r = stats.pearsonr(x, y); ci = r.confidence_interval()
 check('Pearson r, p', [TP['pearson']['r'], TP['pearson']['p']], [r.statistic, r.pvalue], rel=1e-5)
 check('Pearson 95% CI (Fisher z)', [TP['pearson']['ci95lo'], TP['pearson']['ci95hi']], [ci.low, ci.high], rel=1e-3)
-r = stats.spearmanr(x, CASES['skew'][:10])
-check('Spearman rho, p', [TP['spearman']['r'], TP['spearman']['p']], [r.statistic, r.pvalue], abs_=1e-12)
+# Spearman: TP uses the exact permutation p for n <= 10 (v0.16.0). scipy's default spearmanr p is the t approximation,
+# which is invalid at small n (e.g. 6.6e-64 here, impossible: the smallest exact p is 2/10!), so the reference is an
+# exact permutation test over every ordering of the Y ranks.
+sk = np.array(CASES['skew'][:10])
+r = stats.spearmanr(x, sk)
+import itertools
+def _spearman_exact_p(u, v):
+    # every ordering of the Y ranks (midranks doubled to integers, so the comparison is exact)
+    a = (2 * stats.rankdata(u)).astype(int); b = (2 * stats.rankdata(v)).astype(int)
+    n = len(a); A = [int(t) for t in (n * a - a.sum())]; B = [int(t) for t in b]
+    obs = abs(sum(p * q for p, q in zip(A, B))); hits = total = 0
+    for perm in itertools.permutations(B):
+        total += 1
+        if abs(sum(p * q for p, q in zip(A, perm))) >= obs: hits += 1
+    return hits / total
+class _P: pass
+pe = _P(); pe.pvalue = _spearman_exact_p(x, sk)
+check('Spearman rho, exact p (n = 10)', [TP['spearman']['r'], TP['spearman']['p']], [r.statistic, pe.pvalue], rel=1e-9)
 r = stats.linregress(x, y)
 check('linear fit a, b, R2', [TP['linear']['a'], TP['linear']['b'], TP['linear']['r2']], [r.intercept, r.slope, r.rvalue ** 2])
 
