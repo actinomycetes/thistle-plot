@@ -766,7 +766,7 @@ function rankProductTail(reps,s){return _rpNull(reps.map(_rpVals))(s);}
 // (v0.17.0: a stable sort gave tied rows distinct ranks in row order; RankProd 3.x does the same, RankProd 2.x averaged).
 // A row's statistic uses only the replicates where it was measured; its null uses those replicates' own ranks.
 // BH FDR separately for up and down. res.tiedShare = share of values tied within a replicate.
-function rankProductTest(aRows,bRows,mode='delta'){
+function rankProductTest(aRows,bRows,mode='delta',minPairs=2,joint=false){
   const nRows=aRows.length,k=Math.max(0,...aRows.map((r,i)=>Math.min(r.length,(bRows[i]||[]).length)));
   const eff=aRows.map((a,r)=>{const b=bRows[r]||[];return Array.from({length:k},(_,i)=>{const av=a[i],bv=b[i];if(!isFinite(av)||!isFinite(bv))return NaN;return mode==='ratio'?(av>0&&bv>0?Math.log2(bv/av):NaN):bv-av;});});
   const rankUp=[],rankDn=[],nRep=[],setUp=[],setDn=[];let nTied=0,nVals=0;
@@ -784,16 +784,18 @@ function rankProductTest(aRows,bRows,mode='delta'){
   const keys=new Set();for(let r=0;r<nRows;r++){const ks=[];for(let i=0;i<k;i++)if(isFinite(rankUp[i][r]))ks.push(i);if(ks.length)keys.add(ks.join(','));}
   const budget=Math.max(2e6,2e8/Math.max(1,keys.size)),nulls=new Map();
   const tail=(dir,reps,s)=>{const key=dir+reps.join(',');let f=nulls.get(key);
-    if(!f){f=_rpNull(reps.map(i=>(dir==='u'?setUp:setDn)[i]),budget);nulls.set(key,f);}return f(s).p;};
+    if(!f){f=_rpNull(reps.map(i=>(dir==='u'?setUp:setDn)[i]),budget);nulls.set(key,f);}return f(s);};
   const res=eff.map((e,r)=>{
     const reps=[];for(let i=0;i<k;i++)if(isFinite(rankUp[i][r]))reps.push(i);
     const m=reps.length;
     if(!m)return{row:r,n:0,effect:NaN,rpUp:NaN,rpDown:NaN,pUp:NaN,pDown:NaN};
     const su=reps.reduce((s,i)=>s+Math.log(rankUp[i][r]/nRep[i]),0),sd=reps.reduce((s,i)=>s+Math.log(rankDn[i][r]/nRep[i]),0);
-    return{row:r,n:m,effect:mean(e.filter(isFinite)),rpUp:Math.exp(su/m),rpDown:Math.exp(sd/m),pUp:tail('u',reps,su),pDown:tail('d',reps,sd)};
+    const up=tail('u',reps,su),down=tail('d',reps,sd);
+    return{row:r,n:m,effect:mean(e.filter(isFinite)),rpUp:Math.exp(su/m),rpDown:Math.exp(sd/m),pUp:up.upper,pDown:down.upper,lowerUp:up.lower,lowerDown:down.lower};
   });
-  const qu=adjustP(res.map(r=>r.pUp),'fdr'),qd=adjustP(res.map(r=>r.pDown),'fdr');
-  res.forEach((r,i)=>{r.qUp=qu[i];r.qDown=qd[i];});
+  const ups=res.map(r=>r.n>=minPairs?r.pUp:NaN),downs=res.map(r=>r.n>=minPairs?r.pDown:NaN);
+  const adjusted=joint?adjustP(ups.concat(downs),'fdr'):adjustP(ups,'fdr').concat(adjustP(downs,'fdr'));
+  res.forEach((r,i)=>{r.qUp=adjusted[i];r.qDown=adjusted[i+res.length];});
   res.tiedShare=nVals?nTied/nVals:0;
   return res;
 }
@@ -1184,22 +1186,24 @@ function fit5PL(x,y){
   const neg=X.find(v=>v<0);if(neg!==undefined)return{error:`Concentrations cannot be negative (found ${neg}). A zero dose is allowed.`};
   const nd=new Set(X).size;if(nd<5)return{error:`Need at least 5 different concentrations to estimate the 5 curve parameters (found ${nd}). With fewer doses many different curves fit equally well.`};
   const model=(p,xi)=>{const c=Math.pow(10,p[2]),s=Math.exp(p[4]);if(xi<=0)return p[3]>0?p[0]:p[1];return p[0]+(p[1]-p[0])/Math.pow(1+Math.pow(c/xi,p[3]),s);};
-  const sse=p=>{const v=sum(X.map((xi,i)=>(model(p,xi)-Y[i])**2));return isFinite(v)?v:Infinity;};
+  const sse=p=>{const v=sum(X.map((xi,i)=>(model(p,xi)-scaled[i])**2));return isFinite(v)?v:Infinity;};
   const ym=mean(Y),yn=Math.min(...Y),yx=Math.max(...Y);
   // A flat response (Top = Bottom) fits every midpoint, slope and asymmetry equally well: no EC50 exists (re-review, v0.18.0)
   const flat=()=>({flat:true,params:[ym,ym,NaN,NaN,NaN],c:NaN,ec50:NaN,hill:NaN,asym:NaN,n:X.length,predict:()=>ym,r2:null});
-  if(yx-yn<=1e-12*(1+Math.abs(ym)))return flat();
+  if(yx===yn)return flat();
+  const range=yx-yn,scaled=Y.map(v=>(v-yn)/range),scaledMean=mean(scaled);
+  const totalSS=sum(scaled.map(v=>(v-scaledMean)**2));
   const pos=X.filter(v=>v>0);const lmid=pos.length?(Math.log10(Math.min(...pos))+Math.log10(Math.max(...pos)))/2:0;
   let best=null;
   for(const h of [1,-1,2,-2])for(const dl of [0,-1,1]){
-    const r=nelderMead(sse,[yn,yx,lmid+dl,h,0],{maxIter:3000});
+    const r=nelderMead(sse,[0,1,lmid+dl,h,0],{maxIter:3000});
     if(!best||r.fval<best.fval)best=r;
   }
   const P=best.x,c=Math.pow(10,P[2]),hill=P[3],asym=Math.exp(P[4]);
-  if(Math.abs(P[1]-P[0])<=1e-9*(1+Math.abs(P[0])+Math.abs(P[1])))return{...flat(),params:[P[0],P[1],NaN,NaN,NaN],r2:1-sse(P)/sum(Y.map(v=>(v-ym)**2))};
+  if(Math.abs(P[1]-P[0])<=1e-9)return flat();
   // EC50 = the X where Y is half-way between Bottom and Top; equals C only when Asym = 1
   const ec50=c*Math.pow(Math.pow(2,1/asym)-1,-1/hill);
-  return{params:[P[0],P[1],c,hill,asym],c,ec50,hill,asym,n:X.length,predict:xi=>model(P,xi),r2:1-sse(P)/sum(Y.map(v=>(v-ym)**2))};
+  return{params:[yn+range*P[0],yn+range*P[1],c,hill,asym],c,ec50,hill,asym,n:X.length,predict:xi=>yn+range*model(P,xi),r2:1-sse(P)/totalSS};
 }
 
 // ── Regression helpers ─────────────────────────────────────────
@@ -1251,7 +1255,7 @@ function fitPolynomial(x,y,deg){
   const fmt=(cs,u)=>cs.map((cc,k)=>k===0?cc.toPrecision(5):`${cc.toPrecision(5)}${u}${k>1?'^'+k:''}`).join(' + ');
   const evalP=(cs,c0,xi)=>cs.reduce((t,cc,k)=>t+parseFloat(cc.toPrecision(5))*(xi-c0)**k,0);
   const spread=Math.max(...pred)-Math.min(...pred)||Math.abs(my)||1,fits=(cs,c0)=>x.every((xi,i)=>Math.abs(evalP(cs,c0,xi)-pred[i])<=1e-4*spread);
-  const centred=c.map((cc,k)=>cc/Math.pow(sx,k)),mxs=+mx.toPrecision(10);
+  const centred=c.map((cc,k)=>cc/Math.pow(sx,k)),mxs=mx;
   const equation=fits(params,0)?`y = ${fmt(params,'x')}`:`y = ${fmt(centred,`(x − ${mxs})`)}`;
   return{type:`poly${deg}`,params,centre:mx,centred,predict,r2,pred,equation};
 }
@@ -1283,18 +1287,19 @@ function fitPower(x,y){
 function fit4PL(x,y){
   if(x.some(xi=>xi<0))return{error:'Need X ≥ 0 (concentrations) for the 4PL fit'};
   const model=(p,xi)=>xi<=0?(p[3]>0?p[1]:p[0]):p[0]+(p[1]-p[0])/(1+Math.pow(xi/Math.pow(10,p[2]),p[3]));
-  const sse=p=>{const v=sum(x.map((xi,i)=>(model(p,xi)-y[i])**2));return isFinite(v)?v:Infinity;};
+  const sse=p=>{const v=sum(x.map((xi,i)=>(model(p,xi)-scaled[i])**2));return isFinite(v)?v:Infinity;};
   const yn=Math.min(...y),yx=Math.max(...y),pos=x.filter(v=>v>0);
   const lmid=pos.length?(Math.log10(Math.min(...pos))+Math.log10(Math.max(...pos)))/2:0;
-  if(yx-yn<=1e-12*(1+Math.abs(mean(y)))){const m=mean(y); // flat: no midpoint or slope can be estimated
+  if(yx===yn){const m=mean(y); // flat: no midpoint or slope can be estimated
     return{type:'4pl',flat:true,params:{bot:m,top:m,ec50:NaN,hill:NaN},predict:()=>m,r2:null,pred:x.map(()=>m),
       equation:`Flat response (Top = Bottom = ${m.toFixed(3)}): the curve has no midpoint, so EC50 and Hill slope cannot be estimated`};}
+  const range=yx-yn,scaled=y.map(v=>(v-yn)/range);
   let best=null;
-  for(const [b0,t0] of [[yx,yn],[yn,yx]])for(const dl of [0,-1,1]){const r=nelderMead(sse,[b0,t0,lmid+dl,1],{maxIter:3000});if(!best||r.fval<best.fval)best=r;}
-  const P=best.x,[bot,top,hill]=[P[0],P[1],P[3]],ec50=Math.pow(10,P[2]),my=mean(y);
-  const pred=x.map(xi=>model(P,xi));
+  for(const [b0,t0] of [[1,0],[0,1]])for(const dl of [0,-1,1]){const r=nelderMead(sse,[b0,t0,lmid+dl,1],{maxIter:3000});if(!best||r.fval<best.fval)best=r;}
+  const P=best.x,[bot,top,hill]=[yn+range*P[0],yn+range*P[1],P[3]],ec50=Math.pow(10,P[2]),my=mean(y);
+  const pred=x.map(xi=>yn+range*model(P,xi));
   const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
-  return{type:'4pl',params:{bot,top,ec50,hill},predict:xi=>model(P,xi),r2,pred,
+  return{type:'4pl',params:{bot,top,ec50,hill},predict:xi=>yn+range*model(P,xi),r2,pred,
     equation:`Y = Bottom + (Top − Bottom) / (1 + (X/EC50)^Hill): bottom=${bot.toFixed(3)}, top=${top.toFixed(3)}, EC50=${ec50.toPrecision(4)}, hill=${hill.toFixed(3)}`};
 }
 function runRegression(x,y,model,degree){
@@ -1950,7 +1955,7 @@ function renderAnalysisOpts(t){
     const modeOpts=(nG>2&&t!=='rankprod')?`<div class="full-col"><div class="opt-lbl">Mode</div><select id="opt-np-mode" data-hint="npmode" onchange="npModeChange()"><option value="pair">Single pair</option><option value="allpairs">All pairs</option><option value="vsctrl">vs Control</option></select></div><div class="full-col" id="np-corr-wrap" style="display:none"><div class="opt-lbl">Multiple-comparison correction</div>${corrSelect('opt-npcorr')}</div>`:'';
     const ctrlWrap=(nG>2&&t!=='rankprod')?`<div id="np-ctrl-wrap" style="display:none"><div class="opt-lbl">Control group</div><select id="opt-np-ctrl">${ctrlOpts}</select></div>`:'';
     const pairOpts=`<div id="np-pair-wrap" style="display:flex;gap:7px;grid-column:1/-1"><div style="flex:1"><div class="opt-lbl">Group A</div><select id="opt-np-g1">${grpOpts2}</select></div><div style="flex:1"><div class="opt-lbl">Group B</div><select id="opt-np-g2">${grpOpts2b}</select></div></div>`;
-    const compOpts=t==='rankprod'?`<div class="full-col"><div class="opt-lbl">Effect per replicate pair</div><select id="opt-rp-comp" data-hint="rpcomp"><option value="delta">Difference B − A (data already on a log scale)</option><option value="ratio">log2 ratio B / A (linear-scale data, e.g. normalised counts)</option></select></div>`:t==='wilcoxon'?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
+    const compOpts=t==='rankprod'?`<div class="full-col"><div class="opt-lbl">Effect per replicate pair</div><select id="opt-rp-comp" data-hint="rpcomp"><option value="delta">Difference B − A (data already on a log scale)</option><option value="ratio">log2 ratio B / A (linear-scale data, e.g. normalised counts)</option></select></div><div><div class="opt-lbl">Minimum replicate pairs for FDR</div><input type="number" id="opt-rp-min" min="1" step="1" value="2"></div><div><div class="opt-lbl">FDR family</div><select id="opt-rp-family"><option value="separate">Each direction separately</option><option value="joint">Both directions together</option></select></div>`:t==='wilcoxon'?`<div><div class="opt-lbl">Comparison</div><select id="opt-np-comp" data-hint="comp"><option value="delta">Difference (A−B)</option><option value="ratio">Ratio (A/B)</option></select></div>`:'';
     el.innerHTML=`<div class="opts-grid">${modeOpts}${ctrlWrap}${pairOpts}${compOpts}${autoPlotHint}</div>`;
     if(nG>2)setTimeout(npModeChange,10);
   } else if(t==='mtc'){
@@ -4147,21 +4152,23 @@ function runAnalysis(){
       const qCut=0.05;
       const names=grpNames();
       const toNum=g=>G.groups[g].data.map(r=>(r||[]).map(v=>v!==''&&isFinite(v)?Number(v):NaN));
-      const res=rankProductTest(toNum(g1i),toNum(g2i),rpMode);
-      const ok=res.filter(r=>r.n>0);
+      const minPairs=Number(document.getElementById('opt-rp-min').value),joint=document.getElementById('opt-rp-family').value==='joint';
+      if(!Number.isInteger(minPairs)||minPairs<1){addStatTab('Rank Product','<div class="ebox">Enter a positive whole number of replicate pairs.</div>');return;}
+      const res=rankProductTest(toNum(g1i),toNum(g2i),rpMode,minPairs,joint);
+      const ok=res.filter(r=>r.n>=minPairs);
       const up=ok.filter(r=>r.qUp<qCut).sort((x,y)=>x.pUp-y.pUp),dn=ok.filter(r=>r.qDown<qCut).sort((x,y)=>x.pDown-y.pDown);
       const eLab=rpMode==='ratio'?'log2 FC':'Mean diff';
       const rowName=r=>G.rowNames[r.row]||'Row '+(r.row+1);
       const topTbl=(list,dir)=>{const sorted=list.length?list:[...ok].sort((x,y)=>dir==='up'?x.pUp-y.pUp:x.pDown-y.pDown).slice(0,10);
         return `${list.length?'':'<div class="opt-hint">None pass the cutoff; the 10 best-ranked are shown.</div>'}<table class="rtbl"><thead><tr><th>Row</th><th>${eLab} (${names[g2i]} vs ${names[g1i]})</th><th>RP</th><th>p</th><th>q (FDR)</th></tr></thead><tbody>
         ${sorted.slice(0,30).map(r=>`<tr><td>${rowName(r)}</td><td>${fmtF(r.effect)}</td><td>${fmtF(dir==='up'?r.rpUp:r.rpDown,4)}</td><td>${pRow(dir==='up'?r.pUp:r.pDown)}</td><td>${pRow(dir==='up'?r.qUp:r.qDown)}</td></tr>`).join('')}</tbody></table>`;};
-      const csv=csvButton(`rank_product_${names[g2i]}_vs_${names[g1i]}.csv`.replace(/\s+/g,'_'),['Row',`${eLab} (${names[g2i]} vs ${names[g1i]})`,'Replicate pairs','RP up','p up','q up (FDR)','RP down','p down','q down (FDR)','Call'],
-        res.map(r=>[rowName(r),r.effect,r.n,r.rpUp,r.pUp,r.qUp,r.rpDown,r.pDown,r.qDown,r.qUp<qCut?'Up':r.qDown<qCut?'Down':'NS']));
+      const csv=csvButton(`rank_product_${names[g2i]}_vs_${names[g1i]}.csv`.replace(/\s+/g,'_'),['Row',`${eLab} (${names[g2i]} vs ${names[g1i]})`,'Replicate pairs','RP up','p up lower','p up upper','q up (FDR)','RP down','p down lower','p down upper','q down (FDR)','Call'],
+        res.map(r=>[rowName(r),r.effect,r.n,r.rpUp,r.lowerUp,r.pUp,r.qUp,r.rpDown,r.lowerDown,r.pDown,r.qDown,r.n<minPairs?'Below minimum':r.qUp<qCut?'Up':r.qDown<qCut?'Down':'NS']));
       {const sig=up.length+dn.length>0;const U=sig?up:[...ok].sort((x,y)=>x.pUp-y.pUp).slice(0,25),D=sig?dn:[...ok].sort((x,y)=>x.pDown-y.pDown).slice(0,25);
       lastStatGeneSet={label:'Rank Product',sig,groups:[g1i,g2i],up:U.map(r=>({row:r.row,p:r.pUp})),down:D.map(r=>({row:r.row,p:r.pDown}))};}
       const html=`<div class="scard"><h3>Rank Product: ${names[g2i]} vs ${names[g1i]}</h3>
         <div class="rh"><span class="rt">${up.length.toLocaleString()} up · ${dn.length.toLocaleString()} down</span><span class="rp">q &lt; ${qCut} (FDR), ${ok.length.toLocaleString()} rows, ${Math.max(0,...ok.map(r=>r.n))} replicate pairs</span></div>
-        <div class="opt-hint" style="font-style:normal;margin-bottom:6px">Each direction is ranked separately: "Up" = higher in ${names[g2i]}, "Down" = lower in ${names[g2i]}. p-values: exact under random ranks within each replicate (tied values keep their shared rank; shown as the upper bound of a tight exact bracket); q: Benjamini–Hochberg FDR within each direction. ${csv}</div>
+        <div class="opt-hint" style="font-style:normal;margin-bottom:6px">Each direction is ranked separately: "Up" = higher in ${names[g2i]}, "Down" = lower in ${names[g2i]}. p-values use the upper grid bound under random ranking within each replicate. The CSV includes both bounds. BH adjustment covers ${joint?'both directions together':'each direction separately'} for ${ok.length} rows with at least ${minPairs} replicate pairs. ${csv}</div>
         ${res.tiedShare>0?`<div class="opt-hint" style="font-style:normal;margin-bottom:6px">${(100*res.tiedShare).toFixed(res.tiedShare<0.01?1:0)}% of the values are tied (equal effects, e.g. zeros). Tied values share their average rank, so the order of the rows does not matter, and the p-values take the ties into account${res.tiedShare>0.3?'; with this many ties few rows can rank highly':''}.</div>`:''}
         <div class="sdiv"><h4>Up in ${names[g2i]} (top 30)</h4>${topTbl(up,'up')}</div>
         <div class="sdiv"><h4>Down in ${names[g2i]} (top 30)</h4>${topTbl(dn,'down')}</div></div>`;
@@ -4404,7 +4411,7 @@ function runAnalysis(){
         <tr><td>Asymmetry</td><td>${fmtF(asym)}</td></tr>
         <tr><td>R²</td><td>${fmtF(res.r2,4)}</td></tr>
         <tr><td>Points</td><td>${n}</td></tr>
-        </tbody></table>${res.flat?'<div class="opt-hint" style="font-style:normal">The response is flat (Top = Bottom): the curve has no midpoint, so EC50, C, Hill slope and asymmetry cannot be estimated.</div>':''}<div class="opt-hint">Model: Y = Bottom + (Top − Bottom) / (1 + (C/X)^Hill)^Asymmetry, fitted by least squares.</div></div>`;
+        </tbody></table>${!res.flat&&(ec50<Math.min(...xv)||ec50>Math.max(...xv))?'<div class="opt-hint">Estimated EC50 is outside the sampled dose range.</div>':''}${res.flat?'<div class="opt-hint" style="font-style:normal">The response is flat (Top = Bottom): the curve has no midpoint, so EC50, C, Hill slope and asymmetry cannot be estimated.</div>':''}<div class="opt-hint">Model: Y = Bottom + (Top − Bottom) / (1 + (C/X)^Hill)^Asymmetry, fitted by least squares.</div></div>`;
       addStatTab('Dose–response (5PL)',html);
 
     } else if(atype==='heatmap'){
@@ -5161,7 +5168,7 @@ window.addEventListener('load',checkLibs);
 <tr>
 <td>Non-parametric</td>
 <td>Rank Product</td>
-<td>Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; tied values share their average rank; exact p-values from each replicate's own ranks; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV</td>
+<td>Group A (reference) vs Group B per row; up and down ranked separately, each with its own FDR; tied values share their average rank; upper grid bounds from each replicate's own ranks; effect = difference (log data) or log2 ratio (linear data); linked heatmap of up/down genes; full gene table as CSV</td>
 </tr>
 <tr>
 <td>Non-parametric</td>
@@ -5434,7 +5441,7 @@ window.addEventListener('load',checkLibs);
 <li>Dunnett's test is for one-way ANOVA with a single control; with several controls, or all pairs, choose another correction (TP refuses Dunnett there).</li>
 <li>One-way ANOVA leaves out a group with no values and names it in the result.</li>
 <li>Rank Product gives tied values (equal effects, e.g. many zeros) their average rank, so the result does not depend on the order of the rows. The current R package RankProd (3.x) instead breaks ties by row order, so rows with many tied values can rank differently there (RankProd 2.x used average ranks, as TP does).</li>
-<li>Rank Product p-values (since v0.18.0) are exact for the question "how often would a row rank this well if its rank in each replicate were drawn at random from that replicate's own ranks?". Tied values keep their shared rank and each replicate keeps its own number of measured rows, so ties and blanks are taken into account. TP shows the upper end of a very narrow bracket around the exact value, so p is never too small. With many ties the smallest possible p can be large, and then no row may reach significance (for example, if only 2 of 36 rows change in 2 replicates, the best possible p is (2/36)² = 0.0031). RankProd's large-data p-values (Heskes et al. 2014) assume no ties and can be about 10% smaller with few rows.</li>
+<li>Rank Product estimates tail probabilities for the question "how often would a row rank this well if its rank in each replicate were drawn at random from that replicate's own ranks?". Tied values keep their shared rank and each replicate keeps its own number of measured rows, so ties and blanks are taken into account. TP exports lower and upper grid bounds and uses the upper bound for BH. Select separate directional families or one joint family, and specify the minimum replicate coverage before analysis. With many ties the smallest possible p can be large, and then no row may reach significance (for example, if only 2 of 36 rows change in 2 replicates, the best possible p is (2/36)² = 0.0031). RankProd's large-data p-values (Heskes et al. 2014) assume no ties and can be about 10% smaller with few rows.</li>
 <li>Kaplan–Meier assumes one subject per row; hazard ratios are log-rank estimates (no Cox regression).</li>
 <li>SVG export is an embedded image, not editable vectors.</li>
 <li>Publication style is greyscale only; there are no colour publication palettes yet.</li>
