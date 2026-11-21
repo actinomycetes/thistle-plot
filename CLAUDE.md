@@ -78,7 +78,7 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
 - **Multiple comparisons:** `adjustP(p, method)` with bonferroni, holm, holm_sidak, fdr, none; labels in `CORR_LABEL/SHORT/HINT`, UI via `corrSelect`.
   Dunnett: `dunnettP` (numerical integral of the multivariate t); Tukey via `jStat.tukey`; ANOVA `onewayANOVA(groups, method, ctrls[])`;
   two-way ANOVA post-hoc uses pooled MSE; Kaplan-Meier `kaplanMeier`, `kmGroups`, `logRankK`; KS `ks2Sample` (exact), `lillieforsTest` (seeded Monte Carlo);
-  Rank Product `rankProductTest(aRows, bRows, mode)` ranks up and down separately (average ranks for ties, Heskes 2014 p-values) with per-direction FDR.
+  Rank Product `rankProductTest(aRows, bRows, mode)` ranks up and down separately (average ranks for ties, exact p-values from each replicate's own ranks via `_rpNull`) with per-direction FDR.
   PCA: `pcaCompute` uses the Gram matrix + Jacobi (`_jacobiEig`) so it scales to tens of thousands of genes; `buildPCAMatrix`.
 - **Results tables:** `table.rtbl`; long tables show `SHOW_ROWS=200` with a full CSV (`csvButton`, `downloadCSV`);
   `exportStatTables(tabId)` produces the per-result CSV.
