@@ -272,3 +272,10 @@ test('rank product with one replicate pair uses every row by default', async () 
   const q = await app.page.evaluate(([a, b]) => rankProductTest(a, b, 'delta').slice(0, 3).map(r => r.qUp), [A, B]);
   assert.ok(q.every(Number.isFinite), 'q-values exist: ' + q);
 });
+
+test('rank product result describes the p-value bounds without calling them narrow', async () => {
+  const b = await app.page.evaluate(() => { const r = Float64Array.from([1, 2, 3]); return rankProductTail([r, r, r], Math.log(2 / 27)); });
+  close(b.upper, 4 / 27, 1e-9); // exact P(product of 3 ranks of 3 <= 2) = 4/27; the lower bound can be far below it
+  const ui = await run(tbl([col('A', Array.from({ length: 20 }, () => [0, 0, 0])), col('B', Array.from({ length: 20 }, (_, i) => [i, i + 1, i + 2]))]), 'rankprod');
+  assert.ok(!/narrow/i.test(ui.text), 'no "narrow" claim'); assert.match(ui.text, /upper bound/);
+});
