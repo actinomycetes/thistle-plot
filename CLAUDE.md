@@ -133,6 +133,8 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   bound; TP reports the upper bound (`rankProductTail` for tests). One null per direction and set of measured replicates,
   sharing a 2e8 work budget. Replaced the Heskes 2014 continuous bounds (ignore ties; ~10% too small at n = 3).
   References: `tools/validate/rankprod_refs.py` (exact counting). `res.tiedShare` drives the "tied" note.
+  v0.19.0: `rankProductTest(a, b, mode, minPairs = 1, joint = false)`; rows with fewer pairs get NaN q; CSV has lower and
+  upper bounds. 4PL/5PL fit a 0–1 rescaled response (unit-invariant EC50) and polish with a relative tolerance.
 - Re-review (v0.18.0): flat responses give `fit5PL`/`fit4PL` `flat:true` and NaN EC50/Hill/asymmetry; `fitPolynomial`
   prints powers of (x − mean X) when the expanded 5-figure coefficients do not reproduce the fit; `ks2Sample` with ties
   labels its method "computed as if there were no ties".
