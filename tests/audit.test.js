@@ -231,16 +231,36 @@ test('re-review: the printed polynomial equation reproduces the fitted values', 
       const m = eq.match(/\(x − ([-\d.e+]+)\)/), c = m ? +m[1] : 0, u = x - c;
       return eq.replace(/^y = /, '').split(' + ').reduce((s, t) => { const k = t.match(/\^(\d+)/) ? +t.match(/\^(\d+)/)[1] : /x/.test(t) ? 1 : 0; return s + parseFloat(t) * u ** k; }, 0);
     };
-    const X = [10000, 10001, 10002, 10003, 10004, 10005], Y = [3, 4, 19, 84, 259, 628], f = fitPolynomial(X, Y, 4);
+    const X = Array.from({length:6}, (_,i)=>1e12+i), Y = [3, 4, 19, 84, 259, 628], f = fitPolynomial(X, Y, 4);
     const low = fitPolynomial([0, 1, 2, 3], [1, 4, 9, 16], 2);
     return { eq: f.equation, err: Math.max(...X.map((x, i) => Math.abs(evalEq(f.equation, x) - f.pred[i]))), low: low.equation, lowErr: Math.max(...[0, 1, 2, 3].map((x, i) => Math.abs(evalEq(low.equation, x) - low.pred[i]))) };
   });
   assert.ok(r.err < 0.05, `printed equation off by ${r.err}: ${r.eq}`);   // values span 3..628; 5 significant figures
-  assert.match(r.eq, /x − 10002\.5/);
+  assert.match(r.eq, /x − 1000000000002\.5/);
   assert.strictEqual(r.low, 'y = 1.0000 + 2.0000x + 1.0000x^2'); assert.ok(r.lowErr < 1e-3);
 });
 
 test('re-review: KS with ties says its p-value is computed as for untied data', async () => {
   const ui = await run(tbl([col('A', [[0], [0], [0], [0]]), col('B', [[0], [1], [1], [1]])]), 'ks', { 'opt-ks-mode': 'two' });
   assert.ok(!/p-value \(exact\)/.test(ui.text), 'not labelled plainly exact'); assert.match(ui.text, /as if there were no ties/i);
+});
+
+test('dose fits preserve EC50 after changing response units', async () => {
+  const results = await app.page.evaluate(() => {
+    const x = [0, 1, 2, 4, 8, 16, 32], y = x.map(v => v / (4 + v));
+    return ['4pl','5pl'].map(model => [1,1e-13].map(scale => {
+      const r = runRegression(x,y.map(v => scale*v),model);
+      return r.params.ec50 ?? r.params.EC50;
+    }));
+  });
+  results.forEach(([a,b]) => close(a,b,0.001));
+});
+
+test('rank product excludes low coverage from BH and exposes both bounds', async () => {
+  const r = await app.page.evaluate(() => {
+    const a = [[0,0],[0,0],[0,NaN]], b = [[3,3],[1,1],[2,NaN]];
+    return rankProductTest(a,b,'delta',2,true);
+  });
+  assert.ok(Number.isNaN(r[2].qUp));
+  assert.ok(r[0].lowerUp <= r[0].pUp && r[0].pUp <= r[0].qUp);
 });
