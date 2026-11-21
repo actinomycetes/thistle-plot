@@ -264,3 +264,11 @@ test('rank product excludes low coverage from BH and exposes both bounds', async
   assert.ok(Number.isNaN(r[2].qUp));
   assert.ok(r[0].lowerUp <= r[0].pUp && r[0].pUp <= r[0].qUp);
 });
+
+test('rank product with one replicate pair uses every row by default', async () => {
+  const A = Array.from({ length: 50 }, () => [0]), B = Array.from({ length: 50 }, (_, i) => [i < 3 ? 10 + i : Math.sin(i)]);
+  const ui = await run(tbl([col('A', A), col('B', B)]), 'rankprod');
+  assert.match(ui.text, /50 rows, 1 replicate pairs/, 'every row counted (the minimum of 2 left none)');
+  const q = await app.page.evaluate(([a, b]) => rankProductTest(a, b, 'delta').slice(0, 3).map(r => r.qUp), [A, B]);
+  assert.ok(q.every(Number.isFinite), 'q-values exist: ' + q);
+});
