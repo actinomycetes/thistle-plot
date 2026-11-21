@@ -167,27 +167,80 @@ test('13 Dunnett without one control is refused instead of silently becoming Hol
   assert.match(r, /class="ebox"/); assert.match(r, /vs control/); assert.ok(!/Holm–Šídák/.test(r), 'no silent fallback');
 });
 
-test('01 Rank Product: average ranks for ties (no row-order artefact) and Heskes et al. (2014) p-values', async () => {
+test('01 Rank Product: average ranks for ties and exact p-values from each replicate\'s own ranks (re-review)', async () => {
+  // References: tools/validate/rankprod_refs.py (exact integer counting / full enumeration, standard library only).
   const r = await app.page.evaluate(() => {
     const z = Array.from({ length: 100 }, () => [0, 0, 0]);
     const zeros = rankProductTest(z, z, 'delta');
-    // partly tied data, run forward and with the rows reversed
     const rnd = _mulberry32(11), A = [], B = [];
     for (let i = 0; i < 100; i++) { A.push([0, 0, 0]); B.push([0, 1, 2].map(() => Math.round((rnd() - 0.5) * 4) / 2)); }
     const fw = rankProductTest(A, B, 'delta'), rv = rankProductTest([...A].reverse(), [...B].reverse(), 'delta');
     let maxDiff = 0; fw.forEach((x, i) => { const y = rv[99 - i]; maxDiff = Math.max(maxDiff, Math.abs(x.pUp - y.pUp), Math.abs(x.pDown - y.pDown)); });
-    return { z0: zeros[0], z99: zeros[99], zMinQ: Math.min(...zeros.map(x => Math.min(x.qUp, x.qDown))), tied: zeros.tiedShare,
-      maxDiff, both: fw.some(x => x.qUp < 0.05 && x.qDown < 0.05),
-      heskes: rankProductP(9282, 9047, 4), untied: rankProductP(1, 10, 3).p, small: rankProductP(8, 20, 3).p };
+    // re-review fixture: 36 rows, A all 0, B = [1,1] for 2 rows and [0,0] for 34
+    const fx = rankProductTest(Array.from({ length: 36 }, () => [0, 0]), Array.from({ length: 36 }, (_, i) => i < 2 ? [1, 1] : [0, 0]), 'delta');
+    // untied: rank r in every replicate of n rows -> product r^k (rows with effects n..1 so row j has rank j+1)
+    const untied = (n, k, row) => rankProductTest(Array.from({ length: n }, () => Array(k).fill(0)), Array.from({ length: n }, (_, j) => Array(k).fill(n - j)), 'delta')[row].pUp;
+    // tied, unequal replicate sizes (replicate 2 has two blanks): effects up = [5,5,5,2,1,1,0] and [3,3,1,0,0,-,-]
+    const e1 = [5, 5, 5, 2, 1, 1, 0], e2 = [3, 3, 1, 0, 0, NaN, NaN];
+    const tu = rankProductTest(e1.map(() => [0, 0]), e1.map((v, i) => [v, e2[i]]), 'delta');
+    return { z0: zeros[0], z99: zeros[99], zMinQ: Math.min(...zeros.map(x => Math.min(x.qUp, x.qDown))), tied: zeros.tiedShare, maxDiff,
+      both: fw.some(x => x.qUp < 0.05 && x.qDown < 0.05), fxP: fx[0].pUp, fxQ: fx[0].qUp, fxCalls: fx.filter(x => x.qUp < 0.05).length,
+      u331: untied(3, 3, 0), u20: untied(20, 3, 1), u200: untied(200, 4, 0), tu: [tu[0].pUp, tu[3].pUp, tu[4].pUp] };
   });
-  // all-zero data: every row shares midrank 50.5 in every replicate, so nothing is significant and row 1 = row 100
-  assert.strictEqual(r.z0.pUp, r.z99.pUp); assert.ok(r.zMinQ >= 0.05, 'no discoveries, min q ' + r.zMinQ);
-  close(r.z0.pUp, 0.6571119, 1e-6); assert.strictEqual(r.tied, 1);
+  // all-zero data: every row has the same rank in every replicate, so p = 1 for all rows and the row order cannot matter
+  assert.strictEqual(r.z0.pUp, r.z99.pUp); close(r.z0.pUp, 1, 1e-12); assert.ok(r.zMinQ >= 0.05); assert.strictEqual(r.tied, 1);
   assert.ok(r.maxDiff < 1e-12, 'row order does not change p: ' + r.maxDiff); assert.ok(!r.both, 'no row called both up and down');
-  // Heskes, Eisinga & Breitling 2014, Table 1 (n = 9047, k = 4, rho = 9282): upper 3.888e-10, geometric 2.709e-10, lower 1.887e-10
-  close(r.heskes.upper, 3.888e-10, 1e-3); close(r.heskes.p, 2.709e-10, 1e-3); close(r.heskes.lower, 1.887e-10, 1e-3);
-  close(r.untied, 0.001, 1e-9);            // exact enumeration: 1/10^3 (the continuous formula gave 0.0318)
-  close(r.small, 0.004811345, 1e-6);       // n = 20, k = 3, rho = 8 (exact 0.00475; RankProd 3.x 0.00481)
+  // re-review: exact tie-preserving null gives (2/36)^2 = 0.00308642, BH q = 0.0555556, no calls (Heskes gave 0.00262, q 0.0471, 2 calls)
+  close(r.fxP, 0.0030864197530864196, 1e-9); close(r.fxQ, 0.05555555555555555, 1e-9); assert.strictEqual(r.fxCalls, 0);
+  close(r.u331, 1 / 27, 1e-12);                       // product 1 of 3 ranks of 3: exactly 1/27
+  close(r.u20, 0.00475, 1e-9);                        // n = 20, k = 3, rank 2 everywhere (product 8): exact 0.00475 (Heskes 0.00481)
+  close(r.u200, 6.25e-10, 1e-9);                      // n = 200, k = 4, product 1: 1/200^4 (rankprod_refs.py)
+  close(r.tu[0], 0.17142857142857143, 1e-6);          // ranks (2, 1.5) of 7 and 5: exact enumeration 0.171429
+  close(r.tu[1], 0.8, 1e-6);                          // ranks (4, 4.5): 0.8
+  close(r.tu[2], 0.9428571428571428, 1e-6);           // ranks (5.5, 4.5): 0.942857
   const ui = await run(tbl([col('A', Array.from({ length: 20 }, () => [0, 0, 0])), col('B', Array.from({ length: 20 }, () => [0, 0, 0]))]), 'rankprod');
-  assert.match(ui.text, /tied/i); assert.match(ui.text, /Heskes/);
+  assert.match(ui.text, /tied/i); assert.match(ui.text, /each replicate/i);
+});
+
+test('01 Rank Product p-values agree with exact counting for untied ranks (rankProductTail)', async () => {
+  // P(product of k uniform ranks 1..n <= rho), exact integer counts from tools/validate/rankprod_refs.py
+  const r = await app.page.evaluate(() => [[3, 3, 2], [20, 3, 8], [50, 3, 100], [200, 4, 5000], [1000, 2, 37]].map(([n, k, rho]) => {
+    const ranks = Float64Array.from({ length: n }, (_, i) => i + 1), reps = Array.from({ length: k }, () => ranks);
+    return rankProductTail(reps, Math.log(rho) - k * Math.log(n));
+  }));
+  const exact = [4 / 27, 0.00475, 0.010568, 0.0003618375, 0.000142];
+  r.forEach((x, i) => { assert.ok(x.lower <= exact[i] * (1 + 1e-9) && x.upper >= exact[i] * (1 - 1e-9), `bounds bracket exact ${exact[i]}: ${x.lower}..${x.upper}`);
+    assert.ok(x.p >= exact[i] * (1 - 1e-9) && x.p <= exact[i] * 1.05, `p = upper bound within 5% of exact ${exact[i]}: ${x.p}`); });
+});
+
+test('re-review: a flat dose response has no EC50 (5PL test, 5PL and 4PL curve fits)', async () => {
+  const r = await app.page.evaluate(() => {
+    const x = [0, 1, 2, 3, 4, 5], y = [5, 5, 5, 5, 5, 5], f5 = fit5PL(x, y), c5 = runRegression(x, y, '5pl'), c4 = runRegression(x, y, '4pl');
+    return { f5: { ec50: f5.ec50, hill: f5.hill, flat: f5.flat, bot: f5.params[0], top: f5.params[1] }, c5: c5.params.EC50, c4: c4.params.ec50, c4eq: c4.equation, c5eq: c5.equation };
+  });
+  assert.ok(Number.isNaN(r.f5.ec50) && Number.isNaN(r.f5.hill) && r.f5.flat, JSON.stringify(r.f5));
+  assert.strictEqual(r.f5.bot, 5); assert.strictEqual(r.f5.top, 5);
+  assert.ok(Number.isNaN(r.c5) && Number.isNaN(r.c4), 'curve fits give no EC50'); assert.match(r.c4eq, /flat/i); assert.match(r.c5eq, /flat/i);
+  const ui = await run(tbl([col('Dose', [[0], [1], [2], [3], [4], [5]]), col('Resp', [[5], [5], [5], [5], [5], [5]])]), 'dose');
+  assert.match(ui.text, /no midpoint/i); assert.match(ui.text, /EC50[^—]*—/);
+});
+
+test('re-review: the printed polynomial equation reproduces the fitted values', async () => {
+  const r = await app.page.evaluate(() => {
+    const evalEq = (eq, x) => { // read back "y = a + b(x − m) + c(x − m)^2" or "y = a + bx + cx^2"
+      const m = eq.match(/\(x − ([-\d.e+]+)\)/), c = m ? +m[1] : 0, u = x - c;
+      return eq.replace(/^y = /, '').split(' + ').reduce((s, t) => { const k = t.match(/\^(\d+)/) ? +t.match(/\^(\d+)/)[1] : /x/.test(t) ? 1 : 0; return s + parseFloat(t) * u ** k; }, 0);
+    };
+    const X = [10000, 10001, 10002, 10003, 10004, 10005], Y = [3, 4, 19, 84, 259, 628], f = fitPolynomial(X, Y, 4);
+    const low = fitPolynomial([0, 1, 2, 3], [1, 4, 9, 16], 2);
+    return { eq: f.equation, err: Math.max(...X.map((x, i) => Math.abs(evalEq(f.equation, x) - f.pred[i]))), low: low.equation, lowErr: Math.max(...[0, 1, 2, 3].map((x, i) => Math.abs(evalEq(low.equation, x) - low.pred[i]))) };
+  });
+  assert.ok(r.err < 0.05, `printed equation off by ${r.err}: ${r.eq}`);   // values span 3..628; 5 significant figures
+  assert.match(r.eq, /x − 10002\.5/);
+  assert.strictEqual(r.low, 'y = 1.0000 + 2.0000x + 1.0000x^2'); assert.ok(r.lowErr < 1e-3);
+});
+
+test('re-review: KS with ties says its p-value is computed as for untied data', async () => {
+  const ui = await run(tbl([col('A', [[0], [0], [0], [0]]), col('B', [[0], [1], [1], [1]])]), 'ks', { 'opt-ks-mode': 'two' });
+  assert.ok(!/p-value \(exact\)/.test(ui.text), 'not labelled plainly exact'); assert.match(ui.text, /as if there were no ties/i);
 });

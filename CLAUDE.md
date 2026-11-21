@@ -126,11 +126,16 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   and refuses X < 0, one-way ANOVA drops empty groups with a note, `onewayANOVA` refuses Dunnett without one control,
   two-way ANOVA requires groups = nA × nB and names the correction family, paired Ratio refuses a normalization.
   `tools/validate/compare.py` checks Spearman against an exact permutation reference (scipy's default is the t approximation).
-- Rank Product (v0.17.0, review case 01): `rankProductTest` gives tied effects their average rank within each replicate
-  (deliberately unlike RankProd 3.x, whose `order()` breaks ties by row order; RankProd 2.x averaged) and computes p with
-  `rankProductP(rho, n, k)` = Heskes, Eisinga & Breitling (2014) Eq. 4, geometric mean of exact lower/upper bounds
-  (`_rpBoundPieces`, piecewise P(u)+e^u·Q(u) in local coordinates). Checked against the paper's Table 1 and exact
-  enumeration; `res.tiedShare` drives the "tied" note.
+- Rank Product (v0.17.0 review case 01, v0.18.0 re-review): `rankProductTest` gives tied effects their average rank within
+  each replicate (deliberately unlike RankProd 3.x, whose `order()` breaks ties by row order; RankProd 2.x averaged). p is
+  exact under "each replicate's rank is a random draw from that replicate's own ranks" (ties and blanks kept): `_rpVals`
+  per replicate, `_rpNull(vals, budget)` convolves the log rank fractions on a grid, floor = upper bound, ceil = lower
+  bound; TP reports the upper bound (`rankProductTail` for tests). One null per direction and set of measured replicates,
+  sharing a 2e8 work budget. Replaced the Heskes 2014 continuous bounds (ignore ties; ~10% too small at n = 3).
+  References: `tools/validate/rankprod_refs.py` (exact counting). `res.tiedShare` drives the "tied" note.
+- Re-review (v0.18.0): flat responses give `fit5PL`/`fit4PL` `flat:true` and NaN EC50/Hill/asymmetry; `fitPolynomial`
+  prints powers of (x − mean X) when the expanded 5-figure coefficients do not reproduce the fit; `ks2Sample` with ties
+  labels its method "computed as if there were no ties".
 
 ## Hard-won pitfalls (do not reintroduce)
 - Setting Chart.js options through setters in the Publication export caused infinite recursion: modify the config BEFORE constructing the chart.
