@@ -80,6 +80,9 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   two-way ANOVA post-hoc uses pooled MSE; Kaplan-Meier `kaplanMeier`, `kmGroups`, `logRankK`; KS `ks2Sample` (exact), `lillieforsTest` (seeded Monte Carlo);
   Rank Product `rankProductTest(aRows, bRows, mode)` ranks up and down separately (average ranks for ties, exact p-values from each replicate's own ranks via `_rpNull`) with per-direction FDR.
   PCA: `pcaCompute` uses the Gram matrix + Jacobi (`_jacobiEig`) so it scales to tens of thousands of genes; `buildPCAMatrix`.
+- **Run stamp:** `runOptionsSummary` ends every result's header with `· Run <ts>` (e.g. `Run 11/23/2026 6:34 PM`).
+  Thistle Notebook's tests strip that stamp when comparing TP result texts: keep its wording and format, or tell the
+  Thistle Notebook session before changing it.
 - **Results tables:** `table.rtbl`; long tables show `SHOW_ROWS=200` with a full CSV (`csvButton`, `downloadCSV`);
   `exportStatTables(tabId)` produces the per-result CSV.
 - **Export:** each plot tab's bar has `_exportTools(id)`: the style menu (`select.exp-style`, global `_exportStyle` via
