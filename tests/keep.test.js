@@ -85,3 +85,38 @@ test('inside a same-site page (as in Thistle Notebook) nothing is restored or ke
   assert.strictEqual(await p.evaluate(() => _hasData(G)), true, 'the top-level copy is untouched');
   server.close();
 });
+
+test('work started before the kept session has loaded is not thrown away; the kept session is added after it', async () => {
+  const a2 = await openApp({ consoleErrors: true }); const p = a2.page;
+  try {
+    // last visit: one table with a result and a figure
+    await p.evaluate(async () => { const a = document.getElementById('asel'); a.value = 'anova'; a.dispatchEvent(new Event('change'));
+      loadExampleFor('stat'); await new Promise(r => setTimeout(r, 100)); runAnalysis(); await new Promise(r => setTimeout(r, 1200)); datasets[0].name = 'Old'; renderDataStrip(); });
+    await p.click('#hdr'); await kept(p);
+    const old = await p.evaluate(() => ({ G: JSON.stringify(G), st: statTabs.length, pt: plotTabs.length }));
+    // this visit: reading the kept copy is slow, and the user starts at once
+    await p.addInitScript(() => { window.TP_RESTORE_DELAY = 1500; });
+    await p.reload(); await ready(p);
+    await p.evaluate(async () => { loadExampleKey('xy'); const a = document.getElementById('asel'); a.value = 'desc'; a.dispatchEvent(new Event('change'));
+      runAnalysis(); await new Promise(r => setTimeout(r, 900)); });
+    const mine = await p.evaluate(() => ({ G: JSON.stringify(G), st: statTabs.map(t => t.id), pt: plotTabs.map(t => t.id) }));
+    await p.waitForSelector('.restore-note', { timeout: 10000 });
+    const r = await p.evaluate(() => ({ G: JSON.stringify(G), active: activeDS, names: datasets.map(d => d.name), G2: JSON.stringify(datasets[1]?.G),
+      st: statTabs.map(t => [t.id, t.ds]), pt: plotTabs.map(t => [t.id, t.ds, t.linkedStatId, t.ctx]), note: document.querySelector('.restore-note').textContent }));
+    assert.strictEqual(r.G, mine.G, 'the table being worked on stays in front, unchanged');
+    assert.strictEqual(r.active, 0);
+    assert.deepStrictEqual(r.names, ['Dataset 1', 'Old']);
+    assert.strictEqual(r.G2, old.G, 'the kept table is added after it');
+    const ids = [...r.st.map(x => x[0]), ...r.pt.map(x => x[0])];
+    assert.strictEqual(new Set(ids).size, ids.length, 'no two tabs share an id');
+    assert.ok(mine.st.every(id => r.st.some(x => x[0] === id && x[1] === 0)), 'my result is kept on my table');
+    assert.strictEqual(r.st.filter(x => x[1] === 1).length, old.st, 'kept results come back on the kept table');
+    const keptPlots = r.pt.filter(x => x[1] === 1);
+    assert.strictEqual(keptPlots.length, old.pt);
+    keptPlots.forEach(([, , ls, ctx]) => { if (ls) assert.ok(r.st.some(x => x[0] === ls && x[1] === 1), 'links point at the renamed kept result'); if (ctx) assert.ok(r.st.some(x => x[0] === ctx)); });
+    assert.match(r.note, /added/i);
+    await p.evaluate(() => switchDataset(1));
+    assert.strictEqual(await p.locator('#plot-content .tab-page.active img').count(), 1, 'the kept figure picture is there');
+    assert.deepStrictEqual(a2.errors, []);
+  } finally { await a2.close(); }
+});

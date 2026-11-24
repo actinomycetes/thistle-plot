@@ -177,6 +177,7 @@ Only the dataset that is active when you click Save is stored, so save each data
 **Your work is kept in this browser.** TP keeps a copy of all data tables, result tabs and figures in this browser on this computer, updated a moment after each change. If you refresh the page, close the tab by mistake or the browser restarts, your work reopens where you left off, and a note at the bottom says so. Figures come back as pictures; click **↻ Update** on one to draw it again with its settings. **Start fresh** in that note closes everything and starts with an empty table (🗑 Clear only empties the current table). The copy never leaves this computer and does not replace saving: save a `.tplot` project to keep your work for later, move it to another computer or share it.
 
 - **Shared computers:** anyone who opens TP in the same browser on this computer sees the kept work. When you finish, use **Start fresh**. Private or incognito windows keep nothing after they close.
+- **Starting before it reopens:** reopening takes a moment after the page loads. If you paste data, open a CSV or run a test in that moment, your new work stays in front and the reopened tables, results and figures are added after it (as extra data tables), so nothing is lost.
 - **Two windows:** if TP is open in two browser windows or tabs, the one changed last is what reopens next time.
 - Undo history is not kept. You are told if the browser could not keep a copy (storage full or blocked); then save a project.
 - TP shown inside Thistle Notebook keeps and reopens nothing. On the Confluence wiki the copy depends on the browser's settings for embedded pages.
@@ -204,7 +205,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.20.0 (beta):
+Known limitations of v0.20.1 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each level of the other factor, not across all simple effects (the result says which).
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).
