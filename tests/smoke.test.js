@@ -40,6 +40,18 @@ test('Thistle suite icon: header logo and tab icon are the same thistle with the
   assert.match(r.touch || '', /^data:image\/png;base64,iVBOR/, 'apple-touch-icon PNG for Safari');
 });
 
+test('inside another page TP drops its tab icon; on its own it keeps it (Orion showed TP\'s icon on Thistle Notebook\'s tab)', async () => {
+  await app.page.evaluate(() => { const f = document.createElement('iframe'); f.id = 'embedtest'; f.src = location.href.split(/[?#]/)[0] + '?nosession'; document.body.append(f); });
+  const frame = await (await app.page.waitForSelector('#embedtest')).contentFrame();
+  await frame.waitForFunction(() => typeof APP_VERSION !== 'undefined' && document.readyState === 'complete');
+  const inner = await frame.evaluate(() => document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').length);
+  const outer = await app.page.evaluate(() => document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').length);
+  await app.page.evaluate(() => document.getElementById('embedtest').remove());
+  assert.strictEqual(inner, 0, 'embedded TP has no tab icon links');
+  assert.strictEqual(outer, 2, 'TP on its own keeps its icon and touch icon');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8'), /addEventListener\('load',_retitle\)/, 'the title is set again after loading');
+});
+
 test('every statistical test runs on its example data', async () => {
   const types = await app.page.evaluate(() => ANALYSIS_TYPES.map(t => t.v));
   assert.ok(types.length >= 20);
