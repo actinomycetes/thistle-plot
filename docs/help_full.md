@@ -63,6 +63,7 @@ Choose a plot type, set its options, then click **📈 Plot**. The figure opens 
 | Boxplot | Distributions and outliers (red dots) | Same as Bar; significance brackets when made by a test's Auto-plot |
 | Violin | Distribution shape | Same as Bar; significance brackets when made by a test's Auto-plot |
 | Paired (before–after lines) | Matched measurements: each subject is a line, so you see every pair change (filled circle → open square) | Join: every group in order (before / day 1 / day 7), or groups in pairs 1–2, 3–4, … (e.g. control and treated at several ratios: order the groups so each pair sits side by side); show each group's mean; normalisation; Y-axis label. A subject is one row and replicate; a blank cell drops only that subject's line. Opens automatically after a paired t-test or Wilcoxon signed-rank, with its significance bracket |
+| Stacked bar | Proportions within each sample, e.g. the share of cells in each quadrant from Thistle Flow | Values: as entered (stacked), percentage of total (each bar adds up to 100%) or fraction of total (adds up to 1.0); one bar per row (each group is a segment) or per group (each row is a segment); Y-axis title. Replicates are averaged; blank cells count as 0 (a note says how many); fractions need values ≥ 0. Long column names that share a gating path (e.g. *Lymphocytes/Singlets/*) or an ending (*\| % Parent*) are shortened in the legend; the tooltip shows the full name |
 | Scatter (X vs Y) | Two variables against each other | X group, Y group, optional trend line |
 | Line | Values across rows (time course, samples) | Normalisation, Y-axis label, show points |
 | Heatmap (Z-scored) | Many features × samples; significant genes from a gene-level test | Rows: most variable, or significant up (red bar) and down (blue bar) genes from the linked Rank Product / per-row t-test; how many (25–500); columns: group means or every replicate; row normalisation |
@@ -203,7 +204,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.19.1 (beta):
+Known limitations of v0.20.0 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each level of the other factor, not across all simple effects (the result says which).
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).

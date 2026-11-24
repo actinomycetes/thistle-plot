@@ -67,6 +67,9 @@ tested on iPad and decides to leave beta; after that, MAJOR only for changes tha
   `#psel` re-activates that context's open figure of the type, else restores `_plotOptMem` (saved on every #popts edit).
   Activating a stat tab restores only `asel`/`ao_*` (never plot options).
 - **Plots:** `runPlot()` dispatches to `plotBarSD`, `plotHeatmapCustom`, `plotPCACustom`, ... built with `canvasTab` / `chartTab`.
+  `plotStacked` (stacked bar, v0.20.0): `stackedData(barsFrom, scaleMode)` gives one bar per row or per group, values as
+  entered or rescaled to 100 / 1 per bar (refuses negatives; blanks count as 0 with a note); `_shortNames` trims a shared
+  gating path / " | stat" ending for the legend. In Publication exports stacked bars get evenly spaced greys (`stackGrey`).
   `plotPaired` (paired before–after lines, `pairedPlotLayout`) is a canvas plot: subjects = row × replicate cells, brackets from
   `lastStatPairs` captured at creation; a draw function's `_pubW` sets its Publication export width.
 - **Stat-to-figure links (important rule):** significance stars, brackets and gene lists belong ONLY to the figure
