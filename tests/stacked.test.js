@@ -71,3 +71,34 @@ test('plot palette presets and custom colours belong to each figure', async () =
   assert.equal(await color(first), '#4477aa');
   assert.equal(await ev(id => plotTabs.find(t => t.id === id).optState['po_popt-colour-0'], second), '#123456');
 });
+
+test('whitespace-only cells count as blank and raw tooltips omit (% of the bar) on bars with negative values', async () => {
+  await selectPlot(app.page, 'stacked');
+  const r = await ev(async G2 => {
+    const ws = JSON.parse(JSON.stringify(G2));
+    ws.groups[2].data[2][0] = '   ';
+    applyG(ws);
+    const pc = stackedData('rows', 'percent');
+    applyG({
+      nReps: 1, nRows: 2, rowNames: ['Mixed', 'PosOnly'],
+      groups: [
+        { name: 'SegA', reps: ['Rep1'], data: [[-20], [20]] },
+        { name: 'SegB', reps: ['Rep1'], data: [[25], [80]] },
+      ],
+    });
+    const byEl = document.getElementById('popt-stby'); if (byEl) byEl.value = 'rows';
+    document.getElementById('popt-stscale').value = 'raw';
+    newPlot(); await new Promise(res => setTimeout(res, 200));
+    const ch = chartInst[activePT];
+    const lblFn = ch.options.plugins.tooltip.callbacks.label;
+    const negTip = lblFn({ dataset: { _full: 'SegB' }, raw: 25, dataIndex: 0 });
+    const posTip = lblFn({ dataset: { _full: 'SegB' }, raw: 80, dataIndex: 1 });
+    return { note: pc.note, a03q1: pc.vals[0][2], negTip, posTip };
+  }, quadrants);
+  assert.match(r.note, /1 blank cell\(s\) count as 0/);
+  assert.ok(Math.abs(r.a03q1 - 20) < 1e-9);
+  assert.ok(!/% of the bar/.test(r.negTip), 'no misleading % when bar has negative values: ' + r.negTip);
+  assert.match(r.posTip, /80\.0% of the bar/);
+  assert.deepStrictEqual(app.errors, []);
+});
+

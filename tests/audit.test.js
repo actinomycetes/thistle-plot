@@ -279,3 +279,159 @@ test('rank product result describes the p-value bounds without calling them narr
   const ui = await run(tbl([col('A', Array.from({ length: 20 }, () => [0, 0, 0])), col('B', Array.from({ length: 20 }, (_, i) => [i, i + 1, i + 2]))]), 'rankprod');
   assert.ok(!/narrow/i.test(ui.text), 'no "narrow" claim'); assert.match(ui.text, /upper bound/);
 });
+
+test('PR2: whitespace-only cells are ignored identically to blank cells across data readers', async () => {
+  const r = await app.page.evaluate(() => {
+    applyG({ nReps: 2, nRows: 2, rowNames: ['R1', 'R2'], groups: [
+      { name: 'A', reps: ['Rep1', 'Rep2'], data: [[1, ' '], [2, '\t']] },
+      { name: 'B', reps: ['Rep1', 'Rep2'], data: [[10, 20], [30, 40]] },
+    ] });
+    const kmG = { nReps: 1, nRows: 3, rowNames: ['S1', 'S2', 'S3'], groups: [
+      { name: 'Time', reps: ['V'], data: [[5], [' '], [10]] },
+      { name: 'Ctrl', reps: ['V'], data: [[1], [' '], [0]] },
+      { name: 'Trt', reps: ['V'], data: [[' '], [1], [' ']] },
+    ] };
+    const vals = {
+      cnSpace: Number.isNaN(cellNum(' ')), cnTab: Number.isNaN(cellNum('\t')), cnZero: cellNum('0'),
+      grp: getGroupVals(0), pooled: getGroupPooled(0), row0: rowsOf(0, 0), grpRows: getGroupRows(0),
+      paired: pairedCells(0, 1), xy: xyPairs(0, 1),
+      pcaMean: buildPCAMatrix('mean', false).X[0],
+      pcaRepsFeats: buildPCAMatrix('reps', false).feats,
+    };
+    applyG(kmG);
+    const km = kmGroups();
+    return { ...vals, kmGroups: km.groups.map(g => ({ name: g.name, n: g.t.length })) };
+  });
+  assert.strictEqual(r.cnSpace, true); assert.strictEqual(r.cnTab, true); assert.strictEqual(r.cnZero, 0);
+  assert.deepStrictEqual(r.grp, [1, 2]);
+  assert.deepStrictEqual(r.pooled, [1, 2]);
+  assert.deepStrictEqual(r.row0, [1]);
+  assert.deepStrictEqual(r.grpRows, [[1], [2]]);
+  assert.deepStrictEqual(r.paired.a, [1, 2]); assert.deepStrictEqual(r.paired.b, [10, 30]);
+  assert.deepStrictEqual(r.xy.x, [1, 2]); assert.deepStrictEqual(r.xy.y, [10, 30]);
+  assert.deepStrictEqual(r.pcaMean, [1, 2]);
+  assert.deepStrictEqual(r.pcaRepsFeats, []);
+  assert.deepStrictEqual(r.kmGroups, [{ name: 'Ctrl', n: 2 }]);
+  assert.deepStrictEqual(app.errors, []);
+});
+
+test('PR2: importRows parses numbers strictly without truncating dates, IDs, or unit strings', async () => {
+  const r = await app.page.evaluate(() => {
+    importRows([
+      ['Sample', 'Date', 'Dose', 'ID', 'Pct', 'Val'],
+      ['S1', '2026-01-15', '12mg', '001_ctrl', '10%', '3.5'],
+      ['S2', '   ', '25', '002_trt', ' ', '7.2'],
+      [' ', ' ', ' ', ' ', ' ', ' '],
+    ], 'strict.csv');
+    return { nRows: G.nRows, groups: G.groups.map(g => ({ name: g.name, data: g.data })) };
+  });
+  assert.strictEqual(r.nRows, 2, 'whitespace-only row dropped');
+  assert.deepStrictEqual(r.groups.find(g => g.name === 'Date').data, [[''], ['']]);
+  assert.deepStrictEqual(r.groups.find(g => g.name === 'Dose').data, [[''], [25]]);
+  assert.deepStrictEqual(r.groups.find(g => g.name === 'ID').data, [[''], ['']]);
+  assert.deepStrictEqual(r.groups.find(g => g.name === 'Pct').data, [[''], ['']]);
+  assert.deepStrictEqual(r.groups.find(g => g.name === 'Val').data, [[3.5], [7.2]]);
+});
+
+test('PR2: auto-plot transfers #opt-norm to #popt-norm', async () => {
+  const r = await app.page.evaluate(async () => {
+    loadExampleKey('groups');
+    const a = document.getElementById('asel'); a.value = 'ttest_ind'; a.dispatchEvent(new Event('change'));
+    await new Promise(res => setTimeout(res, 60));
+    document.getElementById('opt-norm').value = 'log2';
+    document.getElementById('opt-autoplot').checked = true;
+    runAnalysis();
+    await new Promise(res => setTimeout(res, 250));
+    return { pnorm: document.getElementById('popt-norm')?.value };
+  });
+  assert.strictEqual(r.pnorm, 'log2');
+  assert.deepStrictEqual(app.errors, []);
+});
+
+test('PR2: _tickFmt and fmtParam format small/large values in scientific notation (nanomolar EC50)', async () => {
+  const r = await app.page.evaluate(() => ({
+    tSmall: _tickFmt(2e-7, [0, 1e-7, 2e-7]), tZero: _tickFmt(0, [0, 1e-7, 2e-7]), tBig: _tickFmt(1.5e7, [0, 5e6, 1e7, 1.5e7]),
+    pSmall: fmtParam(1.5e-7, 3), pNorm: fmtParam(0.823, 3), pBig: fmtParam(2.4e6, 3),
+  }));
+  assert.match(r.tSmall, /2\.0e-7/i); assert.strictEqual(r.tZero, '0'); assert.match(r.tBig, /1\.5e\+7/i);
+  assert.match(r.pSmall, /1\.500e-7/i); assert.strictEqual(r.pNorm, '0.823'); assert.match(r.pBig, /2\.400e\+6/i);
+  const doses = [1e-10, 3e-10, 1e-9, 3e-9, 1e-8, 3e-8, 1e-7, 3e-7, 1e-6, 3e-6, 1e-5];
+  const resp = doses.map(d => 5 + 95 / (1 + (1.5e-7 / d)));
+  const ui = await run(tbl([col('Dose (M)', doses.map(v => [v])), col('Resp', resp.map(v => [v]))]), 'dose');
+  assert.match(ui.text, /1\.50\de-7/i);
+  assert.ok(!/EC50[^0-9]*0\.000\b/.test(ui.text), 'EC50 should not collapse to 0.000: ' + ui.text);
+});
+
+test('PR2: plots handle >10 groups, non-finite log2 values, empty cells, high-scale violins, and PCA mean mode', async () => {
+  const r = await app.page.evaluate(async () => {
+    // 12 groups: G1 has a 0 (non-finite under log2), G12 is completely blank
+    const groups = Array.from({ length: 12 }, (_, i) => ({
+      name: 'G' + (i + 1), reps: ['R1', 'R2'],
+      data: i === 11 ? [['', ''], ['', '']] : [[i === 0 ? 0 : i + 2, i + 3], [i === 1 ? '' : i + 4, i === 1 ? '' : i + 5]],
+    }));
+    applyG({ nReps: 2, nRows: 2, rowNames: ['S1', 'S2'], groups });
+    const runP = async (type, opts = {}) => {
+      const ps = document.getElementById('psel'); ps.value = type; ps.dispatchEvent(new Event('change'));
+      await new Promise(res => setTimeout(res, 40));
+      for (const [k, v] of Object.entries(opts)) { const el = document.getElementById(k); if (el) el.value = v; }
+      newPlot(); await new Promise(res => setTimeout(res, 150));
+      return chartInst[activePT];
+    };
+    const barByG = await runP('bar_sd', { 'popt-norm': 'log2', 'popt-groupby': 'group' });
+    const barHasUndef = barByG.data.datasets.some(d => JSON.stringify(d.backgroundColor).includes('undefined'));
+    const g1BarVal = barByG.data.datasets[0].data[0];
+    const emptyGrpVal = barByG.data.datasets[0].data[11];
+    // By-sample bar plot uses canvasTab
+    await runP('bar_sd', { 'popt-norm': 'log2', 'popt-groupby': 'sample' });
+    const barSCanvas = document.querySelector('#plot-content .tab-page.active canvas');
+    const barSDrawn = !!(barSCanvas && barSCanvas.width > 0 && barSCanvas.height > 0);
+    const lineCh = await runP('line', { 'popt-norm': 'log2' });
+    const lineHasUndef = lineCh.data.datasets.some(d => String(d.borderColor).includes('undefined'));
+    const lineEmptyVal = lineCh.data.datasets[11]?.data[0];
+    const histCh = await runP('histogram');
+    const histHasUndef = histCh.data.datasets.some(d => String(d.backgroundColor).includes('undefined'));
+    // High-scale violin (constant group at 1.5e5 + spread group) in both/reps/groupmean
+    applyG({ nReps: 2, nRows: 3, rowNames: ['R1', 'R2', 'R3'], groups: [
+      { name: 'Const', reps: ['R1', 'R2'], data: [[1.5e5, 1.5e5], [1.5e5, 1.5e5], [1.5e5, 1.5e5]] },
+      { name: 'Spread', reps: ['R1', 'R2'], data: [[1.4e5, 1.45e5], [1.5e5, 1.55e5], [1.6e5, 1.65e5]] },
+    ] });
+    await runP('violin', { 'popt-dispmode': 'both', 'popt-dottype': 'groupmean' });
+    const vCanvas = document.querySelector('#plot-content .tab-page.active canvas');
+    const vDrawn = !!(vCanvas && vCanvas.width > 0 && vCanvas.height > 0);
+    await runP('violin', { 'popt-dispmode': 'reps' });
+    // PCA mean mode with colBy = 'rep'
+    loadExampleKey('genes');
+    await runP('pca', { 'popt-pcmode': 'mean', 'popt-pccol': 'rep' });
+    const pcaTab = plotTabs[plotTabs.length - 1];
+    pcaReplot(pcaTab.id);
+    return { barHasUndef, g1BarVal, emptyGrpVal, barSDrawn, lineHasUndef, lineEmptyVal, histHasUndef, vDrawn };
+  });
+  assert.strictEqual(r.barHasUndef, false);
+  assert.ok(Number.isFinite(r.g1BarVal), 'G1 bar mean stays finite after filtering log2(0): ' + r.g1BarVal);
+  assert.strictEqual(r.emptyGrpVal, null, 'empty group should not plot a phantom 0 bar');
+  assert.strictEqual(r.barSDrawn, true);
+  assert.strictEqual(r.lineHasUndef, false);
+  assert.strictEqual(r.lineEmptyVal, null);
+  assert.strictEqual(r.histHasUndef, false);
+  assert.strictEqual(r.vDrawn, true);
+  assert.deepStrictEqual(app.errors, []);
+});
+
+test('PR2: HTML special characters in group, row, and dataset names are escaped safely', async () => {
+  const xssName = '<img src=x onerror="window.__tpXss=1">';
+  const label = 'CD4+ <10% & "ctrl"';
+  const ui = await run(tbl([
+    col(label, [[1, 2], [3, 4], [5, 6]]),
+    col(xssName, [[7, 8], [9, 10], [11, 12]]),
+  ], ['Gene <A>', 'Gene & B', xssName]), 'ttest_ind');
+  const check = await app.page.evaluate(() => ({
+    xss: window.__tpXss || null,
+    imgs: document.querySelectorAll('#stats-content img, #data-strip img, #dtbl img').length,
+  }));
+  assert.strictEqual(check.xss, null);
+  assert.strictEqual(check.imgs, 0);
+  assert.ok(ui.text.includes(label), 'label text preserved: ' + ui.text);
+  assert.ok(ui.text.includes(xssName), 'raw angle-bracket label shown as text, not HTML');
+  assert.deepStrictEqual(app.errors, []);
+});
+
