@@ -163,6 +163,7 @@ m4 = lambda x, b, t, le, h: b + (t - b) / (1 + (x / 10 ** le) ** h)
 p4, _ = optimize.curve_fit(m4, dx, dy, p0=[0, 100, 0, 1], maxfev=20000)
 check('4PL fit: residual SS', TP['fit4']['sse'], ((m4(dx, *p4) - dy) ** 2).sum(), rel=1e-3)
 check('4PL fit: EC50', TP['fit4']['ec50'], 10 ** p4[2], rel=1e-3)
+check('4PL fit: Bottom, Top', [TP['fit4']['bot'], TP['fit4']['top']], [min(p4[0], p4[1]), max(p4[0], p4[1])], rel=1e-3)
 m5 = lambda x, b, t, lc, h, ls: b + (t - b) / (1 + (10 ** lc / x) ** h) ** np.exp(ls)
 p5, _ = optimize.curve_fit(m5, dx, dy, p0=[0, 100, 0, 1, 0], maxfev=50000)
 s5 = ((m5(dx, *p5) - dy) ** 2).sum()
@@ -171,5 +172,86 @@ print(f"{'OK   ' if ok5 else 'CHECK'}  {'5PL fit: residual SS (TP <= SciPy)':34s
 bad += not ok5
 c5, h5, s5_ = 10 ** p5[2], p5[3], math.exp(p5[4])
 check('5PL fit: EC50 (half-way X)', TP['fit5']['ec50'], c5 * (2 ** (1 / s5_) - 1) ** (-1 / h5), rel=2e-2)
+check('5PL fit: Bottom, Top', [TP['fit5']['bot'], TP['fit5']['top']], [min(p5[0], p5[1]), max(p5[0], p5[1])], rel=2e-2)
+
+# Scale-invariant PCA (SVD reference)
+pcaX = np.array([[1, 2, 3, 4], [2, 4, 5, 8], [5, 1, 2, 1], [6, 3, 4, 2]], float)
+_, sv, _ = np.linalg.svd(pcaX - pcaX.mean(axis=0), full_matrices=False)
+eig = sv ** 2
+var_ref = 100.0 * eig[:3] / eig.sum()
+check('PCA var explained (normal)', TP['pca']['var1'], var_ref, rel=1e-6)
+check('PCA var explained (1e-6 scaled)', TP['pca']['varSmall'], var_ref, rel=1e-6)
+
+# Shapiro-Wilk Royston boundaries (n = 4, 5, 11, 12) and W = 1 -> p = 1
+sh_extra = [
+    ([1.1, 2.0, 2.7, 4.9], 'n=4'),
+    ([0.8, 1.5, 2.1, 3.0, 5.4], 'n=5'),
+    ([1.1, 1.4, 1.9, 2.0, 2.3, 2.6, 2.9, 3.1, 3.5, 4.0, 5.2], 'n=11'),
+    ([1.1, 1.4, 1.9, 2.0, 2.3, 2.6, 2.9, 3.1, 3.5, 4.0, 5.2, 6.1], 'n=12'),
+]
+for k, (v, nm) in enumerate(sh_extra):
+    r = stats.shapiro(v)
+    check(f'Shapiro-Wilk W, p ({nm})', [TP['shapiro_extra'][k]['W'], TP['shapiro_extra'][k]['p']], [r.statistic, r.pvalue], rel=1e-4, abs_=1e-6)
+check('Shapiro-Wilk W=1 -> p=1', [TP['shapiro_extra'][4]['W'], TP['shapiro_extra'][4]['p']], [1.0, 1.0], rel=1e-9)
+
+# 3-group Mantel-Cox log-rank (independent NumPy computation) and all-censored-early 3rd group
+def logrank_k_ref(groups):
+    k = len(groups)
+    subj = [(ti, ei, g) for g, (ts, es) in enumerate(groups) for ti, ei in zip(ts, es)]
+    times = sorted({t for t, e, _ in subj if e})
+    O = np.zeros(k); E = np.zeros(k); V = np.zeros((k, k))
+    for t in times:
+        n = np.array([sum(1 for ti, _, g in subj if g == gi and ti >= t) for gi in range(k)], float)
+        d = np.array([sum(1 for ti, ei, g in subj if g == gi and ti == t and ei) for gi in range(k)], float)
+        N, D = n.sum(), d.sum()
+        if N < 1 or D == 0: continue
+        O += d; E += n * D / N
+        if N > 1:
+            f = D * (N - D) / (N - 1)
+            V += f * (np.diag(n / N) - np.outer(n / N, n / N))
+    active = [g for g in range(k) if E[g] > 0]
+    df_ = len(active) - 1
+    idx = active[:df_]
+    u = (O - E)[idx]
+    chi = float(u @ np.linalg.solve(V[np.ix_(idx, idx)], u))
+    return chi, df_, float(stats.chi2.sf(chi, df_))
+
+t2 = [2, 5, 7, 11, 13, 17, 21, 26]; e2 = [0 if i % 3 == 0 else 1 for i in range(len(t2))]
+chi3, df3, p3 = logrank_k_ref([(t0, e0), (t1, e1), (t2, e2)])
+check('log-rank k=3 chi2, df, p', [TP['logrank3']['chi'], TP['logrank3']['df'], TP['logrank3']['p']], [chi3, df3, p3])
+r_lr2 = stats.logrank(stats.CensoredData.right_censored(t0, np.logical_not(e0)), stats.CensoredData.right_censored(t1, np.logical_not(e1)))
+check('log-rank k=3 (1 early-cens) chi2,df,p', [TP['logrank3_cens']['chi'], TP['logrank3_cens']['df'], TP['logrank3_cens']['p']], [r_lr2.statistic ** 2, 1, r_lr2.pvalue])
+
+# Extreme upper-tail chi-square and chi2P (no 1 - cdf cancellation)
+check('chi2P(75, 1)', TP['chi2_tail']['c75_1'], stats.chi2.sf(75, 1), rel=1e-10, abs_=0)
+check('chi2P(100, 1)', TP['chi2_tail']['c100_1'], stats.chi2.sf(100, 1), rel=1e-10, abs_=0)
+check('chi2P(50, 5)', TP['chi2_tail']['c50_5'], stats.chi2.sf(50, 5), rel=1e-10, abs_=0)
+check('chi2P(200, 50)', TP['chi2_tail']['c200_50'], stats.chi2.sf(200, 50), rel=1e-10, abs_=0)
+rc_tail = stats.chi2_contingency([[80, 5], [5, 80]], correction=False)
+check('chi-square extreme tail chi2, p', [TP['chi2_tail']['tbl']['chi'], TP['chi2_tail']['tbl']['p']], [rc_tail.statistic, rc_tail.pvalue], rel=1e-9, abs_=0)
+
+# Extreme upper-tail Dunnett (cancellation-free quadrature via stats.norm.sf)
+def dunnett_tail_ref(c_val, n_ctrl, n_other, df_):
+    from scipy import integrate
+    lam = [math.sqrt(n / (n + n_ctrl)) for n in n_other]
+    sq = [math.sqrt(1.0 - l * l) for l in lam]
+    def inner(cs):
+        def f(z):
+            tail = 0.0
+            for l, q in zip(lam, sq):
+                qi = min(1.0, float(stats.norm.sf((cs + l * z) / q) + stats.norm.sf((cs - l * z) / q)))
+                tail += qi * (1.0 - tail)
+            return stats.norm.pdf(z) * tail
+        return 2.0 * integrate.quad(f, 0, 14, epsabs=0, epsrel=1e-11, limit=500)[0]
+    lnC = (df_ / 2) * math.log(df_ / 2) - math.lgamma(df_ / 2) - df_ / 2 + math.log(2)
+    s_star = math.sqrt(max(1e-6, df_ - 1) / (df_ + c_val * c_val))
+    sd_ = 1.0 / math.sqrt(2 * df_)
+    lo, hi = max(1e-8, min(s_star, 1.0) - 14 * sd_), max(s_star, 1.0) + 14 * sd_
+    return integrate.quad(lambda s: math.exp(lnC + (df_ - 1) * math.log(s) - 0.5 * df_ * (s * s - 1)) * inner(c_val * s), lo, hi, epsabs=0, epsrel=1e-9, limit=500)[0]
+
+check('Dunnett tail t=15, df=30', TP['dunnett_tail']['t15_df30'], dunnett_tail_ref(15.0, 10, [10, 10], 30), rel=1e-4, abs_=0)
+check('Dunnett tail t=8, df=1500', TP['dunnett_tail']['t8_df1500'], dunnett_tail_ref(8.0, 500, [500, 500], 1500), rel=1e-4, abs_=0)
+check('Dunnett tail t=4, df=2001', TP['dunnett_tail']['t4_df2001'], dunnett_tail_ref(4.0, 700, [700, 700], 2001), rel=1e-4, abs_=0)
+
 print(f'\n{bad} to check' if bad else '\nAll agree.')
 sys.exit(1 if bad else 0)

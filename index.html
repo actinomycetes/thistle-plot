@@ -660,6 +660,36 @@ function describeGroup(vals){
 // Upper-tail p of an F statistic (via the incomplete beta, so very small p-values keep their precision)
 const fP=(F,d1,d2)=>F>0?(isFinite(F)?jStat.ibeta(d2/(d2+d1*F),d2/2,d1/2):0):1;
 const tP2=(t,df)=>isFinite(t)?Math.min(1,2*jStat.studentt.cdf(-Math.abs(t),df)):(isNaN(t)?NaN:0);
+// Regularized upper incomplete gamma Q(a, x) via series (x < a+1) and modified Lentz continued fraction (x >= a+1),
+// avoiding catastrophic 1 - cdf cancellation in extreme tails (chi-square, normal, Dunnett).
+function _gammaQ(a,x){
+  if(x<=0)return 1;
+  if(!isFinite(x))return 0;
+  const lg=jStat.gammaln(a);
+  if(x<a+1){
+    let ap=a,s=1/a,del=s;
+    for(let n=1;n<=300;n++){ap+=1;del*=x/ap;s+=del;if(Math.abs(del)<Math.abs(s)*1e-15)break;}
+    return Math.max(0,Math.min(1,1-s*Math.exp(-x+a*Math.log(x)-lg)));
+  }
+  const FPMIN=1e-300;
+  let b=x+1-a,c=1/FPMIN,d=1/b,h=d;
+  for(let i=1;i<=300;i++){
+    const an=-i*(i-a);b+=2;
+    d=an*d+b;if(Math.abs(d)<FPMIN)d=FPMIN;
+    c=b+an/c;if(Math.abs(c)<FPMIN)c=FPMIN;
+    d=1/d;const del=d*c;h*=del;
+    if(Math.abs(del-1)<1e-15)break;
+  }
+  return Math.max(0,Math.min(1,Math.exp(-x+a*Math.log(x)-lg)*h));
+}
+const _normTail=u=>u>=0?0.5*_gammaQ(0.5,0.5*u*u):1-0.5*_gammaQ(0.5,0.5*u*u);
+function chi2P(x,df){
+  if(isNaN(x)||!(df>0))return NaN;
+  if(x<=0)return 1;
+  if(!isFinite(x))return 0;
+  if(df===2)return Math.exp(-x/2);
+  return _gammaQ(df/2,x/2);
+}
 function ttestInd(a,b){
   a=a.filter(isFinite);b=b.filter(isFinite);
   const n1=a.length,n2=b.length;
@@ -884,6 +914,8 @@ function onewayANOVA(groups, posthocMethod='tukey', ctrls=[]){
 }
 
 function kruskalWallis(groups){
+  groups=groups.map(g=>g.filter(isFinite));
+  if(groups.some(g=>!g.length))return{error:'Each group needs at least 1 value'};
   const k=groups.length;
   if(k<2)return{error:'Need ≥ 2 groups'};
   const N=sum(groups.map(g=>g.length));
@@ -892,19 +924,21 @@ function kruskalWallis(groups){
   let i=0;while(i<combined.length){let j=i;while(j<combined.length&&combined[j].v===combined[i].v)j++;const r=(i+j+1)/2;for(let k=i;k<j;k++)combined[k].rank=r;i=j}
   const H_groups=groups.map((g,gi)=>{const ranks=combined.filter(x=>x.g===gi).map(x=>x.rank);return{n:ranks.length,R:sum(ranks)}});
   const tcounts={};combined.forEach(x=>{tcounts[x.v]=(tcounts[x.v]||0)+1});
-  const C=1-Object.values(tcounts).reduce((s,t)=>s+(t**3-t),0)/(N**3-N);
+  const tieSum=Object.values(tcounts).reduce((s,t)=>s+(t**3-t),0);
+  const C=1-tieSum/(N**3-N);
+  if(!(C>0))return{error:'All values are identical'};
   const H=(12/(N*(N+1)))*sum(H_groups.map(g=>g.R**2/g.n))-3*(N+1);
-  const Hc=C>0?H/C:H;
-  const p=1-jStat.chisquare.cdf(Hc,k-1);
+  const Hc=Math.max(0,H/C);
+  const p=chi2P(Hc,k-1);
   // Dunn's post-hoc
   const posthoc=[];
   for(let a=0;a<k-1;a++)for(let b=a+1;b<k;b++){
     const na=groups[a].length,nb=groups[b].length;
     const Ra=H_groups[a].R/na,Rb=H_groups[b].R/nb;
-    const se=Math.sqrt((N*(N+1)/12-Object.values(tcounts).reduce((s,t)=>s+(t**3-t),0)/(12*(N-1)))*(1/na+1/nb));
-    if(se===0){posthoc.push({a,b,z:NaN,p:NaN});continue}
+    const se=Math.sqrt((N*(N+1)/12-tieSum/(12*(N-1)))*(1/na+1/nb));
+    if(se===0){posthoc.push({a,b,z:NaN,p_raw:NaN,p:NaN});continue}
     const z=(Ra-Rb)/se;
-    const p_raw=2*jStat.normal.cdf(-Math.abs(z),0,1);
+    const p_raw=2*_normTail(Math.abs(z));
     posthoc.push({a,b,z,p_raw,p:Math.min(p_raw*(k*(k-1)/2),1)});
   }
   return{H:Hc,df:k-1,p,posthoc};
@@ -919,9 +953,14 @@ function pearsonR(x,y){
   const r=Math.max(-1,Math.min(1,num/den));
   const t=r*Math.sqrt((n-2)/(1-r*r));
   const p=tP2(t,n-2);
-  const z=0.5*Math.log((1+r)/(1-r));
-  const se=1/Math.sqrt(n-3);
-  return{r,t,df:n-2,p,n,ci95lo:Math.tanh(z-1.96*se),ci95hi:Math.tanh(z+1.96*se)};
+  let ci95lo=NaN,ci95hi=NaN;
+  if(n>3&&Math.abs(r)<1){
+    const z=0.5*Math.log((1+r)/(1-r));
+    const se=1/Math.sqrt(n-3);
+    const z975=jStat.normal.inv(0.975,0,1);
+    ci95lo=Math.tanh(z-z975*se);ci95hi=Math.tanh(z+z975*se);
+  }
+  return{r,t,df:n-2,p,n,ci95lo,ci95hi};
 }
 
 // Spearman's rho with an exact permutation p-value for n ≤ 10 (every ordering of the Y ranks, ties kept as midranks),
@@ -985,7 +1024,7 @@ function chiSquare(obs){
     chi+=(obs[i][j]-exp)**2/exp;
   }
   const df=(rows-1)*(cols-1);
-  return{chi,df,p:1-jStat.chisquare.cdf(chi,df),rows,cols,N,minExp,nLow};
+  return{chi,df,p:chi2P(chi,df),rows,cols,N,minExp,nLow};
 }
 
 // Shapiro–Wilk W test, using Royston's approximations for the coefficients and the p-value
@@ -1013,10 +1052,11 @@ function shapiroWilk(arr){
     }
   }
   const xm=mean(x);let num=0,ss=0;
-  for(let i=0;i<n;i++){num+=a[i]*x[i];ss+=(x[i]-xm)**2;}
+  for(let i=0;i<n;i++){const d=x[i]-xm;num+=a[i]*d;ss+=d*d;}
   const W=Math.min(1,num*num/ss);
   let p;
   if(n===3){p=Math.max(0,Math.min(1,6/Math.PI*(Math.asin(Math.sqrt(W))-Math.asin(Math.sqrt(0.75)))));}
+  else if(W>=1){p=1;}
   else{
     let z;const w1=Math.log(1-W);
     if(n<=11){
@@ -1026,7 +1066,7 @@ function shapiroWilk(arr){
       const L=Math.log(n),mu=-1.5861-0.31082*L-0.083751*L*L+0.0038915*L**3,sg=Math.exp(-0.4803-0.082676*L+0.0030302*L*L);
       z=(w1-mu)/sg;
     }
-    p=isFinite(z)?jStat.normal.cdf(-z,0,1):0;
+    p=z===-Infinity?1:(z===Infinity?0:jStat.normal.cdf(-z,0,1));
   }
   // descriptive shape measures (moment estimates)
   const sd=Math.sqrt(ss/n);const sk=x.reduce((s,v)=>s+((v-xm)/sd)**3,0)/n,ku=x.reduce((s,v)=>s+((v-xm)/sd)**4,0)/n-3;
@@ -1035,13 +1075,22 @@ function shapiroWilk(arr){
 
 // Kaplan–Meier product-limit estimate. Subjects censored at time t stay in the risk set for events at t.
 function kmGroups(timeCol=0){
-  const cell=(g,r)=>{const row=G.groups[g]?.data[r]||[];for(const v of row){if(v!==''&&v!==null&&isFinite(v))return Number(v);}return NaN;};
+  const rawCell=(g,r)=>{const row=G.groups[g]?.data[r]||[];for(const v of row){if(v!==''&&v!==null&&v!==undefined&&!(typeof v==='string'&&v.trim()===''))return v;}return '';};
   const others=G.groups.map((_,i)=>i).filter(i=>i!==timeCol);
   if(!others.length)return{error:'Need a time column and at least one event column'};
   const groups=others.map(g=>({name:G.groups[g].name,t:[],e:[]}));
   for(let r=0;r<G.nRows;r++){
-    const t=cell(timeCol,r);if(!isFinite(t))continue;
-    others.forEach((g,k)=>{const v=cell(g,r);if(isFinite(v)){groups[k].t.push(t);groups[k].e.push(v===1?1:0);}});
+    const rowLabel=G.rowNames[r]||`Row ${r+1}`;
+    const tv=rawCell(timeCol,r);if(tv==='')continue;
+    const t=Number(tv);
+    if(!isFinite(t))return{error:`Survival time must be a number (${G.groups[timeCol].name}, ${rowLabel}: "${tv}").`};
+    if(t<0)return{error:`Survival time cannot be negative (${G.groups[timeCol].name}, ${rowLabel}: ${t}).`};
+    for(let k=0;k<others.length;k++){
+      const g=others[k],ev=rawCell(g,r);if(ev==='')continue;
+      const v=Number(ev);
+      if(v!==0&&v!==1)return{error:`Event indicator must be 1 (event) or 0 (censored) in "${G.groups[g].name}", ${rowLabel} (found "${ev}").`};
+      groups[k].t.push(t);groups[k].e.push(v);
+    }
   }
   const used=groups.filter(g=>g.t.length);
   if(!used.length)return{error:'No subjects found: each row needs a time and a 1/0 in one group column'};
@@ -1063,11 +1112,12 @@ function kaplanMeier(times,events){
 // Symmetric eigen-decomposition (cyclic Jacobi) for small matrices
 function _jacobiEig(A){
   const n=A.length;const a=A.map(r=>Float64Array.from(r));const V=Array.from({length:n},(_,i)=>{const r=new Float64Array(n);r[i]=1;return r;});
+  let scale=0;for(let i=0;i<n;i++)for(let j=0;j<n;j++)scale+=a[i][j]*a[i][j];
   for(let sweep=0;sweep<100;sweep++){
     let off=0;for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)off+=a[i][j]*a[i][j];
-    if(off<1e-22)break;
+    if(off===0||off<=1e-28*scale)break;
     for(let p=0;p<n;p++)for(let q=p+1;q<n;q++){
-      if(Math.abs(a[p][q])<1e-300)continue;
+      if(Math.abs(a[p][q])<=1e-15*Math.sqrt(Math.abs(a[p][p]*a[q][q])+1e-300))continue;
       const th=(a[q][q]-a[p][p])/(2*a[p][q]);const t=Math.sign(th||1)/(Math.abs(th)+Math.sqrt(th*th+1));const c=1/Math.sqrt(t*t+1),sn=t*c;
       for(let k=0;k<n;k++){const akp=a[k][p],akq=a[k][q];a[k][p]=c*akp-sn*akq;a[k][q]=sn*akp+c*akq;}
       for(let k=0;k<n;k++){const apk=a[p][k],aqk=a[q][k];a[p][k]=c*apk-sn*aqk;a[q][k]=sn*apk+c*aqk;}
@@ -1088,7 +1138,7 @@ function pcaCompute(X){
   for(let i=0;i<n;i++)for(let k=i;k<n;k++){let s=0;const a=Xc[i],b=Xc[k];for(let j=0;j<p;j++)s+=a[j]*b[j];K[i][k]=K[k][i]=s;}
   const {values,vectors}=_jacobiEig(K);
   const total=values.reduce((s,v)=>s+Math.max(0,v),0);
-  const keep=values.map((v,i)=>i).filter(i=>values[i]>1e-10*Math.max(1,total)).slice(0,Math.max(0,n-1));
+  const keep=values.map((v,i)=>i).filter(i=>total>0&&values[i]>1e-10*total).slice(0,Math.max(0,n-1));
   if(keep.length<2)while(keep.length<2)keep.push(-1);
   const scores=Array.from({length:n},(_,i)=>keep.map(k=>k<0?0:vectors[k][i]*Math.sqrt(Math.max(0,values[k]))));
   const varExplained=keep.map(k=>k<0||!total?0:values[k]/total*100);
@@ -1135,20 +1185,35 @@ function nelderMead(f,x0,opts={}){
 // Two-sided P(max_i |T_i| <= c) for T_i with correlation rho_ij = lam_i*lam_j and df degrees of freedom.
 // The product correlation lets the multivariate t probability be written as a double integral (Dunnett 1955).
 function _simpson(f,a,b,n){if(n%2)n++;const h=(b-a)/n;let s=f(a)+f(b);for(let i=1;i<n;i++)s+=(i%2?4:2)*f(a+i*h);return s*h/3;}
-function _mvtAbsProb(c,lam,df){
-  const Phi=x=>jStat.normal.cdf(x,0,1),phi=x=>Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);
+function _mvtTailProb(c,lam,df){
+  if(!(c>0))return 1;
+  const invSqrt2Pi=1/Math.sqrt(2*Math.PI);
   const sq=lam.map(l=>Math.sqrt(Math.max(1e-12,1-l*l)));
-  const inner=cs=>_simpson(z=>{let pr=phi(z);for(let i=0;i<lam.length;i++){pr*=Phi((cs+lam[i]*z)/sq[i])-Phi((-cs+lam[i]*z)/sq[i]);if(pr<1e-300)return 0;}return pr;},-8,8,160);
-  if(!isFinite(df)||df>2000)return inner(c);
-  const lnC=(df/2)*Math.log(df/2)-jStat.gammaln(df/2)+Math.log(2);
-  const sd=1/Math.sqrt(2*df);
-  const lo=Math.max(1e-6,1-12*sd),hi=Math.max(1+12*sd,df<=4?8:3);
-  return _simpson(s=>{const ld=lnC+(df-1)*Math.log(s)-df*s*s/2;return Math.exp(ld)*inner(c*s);},lo,hi,240);
+  // Integrand is even in z: integrate over [0, 12] and double; accumulate 1 - prod(1 - q_i) directly without cancellation.
+  const inner=cs=>2*_simpson(z=>{
+    let tail=0;
+    for(let i=0;i<lam.length;i++){
+      const qi=Math.min(1,_normTail((cs+lam[i]*z)/sq[i])+_normTail((cs-lam[i]*z)/sq[i]));
+      tail+=qi*(1-tail);
+    }
+    return invSqrt2Pi*Math.exp(-0.5*z*z)*tail;
+  },0,12,160);
+  if(!isFinite(df)||df>1e6)return Math.min(1,Math.max(0,inner(c)));
+  const lnC=df>1e4?0.5*Math.log(df/(4*Math.PI))-1/(6*df)+Math.log(2):(df/2)*Math.log(df/2)-jStat.gammaln(df/2)-df/2+Math.log(2);
+  const sStar=Math.sqrt(Math.max(1e-6,df-1)/(df+c*c)),sChi=Math.sqrt(Math.max(1e-6,df-1)/df);
+  const sdStar=1/Math.sqrt(2*(df+c*c)),sdChi=1/Math.sqrt(2*df);
+  const lo=Math.max(1e-8,Math.min(sStar-12*sdStar,sChi-12*sdChi));
+  const hi=Math.max(sStar+12*sdStar,sChi+12*sdChi,df<=4?10:0);
+  return Math.min(1,Math.max(0,_simpson(s=>{
+    const ld=lnC+(df>1?(df-1)*Math.log(s):0)-0.5*df*(s*s-1);
+    return ld>-700?Math.exp(ld)*inner(c*s):0;
+  },lo,hi,240)));
 }
+const _mvtAbsProb=(c,lam,df)=>1-_mvtTailProb(c,lam,df);
 // Adjusted two-sided Dunnett p-values. t = array of t statistics, nCtrl = control n, nOther = n of each compared group.
 function dunnettP(t,nCtrl,nOther,df){
   const lam=nOther.map(n=>Math.sqrt(n/(n+nCtrl)));
-  return t.map(ti=>isFinite(ti)?Math.min(1,Math.max(0,1-_mvtAbsProb(Math.abs(ti),lam,df))):NaN);
+  return t.map(ti=>isFinite(ti)?_mvtTailProb(Math.abs(ti),lam,df):NaN);
 }
 
 // ── Kolmogorov–Smirnov ───────────────────────────────────────────────────
@@ -1220,9 +1285,16 @@ function logRankK(subj,k){
     for(let g=0;g<k;g++){O[g]+=d[g];E[g]+=n[g]*D/N;}
     if(N>1){const f=D*(N-D)/(N-1);for(let g=0;g<k;g++)for(let h=0;h<k;h++)V[g][h]+=f*(n[g]/N)*((g===h?1:0)-n[h]/N);}
   }
-  const df=k-1;let chi=NaN;
-  if(df>=1){const u=O.slice(0,df).map((o,g)=>o-E[g]);const Vs=V.slice(0,df).map(r=>r.slice(0,df));const x=_solve(Vs,u);if(x)chi=sum(u.map((v,g)=>v*x[g]));}
-  return{chi,df,p:isFinite(chi)?1-jStat.chisquare.cdf(chi,df):NaN,O,E};
+  const active=Array.from({length:k},(_,g)=>g).filter(g=>E[g]>0);
+  const df=Math.max(0,active.length-1);let chi=NaN;
+  if(df>=1){
+    const idx=active.slice(0,df);
+    const u=idx.map(g=>O[g]-E[g]);
+    const Vs=idx.map(g=>idx.map(h=>V[g][h]));
+    const x=_solve(Vs,u);
+    if(x)chi=Math.max(0,sum(u.map((v,i)=>v*x[i])));
+  }
+  return{chi,df,p:isFinite(chi)?chi2P(chi,df):NaN,O,E};
 }
 function fit5PL(x,y){
   const ok=x.map((xi,i)=>[xi,y[i]]).filter(([a,b])=>isFinite(a)&&isFinite(b));
@@ -1230,7 +1302,7 @@ function fit5PL(x,y){
   const neg=X.find(v=>v<0);if(neg!==undefined)return{error:`Concentrations cannot be negative (found ${neg}). A zero dose is allowed.`};
   const nd=new Set(X).size;if(nd<5)return{error:`Need at least 5 different concentrations to estimate the 5 curve parameters (found ${nd}). With fewer doses many different curves fit equally well.`};
   const model=(p,xi)=>{const c=Math.pow(10,p[2]),s=Math.exp(p[4]);if(xi<=0)return p[3]>0?p[0]:p[1];return p[0]+(p[1]-p[0])/Math.pow(1+Math.pow(c/xi,p[3]),s);};
-  const sse=p=>{const v=sum(X.map((xi,i)=>(model(p,xi)-scaled[i])**2));return isFinite(v)?v:Infinity;};
+  const sse=p=>{if(p[1]<p[0])return Infinity;const v=sum(X.map((xi,i)=>(model(p,xi)-scaled[i])**2));return isFinite(v)?v:Infinity;};
   const ym=mean(Y),yn=Math.min(...Y),yx=Math.max(...Y);
   // A flat response (Top = Bottom) fits every midpoint, slope and asymmetry equally well: no EC50 exists (re-review, v0.18.0)
   const flat=()=>({flat:true,params:[ym,ym,NaN,NaN,NaN],c:NaN,ec50:NaN,hill:NaN,asym:NaN,n:X.length,predict:()=>ym,r2:null});
@@ -1267,10 +1339,13 @@ function solveLinear(A,b){
 }
 function fitLinear(x,y){
   const n=x.length,mx=mean(x),my=mean(y);
-  const b=sum(x.map((xi,i)=>(xi-mx)*(y[i]-my)))/sum(x.map(xi=>(xi-mx)**2));
+  const sxx=sum(x.map(xi=>(xi-mx)**2));
+  if(!(sxx>0))return{error:'All X values are identical: a line cannot be fitted.'};
+  const b=sum(x.map((xi,i)=>(xi-mx)*(y[i]-my)))/sxx;
   const a=my-b*mx;
   const pred=x.map(xi=>a+b*xi);
-  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  const syy=sum(y.map(yi=>(yi-my)**2));
+  const r2=syy>0?1-sum(y.map((yi,i)=>(yi-pred[i])**2))/syy:NaN;
   return{type:'linear',params:{a,b},predict:xi=>a+b*xi,r2,pred,
     equation:`y = ${a.toFixed(4)} + ${b.toFixed(4)}·x`};
 }
@@ -1294,7 +1369,8 @@ function fitPolynomial(x,y,deg){
   for(let k=0;k<d;k++)for(let j=0;j<=k;j++)params[j]+=c[k]*binomCoeff(k,j)*Math.pow(-mx,k-j)/Math.pow(sx,k);
   const predict=xi=>{const zi=(xi-mx)/sx;let t=0;for(let k=d-1;k>=0;k--)t=t*zi+c[k];return t;};
   const my=mean(y),pred=x.map(predict);
-  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  const syy=sum(y.map(yi=>(yi-my)**2));
+  const r2=syy>0?1-sum(y.map((yi,i)=>(yi-pred[i])**2))/syy:NaN;
   // Print in powers of x when the printed (5-figure) coefficients reproduce the fit; otherwise in powers of (x − mean X),
   // the basis the fit uses (re-review, v0.18.0: at X ≈ 10000 the expanded coefficients cancelled and the equation gave 0
   // where the fit gave 3)
@@ -1303,51 +1379,69 @@ function fitPolynomial(x,y,deg){
   const spread=Math.max(...pred)-Math.min(...pred)||Math.abs(my)||1,fits=(cs,c0)=>x.every((xi,i)=>Math.abs(evalP(cs,c0,xi)-pred[i])<=1e-4*spread);
   const centred=c.map((cc,k)=>cc/Math.pow(sx,k));
   let mxs=mx;for(let p=6;p<=17;p++){const t=+mx.toPrecision(p);if(fits(centred,t)){mxs=t;break;}} // shortest centre that still reproduces the fit
-  const equation=fits(params,0)?`y = ${fmt(params,'x')}`:`y = ${fmt(centred,`(x − ${mxs})`)}`;
-  return{type:`poly${deg}`,params,centre:mx,centred,predict,r2,pred,equation};
+  const useCentred=!fits(params,0);
+  const equation=useCentred?`y = ${fmt(centred,`(x − ${mxs})`)}`:`y = ${fmt(params,'x')}`;
+  return{type:`poly${deg}`,params,centre:mx,centreLabel:mxs,centred,useCentred,predict,r2,pred,equation};
 }
 function fitLogarithmic(x,y){
   if(x.some(xi=>xi<=0))return{error:'Need x > 0 for logarithmic fit'};
-  const lx=x.map(Math.log);const {params:{a,b}}=fitLinear(lx,y);
+  const lx=x.map(Math.log);const lin=fitLinear(lx,y);if(lin.error)return lin;
+  const {a,b}=lin.params;
   const my=mean(y);const pred=x.map(xi=>a+b*Math.log(xi));
-  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  const syy=sum(y.map(yi=>(yi-my)**2));
+  const r2=syy>0?1-sum(y.map((yi,i)=>(yi-pred[i])**2))/syy:NaN;
   return{type:'log',params:{a,b},predict:xi=>a+b*Math.log(xi),r2,pred,
     equation:`y = ${a.toFixed(4)} + ${b.toFixed(4)}·ln(x)`};
 }
 function fitExponential(x,y){
   if(y.some(yi=>yi<=0))return{error:'Need y > 0 for exponential fit'};
-  const lny=y.map(Math.log);const {params:{a:lna,b}}=fitLinear(x,lny);
+  const lny=y.map(Math.log);const lin=fitLinear(x,lny);if(lin.error)return lin;
+  const {a:lna,b}=lin.params;
   const a=Math.exp(lna),my=mean(y);const pred=x.map(xi=>a*Math.exp(b*xi));
-  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  const syy=sum(y.map(yi=>(yi-my)**2));
+  const r2=syy>0?1-sum(y.map((yi,i)=>(yi-pred[i])**2))/syy:NaN;
   return{type:'exp',params:{a,b},predict:xi=>a*Math.exp(b*xi),r2,pred,
     equation:`y = ${a.toFixed(4)}·e^(${b.toFixed(4)}·x)  (fitted as a straight line on the log scale)`};
 }
 function fitPower(x,y){
   if(x.some(xi=>xi<=0)||y.some(yi=>yi<=0))return{error:'Need x,y > 0 for power fit'};
-  const lnx=x.map(Math.log),lny=y.map(Math.log);const {params:{a:lna,b}}=fitLinear(lnx,lny);
+  const lnx=x.map(Math.log),lny=y.map(Math.log);const lin=fitLinear(lnx,lny);if(lin.error)return lin;
+  const {a:lna,b}=lin.params;
   const a=Math.exp(lna),my=mean(y);const pred=x.map(xi=>a*Math.pow(xi,b));
-  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  const syy=sum(y.map(yi=>(yi-my)**2));
+  const r2=syy>0?1-sum(y.map((yi,i)=>(yi-pred[i])**2))/syy:NaN;
   return{type:'power',params:{a,b},predict:xi=>a*Math.pow(xi,b),r2,pred,
     equation:`y = ${a.toFixed(4)}·x^(${b.toFixed(4)})  (fitted as a straight line on the log scale)`};
 }
 // 4PL: Y = Bottom + (Top − Bottom) / (1 + (X/EC50)^Hill). EC50 fitted on a log scale (so it stays > 0); several starts.
 function fit4PL(x,y){
-  if(x.some(xi=>xi<0))return{error:'Need X ≥ 0 (concentrations) for the 4PL fit'};
+  const ok=x.map((xi,i)=>[xi,y[i]]).filter(([a,b])=>isFinite(a)&&isFinite(b));
+  const X=ok.map(d=>d[0]),Y=ok.map(d=>d[1]);
+  if(X.some(xi=>xi<0))return{error:'Need X ≥ 0 (concentrations) for the 4PL fit'};
+  const nd=new Set(X).size;
+  if(nd<4)return{error:`Need at least 4 different concentrations for the 4PL fit (found ${nd})`};
+  const pos=X.filter(v=>v>0);
+  if(new Set(pos).size<3)return{error:'Need at least 3 positive concentrations for the 4PL fit'};
   const model=(p,xi)=>xi<=0?(p[3]>0?p[1]:p[0]):p[0]+(p[1]-p[0])/(1+Math.pow(xi/Math.pow(10,p[2]),p[3]));
-  const sse=p=>{const v=sum(x.map((xi,i)=>(model(p,xi)-scaled[i])**2));return isFinite(v)?v:Infinity;};
-  const yn=Math.min(...y),yx=Math.max(...y),pos=x.filter(v=>v>0);
-  const lmid=pos.length?(Math.log10(Math.min(...pos))+Math.log10(Math.max(...pos)))/2:0;
-  if(yx===yn){const m=mean(y); // flat: no midpoint or slope can be estimated
+  const sse=p=>{const v=sum(X.map((xi,i)=>(model(p,xi)-scaled[i])**2));return isFinite(v)?v:Infinity;};
+  const yn=Math.min(...Y),yx=Math.max(...Y);
+  const lmid=(Math.log10(Math.min(...pos))+Math.log10(Math.max(...pos)))/2;
+  const flat=()=>{const m=mean(Y); // flat: no midpoint or slope can be estimated
     return{type:'4pl',flat:true,params:{bot:m,top:m,ec50:NaN,hill:NaN},predict:()=>m,r2:null,pred:x.map(()=>m),
-      equation:`Flat response (Top = Bottom = ${m.toFixed(3)}): the curve has no midpoint, so EC50 and Hill slope cannot be estimated`};}
-  const range=yx-yn,scaled=y.map(v=>(v-yn)/range);
+      equation:`Flat response (Top = Bottom = ${m.toFixed(3)}): the curve has no midpoint, so EC50 and Hill slope cannot be estimated`};};
+  if(yx===yn)return flat();
+  const range=yx-yn,scaled=Y.map(v=>(v-yn)/range);
   let best=null;
-  for(const [b0,t0] of [[1,0],[0,1]])for(const dl of [0,-1,1]){const r=nelderMead(sse,[b0,t0,lmid+dl,1],{maxIter:3000});if(!best||r.fval<best.fval)best=r;}
+  for(const h0 of [1,-1])for(const dl of [0,-1,1]){const r=nelderMead(sse,[0,1,lmid+dl,h0],{maxIter:3000});if(!best||r.fval<best.fval)best=r;}
   const sm=mean(scaled),tss=sum(scaled.map(v=>(v-sm)**2)); // polish on the 0–1 scale (see fit5PL); mean computed once
   for(let k=0;k<3;k++){const r=nelderMead(sse,best.x,{maxIter:5000,tol:1e-14*Math.max(tss,1e-300)});if(r.fval<=best.fval)best=r;}
-  const P=best.x,[bot,top,hill]=[yn+range*P[0],yn+range*P[1],P[3]],ec50=Math.pow(10,P[2]),my=mean(y);
+  let P=[...best.x];
+  if(Math.abs(P[1]-P[0])<=1e-9)return flat();
+  if(P[0]>P[1])P=[P[1],P[0],P[2],-P[3]]; // exact identity: b + (t-b)/(1+(x/c)^h) = t + (b-t)/(1+(x/c)^-h)
+  const [bot,top,hill]=[yn+range*P[0],yn+range*P[1],P[3]],ec50=Math.pow(10,P[2]),my=mean(Y);
   const pred=x.map(xi=>yn+range*model(P,xi));
-  const r2=1-sum(y.map((yi,i)=>(yi-pred[i])**2))/sum(y.map(yi=>(yi-my)**2));
+  const syy=sum(Y.map(yi=>(yi-my)**2));
+  const r2=syy>0?1-sum(Y.map((yi,i)=>(yi-(yn+range*model(P,X[i])))**2))/syy:NaN;
   return{type:'4pl',params:{bot,top,ec50,hill},predict:xi=>yn+range*model(P,xi),r2,pred,
     equation:`Y = Bottom + (Top − Bottom) / (1 + (X/EC50)^Hill): bottom=${bot.toFixed(3)}, top=${top.toFixed(3)}, EC50=${ec50.toPrecision(4)}, hill=${hill.toFixed(3)}`};
 }
@@ -1359,6 +1453,7 @@ function runRegression(x,y,model,degree){
 }
 // ── 2-way ANOVA ────────────────────────────────────────────────
 function twowayANOVA(groupData,nA,nB){
+  if(nA<2||nB<2)return{error:'Two-way ANOVA requires at least 2 levels for each factor (nA ≥ 2, nB ≥ 2).'};
   if(groupData.length!==nA*nB)return{error:`Need exactly ${nA}×${nB}=${nA*nB} groups`};
   const cells=Array.from({length:nA},(_,a)=>Array.from({length:nB},(_,b)=>groupData[a*nB+b]));
   for(let a=0;a<nA;a++)for(let b=0;b<nB;b++)if(!cells[a][b].length)return{error:`Cell (A${a+1},B${b+1}) has no data`};
@@ -1384,7 +1479,7 @@ function twowayANOVA(groupData,nA,nB){
 }
 
 function volcanoData(names,log2fc,pvals,fc_thresh=1,p_thresh=0.05){
-  return names.map((n,i)=>({name:n,log2fc:log2fc[i],neglog10p:-Math.log10(Math.max(pvals[i],1e-300)),
+  return names.map((n,i)=>({name:n,log2fc:log2fc[i],p:pvals[i],neglog10p:-Math.log10(Math.max(pvals[i],1e-300)),
     up:log2fc[i]>=fc_thresh&&pvals[i]<p_thresh,
     down:log2fc[i]<=-fc_thresh&&pvals[i]<p_thresh,
     sig:Math.abs(log2fc[i])>=fc_thresh&&pvals[i]<p_thresh}));
@@ -4120,6 +4215,7 @@ function runAnalysis(){
       const ptype=document.getElementById('opt-ptype')?.value||'delta';
       const perRow=document.getElementById('opt-perrow')?.checked;
       const corr=document.getElementById('opt-corr')?.value||'fdr';
+      if(atype==='ttest_rel'&&ptype==='ratio'&&normMethod!=='none'){addStatTab('Paired t-test',`<div class="ebox">Ratio already compares the groups on the log scale (log A/B), so it cannot be combined with a normalization: on transformed values it would test a ratio of logs. With log-transformed values choose Comparison: Difference (the same test as Ratio on the raw values); with z-scores a ratio has no meaning.</div>`);return}
       const a=getG(ctrl);
 
       if(perRow){
@@ -4172,7 +4268,6 @@ function runAnalysis(){
       let html='';
       const tSigPairs=[];
       const tcorr=other.length>1?(document.getElementById('opt-tcorr')?.value||'holm_sidak'):'none';
-      if(atype==='ttest_rel'&&ptype==='ratio'&&normMethod!=='none'){addStatTab('Paired t-test',`<div class="ebox">Ratio already compares the groups on the log scale (log A/B), so it cannot be combined with a normalization: on transformed values it would test a ratio of logs. With log-transformed values choose Comparison: Difference (the same test as Ratio on the raw values); with z-scores a ratio has no meaning.</div>`);return}
       const tRes=other.map(i=>{if(atype==='ttest_ind')return ttestInd(a,getG(i));const pr=getPair(ctrl,i);const r=ttestRel(pr.a,pr.b,ptype);if(!r.error){const rows=new Set(pr.row).size;r.unit=`${rows} row${rows===1?'':'s'} × ${Math.max(...[...new Set(pr.row)].map(q=>pr.row.filter(x=>x===q).length))} replicate${pr.a.length>rows?'s':''}`;r.pseudo=pr.a.length>rows;}return r;});
       const tAdj=adjustP(tRes.map(r=>r.error?NaN:r.p),tcorr);
       other.forEach((i,k)=>{
@@ -4327,14 +4422,16 @@ function runAnalysis(){
       addStatTab('One-way ANOVA',html);
 
     } else if(atype==='kruskal'){
-      const groups=G.groups.map((_,i)=>getG(i));
       const names=grpNames();
+      const keep=G.groups.map((_,i)=>i).filter(i=>getG(i).length>0),emptyNames=G.groups.map((_,i)=>i).filter(i=>!keep.includes(i)).map(i=>names[i]);
+      const groups=keep.map(i=>getG(i));
       const res=kruskalWallis(groups);
       if(res.error){addStatTab('Kruskal–Wallis',`<div class="ebox">${res.error}</div>`);return}
+      res.posthoc.forEach(q=>{q.a=keep[q.a];q.b=keep[q.b];});
       const kph=document.getElementById('opt-ph')?.value||'holm_sidak';
       {const adj=adjustP(res.posthoc.map(x=>x.p_raw),kph);res.posthoc.forEach((x,n)=>x.p=adj[n]);}
       lastStatPairs=res.posthoc.map(ph=>({i:ph.a,j:ph.b,stars:sigStars(ph.p)})).filter(p=>p.stars!=='ns');
-      let html=`<div class="scard"><h3>Kruskal-Wallis H Test</h3>
+      let html=`<div class="scard"><h3>Kruskal-Wallis H Test</h3>${emptyNames.length?`<div class="opt-hint" style="font-style:normal">Left out: ${emptyNames.join(', ')} (no values).</div>`:''}
         <div class="rh"><span class="rt">H(${res.df}) = ${fmtF(res.H)}</span><span class="rp ${pCls(res.p)}">p = ${fmtP(res.p)}</span><span class="stars">${sigStars(res.p)}</span></div>
         <div class="sdiv"><h4>Dunn's post-hoc: ${CORR_SHORT[kph]} (${res.posthoc.length} comparisons)</h4>
         <table class="rtbl"><thead><tr><th>Group A</th><th>Group B</th><th>z</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
@@ -4376,14 +4473,15 @@ function runAnalysis(){
       const {v:pv0,row:pRowIdx}=rowFirstVals(0);
       const nBadP=pv0.filter(p=>p<0||p>1).length;
       const pvals=pv0.map(p=>p>=0&&p<=1?p:NaN);
+      const nValidP=pvals.filter(isFinite).length;
       const method=document.getElementById('opt-mtc-method')?.value||'holm_sidak';
       const adj=adjustP(pvals,method);
       const names=pRowIdx.map(r=>G.rowNames[r]);
       if(nBadP)normWarn+=`<div class="ebox">${nBadP} value(s) outside 0–1 are not p-values and were left out.</div>`;
-      let html=`<div class="scard"><h3>Multiple Testing Correction (${CORR_LABEL[method]||method}, ${pvals.length.toLocaleString()} tests, ${adj.filter(v=>v<0.05).length.toLocaleString()} with adjusted p < 0.05)</h3>
+      let html=`<div class="scard"><h3>Multiple Testing Correction (${CORR_LABEL[method]||method}, ${nValidP.toLocaleString()} tests, ${adj.filter(v=>v<0.05).length.toLocaleString()} with adjusted p < 0.05)</h3>
         ${pvals.length>SHOW_ROWS?`<div class="opt-hint" style="font-style:normal;margin-bottom:6px">Showing the ${SHOW_ROWS} smallest p-values. ${csvButton('adjusted_p.csv',['Test','p-raw','p-adj'],pvals.map((p,i)=>[names[i]||i+1,p,adj[i]]))}</div>`:''}
         <table class="rtbl"><thead><tr><th>Test</th><th>p-raw</th><th>p-adj</th></tr></thead><tbody>
-        ${(pvals.length>SHOW_ROWS?pvals.map((p,i)=>i).sort((a,b)=>pvals[a]-pvals[b]).slice(0,SHOW_ROWS):pvals.map((p,i)=>i)).map(i=>`<tr><td>${names[i]||i+1}</td><td>${pRow(pvals[i])}</td><td>${pRow(adj[i])}</td></tr>`).join('')}
+        ${(pvals.length>SHOW_ROWS?pvals.map((p,i)=>i).sort((a,b)=>(isFinite(pvals[a])?pvals[a]:2)-(isFinite(pvals[b])?pvals[b]:2)).slice(0,SHOW_ROWS):pvals.map((p,i)=>i)).map(i=>`<tr><td>${names[i]||i+1}</td><td>${pRow(pvals[i])}</td><td>${pRow(adj[i])}</td></tr>`).join('')}
         </tbody></table></div>`;
       addStatTab('Multiple-testing correction',html);
 
@@ -4447,8 +4545,16 @@ function runAnalysis(){
         html+=`<div class="rh"><span class="rt">Log-rank (Mantel–Cox) χ²(${lr.df}) = ${fmtF(lr.chi)}</span><span class="rp ${pCls(lr.p)}">p = ${fmtP(lr.p)}</span><span class="stars">${sigStars(lr.p)}</span></div>
         <table class="rtbl"><thead><tr><th>Group</th><th>Observed events</th><th>Expected</th><th>O/E</th></tr></thead><tbody>
         ${kg.map((g,i)=>`<tr><td>${g.name}</td><td>${lr.O[i]}</td><td>${fmtF(lr.E[i])}</td><td>${fmtF(lr.O[i]/lr.E[i])}</td></tr>`).join('')}</tbody></table>`;
-        if(k===2){const hr=(lr.O[1]/lr.E[1])/(lr.O[0]/lr.E[0]);const se=Math.sqrt(1/lr.E[0]+1/lr.E[1]);
-          html+=`<div class="opt-hint" style="font-style:normal">Hazard ratio ${kg[1].name} vs ${kg[0].name} (log-rank estimate): ${fmtF(hr)} [95% CI ${fmtF(hr*Math.exp(-1.96*se))}, ${fmtF(hr*Math.exp(1.96*se))}]</div>`;}
+        if(k===2){
+          if(lr.O[0]>0&&lr.O[1]>0&&lr.E[0]>0&&lr.E[1]>0){
+            const hr=(lr.O[1]/lr.E[1])/(lr.O[0]/lr.E[0]);
+            const se=Math.sqrt(1/lr.E[0]+1/lr.E[1]);
+            const z975=jStat.normal.inv(0.975,0,1);
+            html+=`<div class="opt-hint" style="font-style:normal">Hazard ratio ${kg[1].name} vs ${kg[0].name} (log-rank estimate): ${fmtF(hr)} [95% CI ${fmtF(hr*Math.exp(-z975*se))}, ${fmtF(hr*Math.exp(z975*se))}]</div>`;
+          } else {
+            html+=`<div class="opt-hint" style="font-style:normal">Hazard ratio ${kg[1].name} vs ${kg[0].name}: not estimable (one group has 0 events).</div>`;
+          }
+        }
         if(k>2){
           const pr=[];for(let i=0;i<k-1;i++)for(let j=i+1;j<k;j++){const r=logRankK(subj.filter(o=>o.g===i||o.g===j).map(o=>({...o,g:o.g===i?0:1})),2);pr.push({i,j,chi:r.chi,p:r.p});}
           const adj=adjustP(pr.map(x=>x.p),kmcorr);
@@ -4507,14 +4613,14 @@ function runAnalysis(){
       if(okP.includes(false))normWarn+=`<div class="ebox">${okP.filter(x=>!x).length} row(s) with a p-value outside 0–1 were left out.</div>`;
       const names=vRows.map(r=>G.rowNames[r]||'Row '+(r+1));
       const pts=volcanoData(names,fcVals,pVals,fc_thresh,p_thresh);
-      const up=pts.filter(p=>p.up),dn=pts.filter(p=>p.down);
+      const up=pts.filter(p=>p.up).sort((a,b)=>a.p-b.p||Math.abs(b.log2fc)-Math.abs(a.log2fc)),dn=pts.filter(p=>p.down);
       let html=`<div class="scard"><h3>Volcano Plot Summary</h3>
         <table class="rtbl"><thead><tr><th>Category</th><th>N</th></tr></thead><tbody>
         <tr><td>Up-regulated</td><td>${up.length}</td></tr>
         <tr><td>Down-regulated</td><td>${dn.length}</td></tr>
         <tr><td>Not significant</td><td>${pts.filter(p=>!p.sig).length}</td></tr>
         </tbody></table>
-        ${up.length?`<div class="sdiv"><h4>Top Up-regulated</h4><table class="rtbl"><thead><tr><th>Gene</th><th>log2FC</th><th>p</th></tr></thead><tbody>${up.slice(0,10).map(p=>`<tr><td>${p.name}</td><td>${fmtF(p.log2fc)}</td><td>${fmtP(Math.pow(10,-p.neglog10p))}</td></tr>`).join('')}</tbody></table></div>`:''}
+        ${up.length?`<div class="sdiv"><h4>Top Up-regulated</h4><table class="rtbl"><thead><tr><th>Gene</th><th>log2FC</th><th>p</th></tr></thead><tbody>${up.slice(0,10).map(p=>`<tr><td>${p.name}</td><td>${fmtF(p.log2fc)}</td><td>${fmtP(p.p)}</td></tr>`).join('')}</tbody></table></div>`:''}
         </div>`;
       html=html.replace('<h3>Volcano Plot Summary</h3>','<h3>Volcano Plot Summary</h3><div class="opt-hint" style="font-style:normal;margin-bottom:6px">'+csvButton('volcano_all_genes.csv',['Gene','log2FC','p-value','-log10 p','Category'],pts.map((q,i)=>[q.name,q.log2fc,pVals[i],q.neglog10p,q.up?'Up':q.down?'Down':'NS']))+'</div>');
       addStatTab('Volcano summary',html);
@@ -4613,12 +4719,15 @@ function runAnalysis(){
       const residuals=ys.map((y,i)=>y-res.pred[i]);
       const ssRes=residuals.reduce((s,r)=>s+r*r,0);
       const ssTotal=ys.reduce((s,y)=>s+(y-mean(ys))**2,0);
-      const r2=Math.max(0,1-ssRes/ssTotal);
+      const r2=res.flat?NaN:(ssTotal>0?1-ssRes/ssTotal:NaN);
+      const paramEntries=res.useCentred&&res.centred
+        ?res.centred.map((v,k)=>[k===0?'c0':`c${k} (x − ${res.centreLabel})${k>1?'^'+k:''}`,v])
+        :Object.entries(res.params||{});
       let html=`<div class="scard"><h3>Regression: ${res.type}</h3>
         <div class="rh"><span class="rt">Model: ${res.type}</span><span class="rp">R² = ${fmtF(r2,4)}</span></div>
         <div style="font-family:monospace;margin:8px 0;padding:8px;background:var(--su);border-radius:4px;color:var(--tx);font-size:12px">${res.equation||''}</div>
         <table class="rtbl"><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>
-        ${Object.entries(res.params||{}).map(([k,v])=>`<tr><td>${k}</td><td>${fmtF(v,4)}</td></tr>`).join('')}
+        ${paramEntries.map(([k,v])=>`<tr><td>${k}</td><td>${fmtF(v,4)}</td></tr>`).join('')}
         <tr><td>R²</td><td>${fmtF(r2,4)}</td></tr>
         <tr><td>RMSE</td><td>${fmtF(Math.sqrt(ssRes/n),4)}</td></tr>
         </tbody></table></div>`;
