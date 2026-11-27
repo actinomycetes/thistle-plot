@@ -52,3 +52,22 @@ test('the stacked bar plot draws on screen and in both export styles, with its e
   assert.ok(r.ex.every(w => w > 0)); assert.strictEqual(r.rows, 5);
   assert.deepStrictEqual(app.errors, []);
 });
+
+test('plot palette presets and custom colours belong to each figure', async () => {
+  await selectPlot(app.page, 'stacked');
+  await ev(() => loadExampleFor('plot'));
+  const menu = app.page.locator('#popt-palette');
+  await menu.locator('..').locator('summary').click();
+  await menu.selectOption('Bright');
+  const first = await ev(() => { newPlot(); return activePT; });
+  const color = id => ev(id => chartInst[id].data.datasets[0].borderColor, id);
+  await app.page.waitForFunction(id => chartInst[id], first);
+  assert.equal(await color(first), '#4477aa');
+  await app.page.locator('#popt-colour-0').fill('#123456');
+  assert.equal(await menu.inputValue(), 'Custom');
+  const second = await ev(() => { newPlot(); return activePT; });
+  await app.page.waitForFunction(id => chartInst[id], second);
+  assert.equal(await color(second), '#123456');
+  assert.equal(await color(first), '#4477aa');
+  assert.equal(await ev(id => plotTabs.find(t => t.id === id).optState['po_popt-colour-0'], second), '#123456');
+});

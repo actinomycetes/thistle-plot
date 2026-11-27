@@ -2,6 +2,7 @@ All releases are beta (0.x). Earlier builds had a different working name; number
 
 | Version | Name | Changes |
 | --- | --- | --- |
+| 0.21.0 (27 Nov 2026) | Thistle Plot | Choose a group colour scheme or edit individual colours in the Plot options. Each figure keeps its own colours for app-style export. |
 | 0.20.1 (24 Nov 2026) | Thistle Plot | Work started in the moment before your last session reopens (pasted data, an opened CSV, a test run) is no longer thrown away: it stays in front and the reopened tables, results and figures are added after it |
 | 0.20.0 (24 Nov 2026) | Thistle Plot | New **Stacked bar** plot: one bar per sample (or per group) with one segment per column, shown as entered or as a percentage / fraction of each bar's total, e.g. the share of cells in the four quadrants sent from Thistle Flow; shared gating paths and "\| % Parent" endings are shortened in the legend; example data; in Publication-style exports stacked segments get evenly spaced greys, and long category names are angled at 45° |
 | 0.19.1 (24 Nov 2026) | Thistle Plot | Tab icon: TP shown inside Thistle Notebook no longer puts its icon on Thistle Notebook's tab, and the title is set again once the page has loaded so that browsers such as Orion show TP's icon |

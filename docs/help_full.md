@@ -53,6 +53,8 @@ Choose a plot type, set its options, then click **📈 Plot**. The figure opens 
 
 **Trying other plot types.** Your settings are kept per plot type for each result. Change a bar chart's settings, switch the menu to a heatmap, then back to Bar + SD + Dots: the same bar chart comes back with your settings (and ↻ Update redraws it). Settings you changed but did not draw yet are kept too. A new test run starts its figures from the defaults again.
 
+**Colour scheme.** Under Visualisation, choose Default, Bright or Vibrant, or edit the swatches. Use Update plot or New to apply the colours. App-style exports use the figure’s colours. Publication style uses greyscale.
+
 **Live update.** Tick *Live update* under the plot options to redraw the open figure as you change them, with no button press. For very large tables (over 2,000 rows) heatmaps, PCA and volcano plots are not redrawn live because it would be slow; the ↻ Update button turns orange instead, and you click it when ready.
 
 **Linked figures.** Updating a figure made by *Auto-plot* (or 🔗) keeps the test's stars, brackets and gene list as long as the data are unchanged. If you have edited the data since the test was run, the marks are removed, the figure is no longer linked, and a note says so: run the test again for an up-to-date figure. Figures you drew by hand never gain marks when updated.
@@ -205,7 +207,7 @@ The Widget Connector macro cannot embed TP.
 | No significance brackets | Run a pairwise test first with Auto-plot ticked, or 🔗 from its result; only corrected p < 0.05 gets a bracket. |
 | Test gives an error or NaN | Check the column layout in section 2 and that cells hold numbers, not text. Click 📋 Example beside the test to see the expected layout. |
 
-Known limitations of v0.20.1 (beta):
+Known limitations of v0.21.0 (beta):
 
 - Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each level of the other factor, not across all simple effects (the result says which).
 - Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).

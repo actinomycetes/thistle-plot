@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Thistle Plot v0.20.1 (Beta)</title>
+<title>Thistle Plot v0.21.0 (Beta)</title>
 <!-- Thistle suite icon: the thistle with a badge per app (Thistle Plot: a table) -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cg%20transform%3D%22translate%28-1%200%29%20scale%281.08%29%22%3E%3Cg%20stroke%3D%22%23a855f7%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M12%2010V2%22%2F%3E%3Cpath%20d%3D%22M12%2010L7%203%22%2F%3E%3Cpath%20d%3D%22M12%2010L17%203%22%2F%3E%3Cpath%20d%3D%22M12%2010L4.5%206%22%2F%3E%3Cpath%20d%3D%22M12%2010L19.5%206%22%2F%3E%3Cpath%20d%3D%22M12%2010L9.5%202.3%22%2F%3E%3Cpath%20d%3D%22M12%2010L14.5%202.3%22%2F%3E%3C%2Fg%3E%3Cellipse%20cx%3D%2212%22%20cy%3D%2213.5%22%20rx%3D%225%22%20ry%3D%224.2%22%20fill%3D%22%2322c55e%22%2F%3E%3Cg%20fill%3D%22%2315803d%22%3E%3Ccircle%20cx%3D%229.7%22%20cy%3D%2212.7%22%20r%3D%22.95%22%2F%3E%3Ccircle%20cx%3D%2212.3%22%20cy%3D%2211.9%22%20r%3D%22.95%22%2F%3E%3Ccircle%20cx%3D%2214.7%22%20cy%3D%2213.3%22%20r%3D%22.95%22%2F%3E%3Ccircle%20cx%3D%2210.8%22%20cy%3D%2215.3%22%20r%3D%22.95%22%2F%3E%3Ccircle%20cx%3D%2213.5%22%20cy%3D%2215.5%22%20r%3D%22.95%22%2F%3E%3C%2Fg%3E%3Cpath%20d%3D%22M12%2017.5V25%22%20stroke%3D%22%2316a34a%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M12%2021.5c-2.5-.5-4.5-2-5.5-4M12%2021c2.5-.5%204.3-1.8%205.3-3.8%22%20stroke%3D%22%2316a34a%22%20stroke-width%3D%221.4%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fg%3E%3Crect%20x%3D%2214%22%20y%3D%2215%22%20width%3D%2217%22%20height%3D%2216%22%20rx%3D%222.5%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%232563eb%22%20stroke-width%3D%222%22%2F%3E%3Cpath%20d%3D%22M14%2017.5a2.5%202.5%200%200%201%202.5-2.5h12a2.5%202.5%200%200%201%202.5%202.5v3h-17z%22%20fill%3D%22%232563eb%22%2F%3E%3Cpath%20d%3D%22M14%2025.7h17M22.5%2020.5v10.5%22%20stroke%3D%22%232563eb%22%20stroke-width%3D%221.8%22%2F%3E%3C%2Fsvg%3E">
 <link rel="apple-touch-icon" href="data:image/png;base64,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">
@@ -213,7 +213,7 @@ input[type=checkbox]{width:auto;margin-right:4px;accent-color:var(--ac)}
   <svg class="app-logo" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true" style="flex:none"><g transform="translate(-1 0) scale(1.08)"><g stroke="#a855f7" stroke-width="1.6" stroke-linecap="round"><path d="M12 10V2"/><path d="M12 10L7 3"/><path d="M12 10L17 3"/><path d="M12 10L4.5 6"/><path d="M12 10L19.5 6"/><path d="M12 10L9.5 2.3"/><path d="M12 10L14.5 2.3"/></g><ellipse cx="12" cy="13.5" rx="5" ry="4.2" fill="#22c55e"/><g fill="#15803d"><circle cx="9.7" cy="12.7" r=".95"/><circle cx="12.3" cy="11.9" r=".95"/><circle cx="14.7" cy="13.3" r=".95"/><circle cx="10.8" cy="15.3" r=".95"/><circle cx="13.5" cy="15.5" r=".95"/></g><path d="M12 17.5V25" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/><path d="M12 21.5c-2.5-.5-4.5-2-5.5-4M12 21c2.5-.5 4.3-1.8 5.3-3.8" stroke="#16a34a" stroke-width="1.4" fill="none" stroke-linecap="round"/></g><rect x="14" y="15" width="17" height="16" rx="2.5" fill="#ffffff" stroke="#2563eb" stroke-width="2"/><path d="M14 17.5a2.5 2.5 0 0 1 2.5-2.5h12a2.5 2.5 0 0 1 2.5 2.5v3h-17z" fill="#2563eb"/><path d="M14 25.7h17M22.5 20.5v10.5" stroke="#2563eb" stroke-width="1.8"/></svg>
   <span class="title">Thistle Plot</span>
   <span class="badge beta">BETA</span>
-  <span class="badge" id="app-version" title="Version">v0.20.1</span>
+  <span class="badge" id="app-version" title="Version">v0.21.0</span>
   <div class="hdr-actions">
     <button class="btn btn-pri" onclick="document.getElementById('fi-csv').click()" title="Import a table of numbers from a CSV file (or paste from a spreadsheet with Ctrl/Cmd+V)">⬆ Open CSV…</button>
     <span class="sep"></span>
@@ -380,6 +380,46 @@ let gridSel={active:false,startG:-1,startRow:-1,startR:-1,endG:-1,endRow:-1,endR
 
 // Okabe–Ito colour-blind-safe palette (Okabe & Ito 2008), then two extra distinct colours; yellow is late as it is faint on white
 const COLORS=['#0072b2','#e69f00','#009e73','#cc79a7','#56b4e9','#d55e00','#882255','#999999','#f0e442','#44aa99'];
+const PLOT_PALETTES={
+  Default:COLORS,
+  Bright:['#4477aa','#ee6677','#228833','#ccbb44','#66ccee','#aa3377','#bbbbbb'],
+  Vibrant:['#0077bb','#ee7733','#009988','#cc3311','#33bbee','#ee3377','#bbbbbb']
+};
+let figureColors=COLORS;
+function addPaletteControls(panel){
+  const box=document.createElement('details');
+  const summary=document.createElement('summary');summary.textContent='Colour scheme';box.append(summary);
+  const menu=document.createElement('select');menu.id='popt-palette';menu.setAttribute('aria-label','Plot colour scheme');
+  for(const name of [...Object.keys(PLOT_PALETTES),'Custom'])menu.add(new Option(name,name));
+  box.append(menu);
+  const swatches=COLORS.map((color,i)=>{
+    const input=document.createElement('input');input.type='color';input.id='popt-colour-'+i;input.value=color;
+    input.setAttribute('aria-label','Palette colour '+(i+1));
+    input.addEventListener('input',()=>{menu.value='Custom';});
+    box.append(input);return input;
+  });
+  menu.addEventListener('change',()=>{
+    const colors=PLOT_PALETTES[menu.value];
+    if(colors)swatches.forEach((el,i)=>{el.value=colors[i%colors.length];});
+  });
+  panel.append(box);
+}
+function selectedPlotColors(state){
+  const name=state?.['po_popt-palette']||'Default';
+  if(Object.hasOwn(PLOT_PALETTES,name))return PLOT_PALETTES[name];
+  return COLORS.map((fallback,i)=>{
+    const c=state['po_popt-colour-'+i];return /^#[0-9a-f]{6}$/i.test(c)?c:fallback;
+  });
+}
+// Capture at creation so a later panel edit cannot recolour an existing tab on export.
+function withFigureColors(draw){
+  const colors=selectedPlotColors(captureOptState());
+  return Object.assign((...args)=>{
+    const previous=figureColors;figureColors=colors;
+    try{return draw(...args);}finally{figureColors=previous;}
+  },draw);
+}
+
 const PLOT_TYPES=[
   {v:'bar_sd',l:'Bar + SD + Dots'},
   {v:'boxplot',l:'Boxplot'},
@@ -2101,6 +2141,7 @@ function renderPlotOpts(t){
   } else if(t==='mtc'){
     el.innerHTML=`<div class="opts-grid"><div class="full-col"><div class="opt-lbl">p-values column</div><select id="popt-mtcg">${grpOpts}</select></div><div class="full-col"><div class="opt-lbl">Correction shown</div>${corrSelect('popt-mtcm',{none:false})}</div></div>`;
   } else { el.innerHTML=''; }
+  addPaletteControls(el);
   wireOptHints(document.getElementById('popts'));
 }
 
@@ -2609,6 +2650,7 @@ function _runPlotType(ptype,normMethod,title){
 }
 
 function chartTab(title, chartFn){
+  chartFn=withFigureColors(chartFn);
   addPlotTab(title, page=>{
     page.innerHTML=`<div class="plot-topbar"><span style="font-size:12px;font-weight:600;color:var(--tx)">${title}</span><span style="flex:1"></span>${_exportTools(page.id)}</div><div class="plot-area" id="pa_${page.id}" style="flex:1;padding:10px;position:relative"><canvas id="c_${page.id}" style="position:absolute;inset:10px;width:calc(100% - 20px)!important;height:calc(100% - 20px)!important"></canvas></div>`;
     const canvas=document.getElementById('c_'+page.id);
@@ -2619,6 +2661,7 @@ function chartTab(title, chartFn){
 }
 
 function canvasTab(title, drawFn){
+  drawFn=withFigureColors(drawFn);
   addPlotTab(title, page=>{
     const tab=plotTabs.find(t=>t.id===page.id);if(tab)tab._drawFn=drawFn;
     page.innerHTML=`<div class="plot-topbar"><span style="font-size:12px;font-weight:600;color:var(--tx)">${title}</span><span style="flex:1"></span>${_exportTools(page.id)}</div><div class="plot-area" id="pa_${page.id}" style="flex:1;padding:10px;overflow:hidden"></div>`;
@@ -2918,7 +2961,7 @@ function downloadTabPDF(pageId){
   w.document.close();
 }
 
-const APP_VERSION='0.20.1';
+const APP_VERSION='0.21.0';
 // Set the title again from script (as Thistle Flow does): Orion 1.1 (WebKit) showed the favicon only on pages whose title
 // changed after loading; the static <title> alone gave the generic github.io icon (v0.17.1, checked with test pages).
 document.title=`Thistle Plot v${APP_VERSION} (Beta)`;
@@ -2937,7 +2980,7 @@ const PUB_THEME={
   stroke:'#000000',dot:'#000000',medLine:'#000000',
   font:'Arial,Helvetica,sans-serif'
 };
-function plotColor(i){const C=_exportTheme?.colors??COLORS;return C[i%C.length];}
+function plotColor(i){const C=_exportTheme?.colors??figureColors;return C[i%C.length];}
 function plotStroke(i){return _exportTheme?.stroke??plotColor(i);}
 function plotDot(i){return _exportTheme?.dot??plotColor(i);}
 function plotMed(){return _exportTheme?.medLine??(isLightTheme()?'#1e293b':'#fff');}
@@ -3122,7 +3165,7 @@ function plotBarSD(normMethod, title){
       means.push(m);errs.push({lo:m-s,hi:m+s});
     }
     if(dispMode!=='reps'){
-      datasets.push({type:'bar',label:'Mean ± SD',data:means,backgroundColor:COLORS.map(c=>c+'88'),borderColor:COLORS,borderWidth:2,_errBars:errs,barPercentage:0.5});
+      datasets.push({type:'bar',label:'Mean ± SD',data:means,backgroundColor:figureColors.map(c=>c+'88'),borderColor:figureColors,borderWidth:2,_errBars:errs,barPercentage:0.5});
     }
     if(dispMode!=='mean'){
       for(let g=0;g<G.groups.length;g++){
@@ -3132,7 +3175,7 @@ function plotBarSD(normMethod, title){
           ?G.groups[g].data.map(rowVals=>{const v=rowVals?.filter(x=>x!==''&&isFinite(x)).map(Number)||[];return v.length?mean(normalize(v,normMethod)):null;}).filter(v=>v!==null)
           :vals;
         datasets.push({type:'scatter',label:G.groups[g].name+' pts',data:pts.map(v=>({x:labels[g],y:v})),
-          backgroundColor:COLORS[g]+'cc',pointRadius:5,pointHoverRadius:7,showLine:false});
+          backgroundColor:plotColor(g)+'cc',pointRadius:5,pointHoverRadius:7,showLine:false});
       }
     }
     const cfg={...chartCfgDefaults()};
@@ -3169,8 +3212,8 @@ function plotRegressionFit(){
     cfg.plugins={...cfg.plugins,legend:{display:true,labels:{color:txCol()}}};
     const fXY=fitX.map((x,i)=>({x,y:fitX.map(xx=>{try{return res.predict(xx)}catch(e){return NaN}})[i]})).filter(p=>isFinite(p.y));
     return new Chart(canvas,{type:'scatter',data:{datasets:[
-      {label:'Data',data:xs.map((x,i)=>({x,y:ys[i]})),backgroundColor:COLORS[0]+'cc',pointRadius:5},
-      {label:`Fit (R²=${r2.toFixed(3)})`,data:fXY,type:'line',borderColor:COLORS[1],backgroundColor:'transparent',pointRadius:0,borderWidth:2,tension:0}
+      {label:'Data',data:xs.map((x,i)=>({x,y:ys[i]})),backgroundColor:plotColor(0)+'cc',pointRadius:5},
+      {label:`Fit (R²=${r2.toFixed(3)})`,data:fXY,type:'line',borderColor:plotColor(1),backgroundColor:'transparent',pointRadius:0,borderWidth:2,tension:0}
     ]},options:cfg});
   });
 }
@@ -3185,7 +3228,7 @@ function plotResiduals(){
     cfg.scales.y.title={display:true,text:'Residual',color:axCol()};
     cfg.plugins={...cfg.plugins,legend:{display:false}};
     return new Chart(canvas,{type:'scatter',data:{datasets:[
-      {label:'Residuals',data:xs.map((x,i)=>({x,y:resids[i]})),backgroundColor:COLORS[2]+'cc',pointRadius:5},
+      {label:'Residuals',data:xs.map((x,i)=>({x,y:resids[i]})),backgroundColor:plotColor(2)+'cc',pointRadius:5},
       {label:'Zero line',data:[{x:Math.min(...xs),y:0},{x:Math.max(...xs),y:0}],type:'line',borderColor:axCol(),backgroundColor:'transparent',pointRadius:0,borderWidth:1,borderDash:[4,4]}
     ]},options:cfg});
   });
@@ -3587,7 +3630,7 @@ function plotLine(title){
       const normed=normalize(finiteVals,normMethod);
       let ni=0;
       const data=rawVals.map(v=>v===null?null:normed[ni++]);
-      return{label:g.name,data,borderColor:COLORS[i],backgroundColor:COLORS[i]+'33',tension:0.3,fill:false,pointRadius:showPts?4:0,pointHoverRadius:5,spanGaps:true};
+      return{label:g.name,data,borderColor:plotColor(i),backgroundColor:plotColor(i)+'33',tension:0.3,fill:false,pointRadius:showPts?4:0,pointHoverRadius:5,spanGaps:true};
     });
     const cfg={...chartCfgDefaults()};
     if(yLab)cfg.scales.y.title={display:true,text:yLab,color:axCol()};
@@ -3856,6 +3899,7 @@ function pcaReplot(pid){
   cfg.scales.x={type:'linear',position:'bottom',ticks:{color:ac},grid:{color:gridColor()},title:{display:true,text:`PC${xpc+1} (${(res.varExplained[xpc]||0).toFixed(1)}%)`,color:ac}};
   cfg.scales.y={type:'linear',ticks:{color:ac},grid:{color:gridColor()},title:{display:true,text:`PC${ypc+1} (${(res.varExplained[ypc]||0).toFixed(1)}%)`,color:ac}};
 
+  const palette=selectedPlotColors(plotTabs.find(t=>t.id===pid)?.optState);
   const colBy=res._colBy||'group';
   const pointLabels=res._pointLabels||res.scores.map((_,i)=>G.groups[i%G.groups.length]?.name||('S'+(i+1)));
   const pointGroupIdx=res._pointGroupIdx||res.scores.map((_,i)=>i%G.groups.length);
@@ -3866,7 +3910,7 @@ function pcaReplot(pid){
     // One dataset per group so legend shows group names with correct color
     datasets=G.groups.map((g,gi)=>{
       const pts=res.scores.map((s,i)=>pointGroupIdx[i]===gi?{x:s[xpc]||0,y:s[ypc]||0,label:pointLabels[i]}:null).filter(Boolean);
-      return{label:g.name,data:pts,backgroundColor:COLORS[gi%COLORS.length]+'cc',borderColor:COLORS[gi%COLORS.length],pointRadius:7};
+      return{label:g.name,data:pts,backgroundColor:palette[gi%palette.length]+'cc',borderColor:palette[gi%palette.length],pointRadius:7};
     }).filter(ds=>ds.data.length>0);
   } else {
     // Color by replicate index; group name still as label
@@ -3878,7 +3922,7 @@ function pcaReplot(pid){
       }).filter(Boolean);
       // Simpler: just use point index mod nReps
       const pts2=res.scores.map((s,i)=>(i%nReps)===ri?{x:s[xpc]||0,y:s[ypc]||0,label:pointLabels[i]}:null).filter(Boolean);
-      return{label:`Rep ${ri+1}`,data:pts2,backgroundColor:COLORS[ri%COLORS.length]+'cc',borderColor:COLORS[ri%COLORS.length],pointRadius:7};
+      return{label:`Rep ${ri+1}`,data:pts2,backgroundColor:palette[ri%palette.length]+'cc',borderColor:palette[ri%palette.length],pointRadius:7};
     }).filter(ds=>ds.data.length>0);
   }
 
@@ -3907,7 +3951,7 @@ function plotKMCustom(title){
     cfg.plugins={...cfg.plugins,legend:{display:true,labels:{color:txCol(),filter:it=>!/censored/.test(it.text)}}};
     const datasets=[];
     kmd.groups.forEach((g,gi)=>{
-      const km=kaplanMeier(g.t,g.e);const col=COLORS[gi%COLORS.length];
+      const km=kaplanMeier(g.t,g.e);const col=plotColor(gi);
       datasets.push({type:'line',label:g.name,data:km.map(p=>({x:p.t,y:p.s})),borderColor:col,backgroundColor:col+'22',stepped:'after',fill:!multi,pointRadius:0,borderWidth:2});
       datasets.push({label:g.name+' censored',data:km.filter(p=>p.c>0).map(p=>({x:p.t,y:p.s})),pointStyle:'line',rotation:90,pointRadius:6,borderColor:col,backgroundColor:col,borderWidth:2});
     });
@@ -3928,7 +3972,7 @@ function plotECDF(title){
     const datasets=[];
     idx.forEach((g,k)=>{
       const v=normalize(getGroupPooled(g),normMethod).filter(isFinite).sort((a,b)=>a-b);if(!v.length)return;
-      const col=COLORS[g%COLORS.length];
+      const col=plotColor(g);
       const pts=[{x:v[0],y:0},...v.map((x,i)=>({x,y:(i+1)/v.length}))];
       datasets.push({type:'line',label:G.groups[g].name,data:pts,borderColor:col,backgroundColor:col,stepped:'after',pointRadius:0,borderWidth:2,fill:false});
       if(overlay){const m=mean(v),sd=stddev(v);if(sd>0){const lo=v[0],hi=v[v.length-1];const c=Array.from({length:80},(_,i)=>{const x=lo+(hi-lo)*i/79;return{x,y:jStat.normal.cdf((x-m)/sd,0,1)};});
@@ -4006,7 +4050,7 @@ function plotHistogram(title){
       if(!vals.length)return null;
       const counts=Array(bins).fill(0);
       vals.forEach(v=>{const b=Math.max(0,Math.min(Math.floor((v-mn)/bw),bins-1));counts[b]++}); // the largest value goes in the last bin
-      return{label:G.groups[i].name,data:counts,backgroundColor:COLORS[i]+'88',borderColor:COLORS[i],borderWidth:1};
+      return{label:G.groups[i].name,data:counts,backgroundColor:plotColor(i)+'88',borderColor:plotColor(i),borderWidth:1};
     }).filter(Boolean);
     if(!datasets.length)return new Chart(canvas,{type:'bar',data:{datasets:[]},options:chartCfgDefaults()});
     const labels=binLabels;
@@ -4035,8 +4079,8 @@ function plotMTCCustom(title){
     cfg.plugins.tooltip={...cfg.plugins.tooltip,callbacks:{label:c=>`${names[c.raw.x]||c.raw.x}: p = ${Math.pow(10,-c.raw.y).toPrecision(3)}`}};
     const thr=-Math.log10(0.05);
     return new Chart(canvas,{type:'scatter',data:{datasets:[
-      {label:'Raw p',data:pvals.map((p,i)=>({x:i,y:nl(p)})),backgroundColor:COLORS[0]+'cc',pointRadius:5},
-      {label:`Adjusted (${CORR_SHORT[method]})`,data:adj.map((p,i)=>({x:i,y:nl(p)})),backgroundColor:COLORS[1]+'cc',pointRadius:5},
+      {label:'Raw p',data:pvals.map((p,i)=>({x:i,y:nl(p)})),backgroundColor:plotColor(0)+'cc',pointRadius:5},
+      {label:`Adjusted (${CORR_SHORT[method]})`,data:adj.map((p,i)=>({x:i,y:nl(p)})),backgroundColor:plotColor(1)+'cc',pointRadius:5},
       {type:'line',label:'p = 0.05',data:[{x:-0.5,y:thr},{x:names.length-0.5,y:thr}],borderColor:axCol(),borderDash:[5,4],borderWidth:1,pointRadius:0}
     ]},options:cfg});
   });
@@ -5017,7 +5061,7 @@ window.addEventListener('load',checkLibs);
   <div id="help-body">
    <div class="hpane active" id="hq"><!--HELP:hq--><h2>About TP</h2>
 <p>Thistle Plot (TP) is a free, single-file web app for bench statistics and publication-ready figures. It runs entirely in your web browser (no installation, no server) and never uploads your data anywhere. Source code: <a href="https://github.com/actinomycetes/thistle-plot">https://github.com/actinomycetes/thistle-plot</a> (MIT licence).</p>
-<p>TP is a <strong>beta (v0.20.1)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
+<p>TP is a <strong>beta (v0.21.0)</strong>. Its calculations are cross-checked against SciPy and statsmodels (see <em>Checking the calculations</em> in the Full Manual). This is not a formal validation, so important results should still be spot-checked against an established package before you rely on them in a publication.</p>
 <p><strong>Opening TP:</strong> use the hosted copy at <a href="https://actinomycetes.github.io/thistle-plot/">https://actinomycetes.github.io/thistle-plot/</a>, double-click a downloaded <code>index.html</code> to open it in Chrome, Edge, Firefox or Safari (Mac or iPad), or open the lab's hosted copy (for example the one embedded on the Confluence wiki). TP needs an internet connection the first time it loads because it fetches three helper libraries (Chart.js, jStat, PapaParse) from cdnjs.cloudflare.com.</p>
 <h2>Quick Manual</h2>
 <p>From raw numbers to a journal-style figure in ten steps, about five minutes.</p>
@@ -5136,6 +5180,7 @@ window.addEventListener('load',checkLibs);
 <p>Choose a plot type, set its options, then click <strong>📈 Plot</strong>. The figure opens in its own tab, and you can keep as many open as you like.</p>
 <p><strong>Adjusting a figure.</strong> While a figure is open and the menu shows the same plot type, the button reads <strong>↻ Update plot</strong>: change the options (or the data) and click it to redraw that figure in place instead of opening another tab. <strong>↻ Update</strong> in the figure's own top bar does the same. To keep the current figure and draw another one, click <strong>+ New</strong> next to the button or <strong>+</strong> at the end of the plot tabs. Choosing a different plot type always makes a new tab. Clicking a plot tab puts its settings back into the options panel.</p>
 <p><strong>Trying other plot types.</strong> Your settings are kept per plot type for each result. Change a bar chart's settings, switch the menu to a heatmap, then back to Bar + SD + Dots: the same bar chart comes back with your settings (and ↻ Update redraws it). Settings you changed but did not draw yet are kept too. A new test run starts its figures from the defaults again.</p>
+<p><strong>Colour scheme.</strong> Under Visualisation, choose Default, Bright or Vibrant, or edit the swatches. Use Update plot or New to apply the colours. App-style exports use the figure’s colours. Publication style uses greyscale.</p>
 <p><strong>Live update.</strong> Tick <em>Live update</em> under the plot options to redraw the open figure as you change them, with no button press. For very large tables (over 2,000 rows) heatmaps, PCA and volcano plots are not redrawn live because it would be slow; the ↻ Update button turns orange instead, and you click it when ready.</p>
 <p><strong>Linked figures.</strong> Updating a figure made by <em>Auto-plot</em> (or 🔗) keeps the test's stars, brackets and gene list as long as the data are unchanged. If you have edited the data since the test was run, the marks are removed, the figure is no longer linked, and a note says so: run the test again for an up-to-date figure. Figures you drew by hand never gain marks when updated.</p>
 <table>
@@ -5557,7 +5602,7 @@ window.addEventListener('load',checkLibs);
 </tr>
 </tbody>
 </table>
-<p>Known limitations of v0.20.1 (beta):</p>
+<p>Known limitations of v0.21.0 (beta):</p>
 <ul>
 <li>Two-Way ANOVA supports balanced designs only (equal n in every cell). Its Tukey post-hoc corrects within each level of the other factor, not across all simple effects (the result says which).</li>
 <li>Exponential and power regression are fitted as straight lines on the log scale (not by non-linear least squares).</li>
@@ -5597,6 +5642,11 @@ window.addEventListener('load',checkLibs);
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>0.21.0 (27 Nov 2026)</td>
+<td>Thistle Plot</td>
+<td>Choose a group colour scheme or edit individual colours in the Plot options. Each figure keeps its own colours for app-style export.</td>
+</tr>
 <tr>
 <td>0.20.1 (24 Nov 2026)</td>
 <td>Thistle Plot</td>
