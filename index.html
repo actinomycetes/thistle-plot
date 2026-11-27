@@ -2266,7 +2266,7 @@ function addPlotTab(title, renderFn){
   plotTabs.push(tab);
   lastPlotTabId=id;
   renderPlotStrip();
-  activatePlotTab(id);
+  activatePlotTab(id,true);
   // After tab is in DOM, run renderFn
   setTimeout(()=>{
     const page=document.getElementById(id);
@@ -2488,13 +2488,13 @@ function renderStatStrip(){
   });
 }
 
-function activatePlotTab(id){
+function activatePlotTab(id,skipRestore=false){
   activePT=id;
   {const t=plotTabs.find(x=>x.id===id);if(t&&t.ctx!==undefined)_plotCtx=t.ctx;}
   renderPlotStrip(); // rebuilds strip with correct active class
   document.querySelectorAll('#plot-content .tab-page').forEach(p=>{p.classList.toggle('active',p.id===id)});
   const tab=plotTabs.find(t=>t.id===id);
-  if(tab?.optState)restoreOptState(tab.optState);
+  if(!skipRestore&&tab?.optState)restoreOptState(tab.optState);
 }
 
 function activateStatTab(id){
