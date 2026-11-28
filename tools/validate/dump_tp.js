@@ -43,9 +43,51 @@ const cases = require('./cases.json');
       const cells = [C.a.slice(0, 4), C.b.slice(0, 4), C.c.slice(0, 4), C.pre.slice(0, 4), C.post.slice(0, 4), C.skew.slice(0, 4)];
       const tw = twowayANOVA(cells, 2, 3); R.anova2 = pick(tw, ['FA', 'FB', 'FAB', 'pA', 'pB', 'pAB']);
       const dx = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100], dy = [2.1, 2.9, 5.2, 11.8, 27.5, 52.1, 74.9, 86.2, 90.3];
-      const f5 = fit5PL(dx, dy); R.fit5 = { sse: dx.reduce((s, x, i) => s + (f5.predict(x) - dy[i]) ** 2, 0), ec50: f5.ec50 };
-      const f4 = fit4PL(dx, dy); R.fit4 = { sse: dx.reduce((s, x, i) => s + (f4.predict(x) - dy[i]) ** 2, 0), ec50: f4.params.ec50 };
+      const f5 = fit5PL(dx, dy); R.fit5 = { sse: dx.reduce((s, x, i) => s + (f5.predict(x) - dy[i]) ** 2, 0), ec50: f5.ec50, bot: f5.params[0], top: f5.params[1] };
+      const f4 = fit4PL(dx, dy); R.fit4 = { sse: dx.reduce((s, x, i) => s + (f4.predict(x) - dy[i]) ** 2, 0), ec50: f4.params.ec50, bot: f4.params.bot, top: f4.params.top };
       R.lillie = pick(lillieforsTest(C.skew), ['D', 'p']);
+      // Additional validation cases: scale-invariant PCA, Shapiro Royston boundaries & W=1, 3-group log-rank, extreme tails
+      const pcaX = [[1, 2, 3, 4], [2, 4, 5, 8], [5, 1, 2, 1], [6, 3, 4, 2]];
+      const pca1 = pcaCompute(pcaX), pcaSmall = pcaCompute(pcaX.map(r => r.map(v => v * 1e-6)));
+      R.pca = { var1: pca1.varExplained, varSmall: pcaSmall.varExplained };
+      const sw4m = Array.from({ length: 4 }, (_, i) => jStat.normal.inv((i + 1 - 0.375) / 4.25, 0, 1));
+      const sw4mm = sw4m.reduce((s, v) => s + v * v, 0), sw4u = 0.5;
+      const sw4an = -sw4m[0] / Math.sqrt(sw4mm) + [0, 0.221157, -0.147981, -2.071190, 4.434685, -2.706056].reduce((s, c, k) => s + c * Math.pow(sw4u, k), 0);
+      const sw4eps = Math.sqrt((sw4mm - 2 * sw4m[0] ** 2) / (1 - 2 * sw4an ** 2));
+      const sw4Exact = [-sw4an, sw4m[1] / sw4eps, sw4m[2] / sw4eps, sw4an];
+      R.shapiro_extra = [
+        [1.1, 2.0, 2.7, 4.9], // n = 4
+        [0.8, 1.5, 2.1, 3.0, 5.4], // n = 5
+        [1.1, 1.4, 1.9, 2.0, 2.3, 2.6, 2.9, 3.1, 3.5, 4.0, 5.2], // n = 11
+        [1.1, 1.4, 1.9, 2.0, 2.3, 2.6, 2.9, 3.1, 3.5, 4.0, 5.2, 6.1], // n = 12
+        sw4Exact // W = 1
+      ].map(v => pick(shapiroWilk(v), ['W', 'p']));
+      const lr3Subj = [
+        ...C.km_t[0].map((t, i) => ({ t, e: C.km_e[0][i], g: 0 })),
+        ...C.km_t[1].map((t, i) => ({ t, e: C.km_e[1][i], g: 1 })),
+        ...[2, 5, 7, 11, 13, 17, 21, 26].map((t, i) => ({ t, e: i % 3 === 0 ? 0 : 1, g: 2 }))
+      ];
+      R.logrank3 = pick(logRankK(lr3Subj, 3), ['chi', 'df', 'p']);
+      const lr3Cens = [...subj, { t: 1, e: 0, g: 2 }, { t: 2, e: 0, g: 2 }];
+      R.logrank3_cens = pick(logRankK(lr3Cens, 3), ['chi', 'df', 'p']);
+      R.chi2_tail = {
+        c75_1: chi2P(75, 1), c100_1: chi2P(100, 1), c50_5: chi2P(50, 5), c200_50: chi2P(200, 50),
+        tbl: pick(chiSquare([[80, 5], [5, 80]]), ['chi', 'df', 'p'])
+      };
+      R.dunnett_tail = {
+        t15_df30: dunnettP([15], 10, [10, 10], 30)[0],
+        t8_df1500: dunnettP([8], 500, [500, 500], 1500)[0],
+        t4_df2001: dunnettP([4], 700, [700, 700], 2001)[0],
+        m1_df2_t2: dunnettP([2], 2, [2], 2)[0],
+        m1_df2_t20: dunnettP([20], 2, [2], 2)[0],
+        m1_df2_t200: dunnettP([200], 2, [2], 2)[0],
+        m2_df2_t2: dunnettP([2], 2, [2, 2], 2)[0],
+        m2_df2_t20: dunnettP([20], 2, [2, 2], 2)[0],
+        m2_df2_t200: dunnettP([200], 2, [2, 2], 2)[0],
+        m3_df3_t50: dunnettP([50], 2, [2, 2, 2], 3)[0],
+        imbal_2_2000: dunnettP([1.92, 1.92], 2, [2000, 2000], 3999)[0],
+        mixed_2_2000: dunnettP([1.92, 1.92], 2, [2, 2000], 2001)[0]
+      };
       return R;
     }, cases);
     console.log(JSON.stringify(out));

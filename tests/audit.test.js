@@ -279,3 +279,188 @@ test('rank product result describes the p-value bounds without calling them narr
   const ui = await run(tbl([col('A', Array.from({ length: 20 }, () => [0, 0, 0])), col('B', Array.from({ length: 20 }, (_, i) => [i, i + 1, i + 2]))]), 'rankprod');
   assert.ok(!/narrow/i.test(ui.text), 'no "narrow" claim'); assert.match(ui.text, /upper bound/);
 });
+
+test('PCA and Jacobi eigensolver are scale-invariant at 1e-6 magnitude', async () => {
+  const r = await app.page.evaluate(() => {
+    const X = [[1, 2, 3, 4], [2, 4, 5, 8], [5, 1, 2, 1], [6, 3, 4, 2]];
+    const a = pcaCompute(X), b = pcaCompute(X.map(row => row.map(v => v * 1e-6)));
+    return { va: a.varExplained, vb: b.varExplained, sa: a.scores[0], sb: b.scores[0].map(v => v / 1e-6) };
+  });
+  assert.strictEqual(r.va.length, 3);
+  assert.strictEqual(r.vb.length, 3);
+  r.va.forEach((v, i) => close(r.vb[i], v, 1e-6));
+  r.sa.forEach((v, i) => close(Math.abs(r.sb[i]), Math.abs(v), 1e-6));
+});
+
+test('Shapiro–Wilk returns p = 1 when W = 1 and stays shift-invariant at +1e15', async () => {
+  const r = await app.page.evaluate(() => {
+    const m = Array.from({ length: 5 }, (_, i) => jStat.normal.inv((i + 1 - 0.375) / 5.25, 0, 1));
+    const mm = m.reduce((s, v) => s + v * v, 0), u = 1 / Math.sqrt(5);
+    const an = -m[0] / Math.sqrt(mm) + [0, 0.221157, -0.147981, -2.071190, 4.434685, -2.706056].reduce((s, c, k) => s + c * Math.pow(u, k), 0);
+    const eps = Math.sqrt((mm - 2 * m[0] ** 2) / (1 - 2 * an ** 2));
+    const exact = shapiroWilk([-an, m[1] / eps, m[2] / eps, m[3] / eps, an]);
+    const base = [1, 2, 3, 4, 5, 10, 20, 50];
+    const s0 = shapiroWilk(base), s1 = shapiroWilk(base.map(v => v + 1e14));
+    return { exact, s0, s1 };
+  });
+  assert.strictEqual(r.exact.W, 1);
+  assert.strictEqual(r.exact.p, 1);
+  close(r.s1.W, r.s0.W, 1e-9);
+  close(r.s1.p, r.s0.p, 1e-9);
+});
+
+test('per-row paired Ratio t-test refuses normalization just like standard mode', async () => {
+  const G = tbl([col('A', [[4, 8, 16]]), col('B', [[2, 2, 4]])]);
+  const bad = await run(G, 'ttest_rel', { 'opt-ptype': 'ratio', 'opt-norm': 'log2', 'opt-perrow': true });
+  assert.ok(isError(bad), bad.text);
+  assert.match(bad.text, /Difference/);
+});
+
+test('4PL and 5PL keep Bottom <= Top and 4PL refuses under-determined doses', async () => {
+  const r = await app.page.evaluate(() => {
+    const dx = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100], dy = [2.1, 2.9, 5.2, 11.8, 27.5, 52.1, 74.9, 86.2, 90.3];
+    const nx = [1e-9, 3e-9, 1e-8, 3e-8, 1e-7, 3e-7, 1e-6, 3e-6, 1e-5], ny = nx.map(x => 5 + 95 / (1 + Math.pow(1.5e-7 / x, 1.3)));
+    const f4 = fit4PL(dx, dy), f5 = fit5PL(dx, dy), n4 = fit4PL(nx, ny), n5 = fit5PL(nx, ny);
+    const few = fit4PL([1, 1, 1, 10, 10, 10], [5, 6, 7, 90, 91, 92]);
+    const zeros = fit4PL([0, 0, 0, 0, 0], [1, 2, 3, 4, 5]);
+    return { f4: f4.params, f5: { bot: f5.params[0], top: f5.params[1] }, n4: n4.params, n5: { bot: n5.params[0], top: n5.params[1] }, few: few.error, zeros: zeros.error };
+  });
+  assert.ok(r.f4.bot < r.f4.top, `4PL bot=${r.f4.bot} top=${r.f4.top}`);
+  assert.ok(r.f5.bot < r.f5.top, `5PL bot=${r.f5.bot} top=${r.f5.top}`);
+  close(r.f4.bot, 1.8934, 1e-3); close(r.f4.top, 92.4575, 1e-3);
+  close(r.n4.bot, 5, 1e-3); close(r.n4.top, 100, 1e-3);
+  close(r.n5.bot, 5, 1e-3); close(r.n5.top, 100, 1e-3);
+  assert.ok(r.few && r.zeros, 'under-determined 4PL refused');
+});
+
+test('Kruskal–Wallis omits empty groups with a note and refuses all-identical values', async () => {
+  const r = await app.page.evaluate(() => ({
+    empty: kruskalWallis([[1, 2, 3], [4, 5, 6], []]),
+    ident: kruskalWallis([[5, 5, 5], [5, 5, 5], [5, 5, 5]])
+  }));
+  assert.ok(r.empty.error, 'direct empty group guarded');
+  assert.ok(r.ident.error, 'all-identical guarded');
+  const ui = await run(tbl([col('A', [[1], [2], [3]]), col('B', [[''], [''], ['']]), col('C', [[4], [5], [6]])]), 'kruskal');
+  assert.ok(!isError(ui), ui.text);
+  assert.match(ui.text, /Left out: B/i);
+  assert.match(ui.text, /A.*C/);
+  const uiId = await run(tbl([col('A', [[5], [5], [5]]), col('B', [[5], [5], [5]])]), 'kruskal');
+  assert.ok(isError(uiId), uiId.text);
+});
+
+test('chi2P and dunnettP preserve extreme tail precision without cancellation', async () => {
+  const r = await app.page.evaluate(() => ({
+    c75: chi2P(75, 1), c100: chi2P(100, 1), c50_5: chi2P(50, 5), c200_50: chi2P(200, 50),
+    d30: dunnettP([15], 10, [10, 10], 30)[0],
+    d1500: dunnettP([8], 500, [500, 500], 1500)[0],
+    d2001: dunnettP([4], 700, [700, 700], 2001)[0],
+    // Single comparison, n=2 per group (df=2): exact two-sided tail is 2 / (sqrt(t^2+2) * (sqrt(t^2+2)+|t|))
+    m1_df2: [2, 20, 200].map(t => ({ t, p: dunnettP([t], 2, [2], 2)[0], q: _mvtTailProb(t, [Math.SQRT1_2], 2) })),
+    // Multiple comparisons at low df and large t: compare against high-precision reference, marginal/Bonferroni bounds, and tighter tolerance
+    m2_df2: [2, 20, 200].map(t => ({
+      t,
+      p: dunnettP([t], 2, [2, 2], 2)[0],
+      tight: _mvtTailProb(t, [Math.SQRT1_2, Math.SQRT1_2], 2, 1e-11),
+      marg: tP2(t, 2)
+    })),
+    m3_df3_50: {
+      p: dunnettP([50], 2, [2, 2, 2], 3)[0],
+      tight: _mvtTailProb(50, [Math.SQRT1_2, Math.SQRT1_2, Math.SQRT1_2], 3, 1e-11),
+      marg: tP2(50, 3)
+    },
+    // Imbalanced high-correlation design (small shared control, large treatments): correlation rho = 2000/2002
+    imbal: {
+      p: dunnettP([1.92, 1.92], 2, [2000, 2000], 3999)[0],
+      marg: tP2(1.92, 3999),
+      mixed: dunnettP([1.92, 1.92], 2, [2, 2000], 2001)[0],
+      mixedMarg: tP2(1.92, 2001)
+    }
+  }));
+  close(r.c75, 4.707140590140393e-18, 1e-9);
+  close(r.c100, 1.523970604832100e-23, 1e-9);
+  close(r.c50_5, 1.385797336700959e-9, 1e-9);
+  close(r.c200_50, 7.857610724654744e-20, 1e-9);
+  close(r.d30, 3.49810744e-15, 1e-4);
+  close(r.d1500, 4.93436145e-15, 1e-4);
+  close(r.d2001, 1.30250665e-4, 1e-4);
+  for (const row of r.m1_df2) {
+    const rad = Math.sqrt(row.t * row.t + 2);
+    const exact = 2 / (rad * (rad + Math.abs(row.t)));
+    close(row.p, exact, 1e-9, `dunnettP m=1 df=2 t=${row.t}`);
+    close(row.q, exact, 1e-7, `_mvtTailProb m=1 df=2 t=${row.t}`);
+  }
+  const refM2 = { 2: 2.744519558924e-1, 20: 3.862126673941e-3, 200: 3.878159579591e-5 };
+  for (const row of r.m2_df2) {
+    close(row.p, refM2[row.t], 1e-6, `dunnettP m=2 df=2 t=${row.t}`);
+    close(row.p, row.tight, 1e-7, `dunnettP m=2 df=2 t=${row.t} convergence`);
+    assert.ok(row.p >= row.marg && row.p <= Math.min(1, 2 * row.marg), `m=2 df=2 t=${row.t} within [marginal, Bonferroni]`);
+  }
+  close(r.m3_df3_50.p, 3.811396525400e-5, 1e-6, 'dunnettP m=3 df=3 t=50');
+  close(r.m3_df3_50.p, r.m3_df3_50.tight, 1e-7, 'dunnettP m=3 df=3 t=50 convergence');
+  assert.ok(r.m3_df3_50.p >= r.m3_df3_50.marg && r.m3_df3_50.p <= Math.min(1, 3 * r.m3_df3_50.marg), 'm=3 df=3 t=50 within [marginal, Bonferroni]');
+  close(r.imbal.p, 0.05718282225, 1e-5, 'dunnettP imbalanced small control [2000,2000] df=3999 t=1.92');
+  assert.ok(r.imbal.p > r.imbal.marg && r.imbal.p <= 2 * r.imbal.marg, 'imbalanced Dunnett strictly above single-comparison lower bound and <= Bonferroni');
+  assert.ok(r.imbal.mixed > r.imbal.mixedMarg && r.imbal.mixed <= 2 * r.imbal.mixedMarg, 'mixed [2,2000] Dunnett within [marginal, Bonferroni]');
+});
+
+test('Kaplan–Meier validates times/events, handles early-censored groups in logRankK, and guards 0-event HR', async () => {
+  const negT = await run(tbl([col('Time', [[-5], [10], [20]]), col('A', [[1], [1], [0]])]), 'km');
+  assert.ok(isError(negT), negT.text); assert.match(negT.text, /negative/i);
+  const badE = await run(tbl([col('Time', [[5], [10], [20]]), col('A', [[2], [1], [0]])]), 'km');
+  assert.ok(isError(badE), badE.text); assert.match(badE.text, /1 \(event\) or 0/);
+  const lr = await app.page.evaluate(() => {
+    const s2 = [{ t: 5, e: 1, g: 0 }, { t: 10, e: 1, g: 0 }, { t: 15, e: 0, g: 0 }, { t: 3, e: 1, g: 1 }, { t: 6, e: 1, g: 1 }, { t: 9, e: 1, g: 1 }];
+    const s3 = [...s2, { t: 1, e: 0, g: 2 }, { t: 2, e: 0, g: 2 }];
+    return { r2: logRankK(s2, 2), r3: logRankK(s3, 3) };
+  });
+  assert.strictEqual(lr.r3.df, 1);
+  close(lr.r3.chi, lr.r2.chi, 1e-9);
+  close(lr.r3.p, lr.r2.p, 1e-9);
+  const zeroEv = await run(tbl([col('Time', [[5], [10], [15], [20]]), col('A', [[1], [1], [''], ['']]), col('B', [[''], [''], [0], [0]])]), 'km');
+  assert.ok(!isError(zeroEv), zeroEv.text);
+  assert.match(zeroEv.text, /not estimable/i);
+});
+
+test('two-way ANOVA requires nA >= 2 and nB >= 2; Pearson r at n = 3 leaves 95% CI undefined', async () => {
+  const r = await app.page.evaluate(() => ({
+    tw: twowayANOVA([[1, 2, 3], [4, 5, 6]], 2, 1),
+    pr3: pearsonR([1, 2, 3], [1, 3, 2]),
+    prPerf: pearsonR([1, 2, 3, 4], [2, 4, 6, 8])
+  }));
+  assert.ok(r.tw.error, '1-level factor refused');
+  assert.ok(Number.isNaN(r.pr3.ci95lo) && Number.isNaN(r.pr3.ci95hi), 'n=3 CI is NaN');
+  assert.ok(Number.isNaN(r.prPerf.ci95lo) && Number.isNaN(r.prPerf.ci95hi), '|r|=1 CI is NaN');
+  const ui = await run(tbl([col('X', [[1], [2], [3]]), col('Y', [[1], [3], [2]])]), 'pearson');
+  assert.match(ui.text, /\[—, —\]/);
+});
+
+test('regress, mtc, and volcano handle constant X, centred poly params, negative R2, NaN p-values, and top up-regulated sorting', async () => {
+  const lin = await app.page.evaluate(() => ({
+    lin: fitLinear([5, 5, 5], [1, 2, 3]),
+    log: fitLogarithmic([5, 5, 5], [1, 2, 3]),
+    exp: fitExponential([5, 5, 5], [1, 2, 3]),
+    pow: fitPower([5, 5, 5], [1, 2, 3])
+  }));
+  Object.entries(lin).forEach(([k, v]) => assert.ok(v.error, k + ' constant X refused'));
+  // Centred polynomial parameter table matches centred equation (no 1e48 values)
+  const polyUI = await run(tbl([col('X', Array.from({ length: 6 }, (_, i) => [1e12 + i])), col('Y', [[3], [4], [19], [84], [259], [628]])]), 'regress', { 'opt-rmodel': 'poly4' });
+  assert.match(polyUI.text, /c1 \(x − 1000000000002\.5\)/);
+  assert.ok(!/e\+4\d/.test(polyUI.text), 'no cancelled 1e48 parameter');
+  // Negative R^2 is not clamped to 0 on exponential fit to strongly non-exponential data
+  const expUI = await run(tbl([col('X', [[0], [1], [2], [3], [4]]), col('Y', [[100], [1], [100], [1], [100]])]), 'regress', { 'opt-rmodel': 'exp' });
+  assert.match(expUI.text, /R² = -/);
+  // MTC counts only valid p-values and puts invalid NaN rows at the bottom when > 200 rows
+  const pRows = Array.from({ length: 205 }, (_, i) => [i < 5 ? 1.5 : (i - 4) / 250]);
+  const mtcUI = await run(tbl([col('P', pRows)]), 'mtc');
+  assert.match(mtcUI.text, /200 tests/);
+  const firstRowMatch = mtcUI.html.match(/<tbody>\s*<tr><td>([^<]+)<\/td>/);
+  assert.strictEqual(firstRowMatch && firstRowMatch[1], 'Row 6', 'smallest valid p is first, not NaN');
+  // Volcano Top Up-regulated sorts by ascending p-value
+  const fc = Array.from({ length: 15 }, (_, i) => [i === 14 ? 5 : 2]);
+  const pv = Array.from({ length: 15 }, (_, i) => [i === 14 ? 1e-8 : 0.04]);
+  const vNames = Array.from({ length: 15 }, (_, i) => 'Gene' + (i + 1));
+  const volUI = await run(tbl([col('FC', fc), col('P', pv)], vNames), 'volcano');
+  const topGene = volUI.html.match(/Top Up-regulated<\/h4><table[^>]*><thead>.*?<\/thead><tbody>\s*<tr><td>([^<]+)<\/td>/);
+  assert.strictEqual(topGene && topGene[1], 'Gene15', 'most significant up-regulated gene is first');
+});
+
