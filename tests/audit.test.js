@@ -367,6 +367,13 @@ test('chi2P and dunnettP preserve extreme tail precision without cancellation', 
       p: dunnettP([50], 2, [2, 2, 2], 3)[0],
       tight: _mvtTailProb(50, [Math.SQRT1_2, Math.SQRT1_2, Math.SQRT1_2], 3, 1e-11),
       marg: tP2(50, 3)
+    },
+    // Imbalanced high-correlation design (small shared control, large treatments): correlation rho = 2000/2002
+    imbal: {
+      p: dunnettP([1.92, 1.92], 2, [2000, 2000], 3999)[0],
+      marg: tP2(1.92, 3999),
+      mixed: dunnettP([1.92, 1.92], 2, [2, 2000], 2001)[0],
+      mixedMarg: tP2(1.92, 2001)
     }
   }));
   close(r.c75, 4.707140590140393e-18, 1e-9);
@@ -391,6 +398,9 @@ test('chi2P and dunnettP preserve extreme tail precision without cancellation', 
   close(r.m3_df3_50.p, 3.811396525400e-5, 1e-6, 'dunnettP m=3 df=3 t=50');
   close(r.m3_df3_50.p, r.m3_df3_50.tight, 1e-7, 'dunnettP m=3 df=3 t=50 convergence');
   assert.ok(r.m3_df3_50.p >= r.m3_df3_50.marg && r.m3_df3_50.p <= Math.min(1, 3 * r.m3_df3_50.marg), 'm=3 df=3 t=50 within [marginal, Bonferroni]');
+  close(r.imbal.p, 0.05718282225, 1e-5, 'dunnettP imbalanced small control [2000,2000] df=3999 t=1.92');
+  assert.ok(r.imbal.p > r.imbal.marg && r.imbal.p <= 2 * r.imbal.marg, 'imbalanced Dunnett strictly above single-comparison lower bound and <= Bonferroni');
+  assert.ok(r.imbal.mixed > r.imbal.mixedMarg && r.imbal.mixed <= 2 * r.imbal.mixedMarg, 'mixed [2,2000] Dunnett within [marginal, Bonferroni]');
 });
 
 test('Kaplan–Meier validates times/events, handles early-censored groups in logRankK, and guards 0-event HR', async () => {

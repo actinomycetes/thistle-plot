@@ -247,7 +247,7 @@ def dunnett_tail_ref(c_val, n_ctrl, n_other, df_):
                 tail += qi * (1.0 - tail)
             return stats.norm.pdf(z) * tail
         z_hi = max(14.0, max(l * cs + 10.0 * q for l, q in zip(lam, sq)))
-        z_pts = sorted({l * cs for l in lam if 0 < l * cs < z_hi})
+        z_pts = sorted({p for l in lam for p in (l * cs, cs / l if l > 1e-9 else 0.0) if 0 < p < z_hi})
         return 2.0 * integrate.quad(f, 0, z_hi, points=z_pts, epsabs=0, epsrel=1e-11, limit=500)[0]
     lnC = (df_ / 2) * math.log(df_ / 2) - math.lgamma(df_ / 2) - df_ / 2 + math.log(2)
     s_star = math.sqrt(max(0.0, df_ - 1) / (df_ + c_val * c_val))
@@ -273,6 +273,8 @@ for t_val, key in [(2.0, 'm1_df2_t2'), (20.0, 'm1_df2_t20'), (200.0, 'm1_df2_t20
 for t_val, key in [(2.0, 'm2_df2_t2'), (20.0, 'm2_df2_t20'), (200.0, 'm2_df2_t200')]:
     check(f'Dunnett m=2 df=2 t={t_val:g}', TP['dunnett_tail'][key], dunnett_tail_ref(t_val, 2, [2, 2], 2), rel=1e-5, abs_=0)
 check('Dunnett m=3 df=3 t=50', TP['dunnett_tail']['m3_df3_t50'], dunnett_tail_ref(50.0, 2, [2, 2, 2], 3), rel=1e-5, abs_=0)
+check('Dunnett imbalanced nCtrl=2 [2000,2000] df=3999 t=1.92', TP['dunnett_tail']['imbal_2_2000'], dunnett_tail_ref(1.92, 2, [2000, 2000], 3999), rel=1e-5, abs_=0)
+check('Dunnett mixed nCtrl=2 [2,2000] df=2001 t=1.92', TP['dunnett_tail']['mixed_2_2000'], dunnett_tail_ref(1.92, 2, [2, 2000], 2001), rel=1e-5, abs_=0)
 
 print(f'\n{bad} to check' if bad else '\nAll agree.')
 sys.exit(1 if bad else 0)

@@ -84,7 +84,9 @@ const cases = require('./cases.json');
         m2_df2_t2: dunnettP([2], 2, [2, 2], 2)[0],
         m2_df2_t20: dunnettP([20], 2, [2, 2], 2)[0],
         m2_df2_t200: dunnettP([200], 2, [2, 2], 2)[0],
-        m3_df3_t50: dunnettP([50], 2, [2, 2, 2], 3)[0]
+        m3_df3_t50: dunnettP([50], 2, [2, 2, 2], 3)[0],
+        imbal_2_2000: dunnettP([1.92, 1.92], 2, [2000, 2000], 3999)[0],
+        mixed_2_2000: dunnettP([1.92, 1.92], 2, [2, 2000], 2001)[0]
       };
       return R;
     }, cases);

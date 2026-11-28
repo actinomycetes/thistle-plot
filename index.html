@@ -1199,27 +1199,41 @@ function _mvtTailProb(c,lam,df,relTol=1e-8){
   if(!(c>0))return 1;
   const invSqrt2Pi=1/Math.sqrt(2*Math.PI);
   const sq=lam.map(l=>Math.sqrt(Math.max(1e-12,1-l*l)));
-  const minQ=Math.min(...sq);
-  const innerN=Math.min(120,Math.max(40,Math.ceil(16/(0.3*minQ))*2));
-  // Integrand is even in z; localize around each Gaussian peak lam_i*cs ± 8.5*sqrt(1-lam_i^2) and accumulate 1 - prod(1 - q_i) without cancellation.
+  // Integrand is even in z. For z >= zSat = min_i((cs + 9*sq_i)/lam_i), at least one conditional exceedance
+  // probability reaches 1 - Phi_bar(9) (~1 - 1e-19), so the tail on [zSat, inf) equals 2*_normTail(zSat) exactly.
   const inner=cs=>{
     if(cs<=0)return 1;
     if(cs>38)return 0;
-    let zlo=Infinity,zhi=0;
+    let zlo=Infinity,zSat=Infinity;
     for(let i=0;i<lam.length;i++){
-      const mu=lam[i]*cs,span=8.5*sq[i];
-      if(mu-span<zlo)zlo=mu-span;
-      if(mu+span>zhi)zhi=mu+span;
+      const loI=lam[i]*cs-9*sq[i];
+      if(loI<zlo)zlo=loI;
+      if(lam[i]>1e-9){const satI=(cs+9*sq[i])/lam[i];if(satI<zSat)zSat=satI;}
     }
-    zlo=Math.max(0,zlo);zhi=Math.max(zlo+1,zhi);
-    return 2*_simpson(z=>{
+    zlo=Math.max(0,zlo);
+    const zhi=Math.min(zSat,Math.sqrt(cs*cs+80));
+    const tailAnalytic=zSat<38?2*_normTail(zSat):0;
+    if(!(zhi>zlo))return tailAnalytic;
+    // Subdivide at Gaussian peak and saturation transitions so sharp high-correlation steps (small sq_i) are resolved.
+    const zRaw=[zlo,zhi];
+    for(let i=0;i<lam.length;i++){
+      const m1=lam[i]*cs,m2=lam[i]>1e-9?cs/lam[i]:zhi;
+      for(const p of [m1-4*sq[i],m1,m1+4*sq[i],m2-4*sq[i],m2,m2+4*sq[i]])if(p>zlo&&p<zhi)zRaw.push(p);
+    }
+    zRaw.sort((a,b)=>a-b);
+    const zPts=[zRaw[0]];
+    for(let i=1;i<zRaw.length;i++)if(zRaw[i]-zPts[zPts.length-1]>1e-10*Math.max(1,zhi))zPts.push(zRaw[i]);
+    const fz=z=>{
       let tail=0;
       for(let i=0;i<lam.length;i++){
         const qi=Math.min(1,_normTail((cs+lam[i]*z)/sq[i])+_normTail((cs-lam[i]*z)/sq[i]));
         tail+=qi*(1-tail);
       }
       return invSqrt2Pi*Math.exp(-0.5*z*z)*tail;
-    },zlo,zhi,innerN);
+    };
+    let acc=0;
+    for(let i=0;i<zPts.length-1;i++)acc+=_simpson(fz,zPts[i],zPts[i+1],24);
+    return Math.min(1,2*acc+tailAnalytic);
   };
   if(!isFinite(df)||df>1e6)return Math.min(1,Math.max(0,inner(c)));
   const lnC=df>1e4?0.5*Math.log(df/(4*Math.PI))-1/(6*df)+Math.log(2):(df/2)*Math.log(df/2)-jStat.gammaln(df/2)-df/2+Math.log(2);
