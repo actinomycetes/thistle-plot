@@ -353,7 +353,21 @@ test('chi2P and dunnettP preserve extreme tail precision without cancellation', 
     c75: chi2P(75, 1), c100: chi2P(100, 1), c50_5: chi2P(50, 5), c200_50: chi2P(200, 50),
     d30: dunnettP([15], 10, [10, 10], 30)[0],
     d1500: dunnettP([8], 500, [500, 500], 1500)[0],
-    d2001: dunnettP([4], 700, [700, 700], 2001)[0]
+    d2001: dunnettP([4], 700, [700, 700], 2001)[0],
+    // Single comparison, n=2 per group (df=2): exact two-sided tail is 2 / (sqrt(t^2+2) * (sqrt(t^2+2)+|t|))
+    m1_df2: [2, 20, 200].map(t => ({ t, p: dunnettP([t], 2, [2], 2)[0], q: _mvtTailProb(t, [Math.SQRT1_2], 2) })),
+    // Multiple comparisons at low df and large t: compare against high-precision reference, marginal/Bonferroni bounds, and tighter tolerance
+    m2_df2: [2, 20, 200].map(t => ({
+      t,
+      p: dunnettP([t], 2, [2, 2], 2)[0],
+      tight: _mvtTailProb(t, [Math.SQRT1_2, Math.SQRT1_2], 2, 1e-11),
+      marg: tP2(t, 2)
+    })),
+    m3_df3_50: {
+      p: dunnettP([50], 2, [2, 2, 2], 3)[0],
+      tight: _mvtTailProb(50, [Math.SQRT1_2, Math.SQRT1_2, Math.SQRT1_2], 3, 1e-11),
+      marg: tP2(50, 3)
+    }
   }));
   close(r.c75, 4.707140590140393e-18, 1e-9);
   close(r.c100, 1.523970604832100e-23, 1e-9);
@@ -362,6 +376,21 @@ test('chi2P and dunnettP preserve extreme tail precision without cancellation', 
   close(r.d30, 3.49810744e-15, 1e-4);
   close(r.d1500, 4.93436145e-15, 1e-4);
   close(r.d2001, 1.30250665e-4, 1e-4);
+  for (const row of r.m1_df2) {
+    const rad = Math.sqrt(row.t * row.t + 2);
+    const exact = 2 / (rad * (rad + Math.abs(row.t)));
+    close(row.p, exact, 1e-9, `dunnettP m=1 df=2 t=${row.t}`);
+    close(row.q, exact, 1e-7, `_mvtTailProb m=1 df=2 t=${row.t}`);
+  }
+  const refM2 = { 2: 2.744519558924e-1, 20: 3.862126673941e-3, 200: 3.878159579591e-5 };
+  for (const row of r.m2_df2) {
+    close(row.p, refM2[row.t], 1e-6, `dunnettP m=2 df=2 t=${row.t}`);
+    close(row.p, row.tight, 1e-7, `dunnettP m=2 df=2 t=${row.t} convergence`);
+    assert.ok(row.p >= row.marg && row.p <= Math.min(1, 2 * row.marg), `m=2 df=2 t=${row.t} within [marginal, Bonferroni]`);
+  }
+  close(r.m3_df3_50.p, 3.811396525400e-5, 1e-6, 'dunnettP m=3 df=3 t=50');
+  close(r.m3_df3_50.p, r.m3_df3_50.tight, 1e-7, 'dunnettP m=3 df=3 t=50 convergence');
+  assert.ok(r.m3_df3_50.p >= r.m3_df3_50.marg && r.m3_df3_50.p <= Math.min(1, 3 * r.m3_df3_50.marg), 'm=3 df=3 t=50 within [marginal, Bonferroni]');
 });
 
 test('Kaplan–Meier validates times/events, handles early-censored groups in logRankK, and guards 0-event HR', async () => {

@@ -77,7 +77,14 @@ const cases = require('./cases.json');
       R.dunnett_tail = {
         t15_df30: dunnettP([15], 10, [10, 10], 30)[0],
         t8_df1500: dunnettP([8], 500, [500, 500], 1500)[0],
-        t4_df2001: dunnettP([4], 700, [700, 700], 2001)[0]
+        t4_df2001: dunnettP([4], 700, [700, 700], 2001)[0],
+        m1_df2_t2: dunnettP([2], 2, [2], 2)[0],
+        m1_df2_t20: dunnettP([20], 2, [2], 2)[0],
+        m1_df2_t200: dunnettP([200], 2, [2], 2)[0],
+        m2_df2_t2: dunnettP([2], 2, [2, 2], 2)[0],
+        m2_df2_t20: dunnettP([20], 2, [2, 2], 2)[0],
+        m2_df2_t200: dunnettP([200], 2, [2, 2], 2)[0],
+        m3_df3_t50: dunnettP([50], 2, [2, 2, 2], 3)[0]
       };
       return R;
     }, cases);

@@ -236,22 +236,43 @@ def dunnett_tail_ref(c_val, n_ctrl, n_other, df_):
     lam = [math.sqrt(n / (n + n_ctrl)) for n in n_other]
     sq = [math.sqrt(1.0 - l * l) for l in lam]
     def inner(cs):
+        if cs <= 0:
+            return 1.0
+        if cs > 38:
+            return 0.0
         def f(z):
             tail = 0.0
             for l, q in zip(lam, sq):
                 qi = min(1.0, float(stats.norm.sf((cs + l * z) / q) + stats.norm.sf((cs - l * z) / q)))
                 tail += qi * (1.0 - tail)
             return stats.norm.pdf(z) * tail
-        return 2.0 * integrate.quad(f, 0, 14, epsabs=0, epsrel=1e-11, limit=500)[0]
+        z_hi = max(14.0, max(l * cs + 10.0 * q for l, q in zip(lam, sq)))
+        z_pts = sorted({l * cs for l in lam if 0 < l * cs < z_hi})
+        return 2.0 * integrate.quad(f, 0, z_hi, points=z_pts, epsabs=0, epsrel=1e-11, limit=500)[0]
     lnC = (df_ / 2) * math.log(df_ / 2) - math.lgamma(df_ / 2) - df_ / 2 + math.log(2)
-    s_star = math.sqrt(max(1e-6, df_ - 1) / (df_ + c_val * c_val))
-    sd_ = 1.0 / math.sqrt(2 * df_)
-    lo, hi = max(1e-8, min(s_star, 1.0) - 14 * sd_), max(s_star, 1.0) + 14 * sd_
-    return integrate.quad(lambda s: math.exp(lnC + (df_ - 1) * math.log(s) - 0.5 * df_ * (s * s - 1)) * inner(c_val * s), lo, hi, epsabs=0, epsrel=1e-9, limit=500)[0]
+    s_star = math.sqrt(max(0.0, df_ - 1) / (df_ + c_val * c_val))
+    sd_star = 1.0 / math.sqrt(2 * (df_ + c_val * c_val))
+    s_chi = math.sqrt(max(0.0, df_ - 1) / df_)
+    sd_chi = 1.0 / math.sqrt(2 * df_)
+    lo = max(0.0, min(s_star - 14 * sd_star, s_chi - 14 * sd_chi))
+    hi = min(38.0 / c_val, max(s_star + 14 * sd_star, s_chi + 14 * sd_chi, 10.0 if df_ <= 4 else 0.0))
+    pts = sorted({p for p in (s_star, 1.0 / c_val, 4.0 / c_val, s_chi) if lo < p < hi})
+    def fs(s):
+        if s <= 0:
+            return math.exp(lnC + 0.5 * df_) * inner(0.0) if df_ == 1 else 0.0
+        ld = lnC + (df_ - 1) * math.log(s) - 0.5 * df_ * (s * s - 1)
+        return math.exp(ld) * inner(c_val * s) if ld > -700 else 0.0
+    return integrate.quad(fs, lo, hi, points=pts, epsabs=0, epsrel=1e-9, limit=500)[0]
 
 check('Dunnett tail t=15, df=30', TP['dunnett_tail']['t15_df30'], dunnett_tail_ref(15.0, 10, [10, 10], 30), rel=1e-4, abs_=0)
 check('Dunnett tail t=8, df=1500', TP['dunnett_tail']['t8_df1500'], dunnett_tail_ref(8.0, 500, [500, 500], 1500), rel=1e-4, abs_=0)
 check('Dunnett tail t=4, df=2001', TP['dunnett_tail']['t4_df2001'], dunnett_tail_ref(4.0, 700, [700, 700], 2001), rel=1e-4, abs_=0)
+for t_val, key in [(2.0, 'm1_df2_t2'), (20.0, 'm1_df2_t20'), (200.0, 'm1_df2_t200')]:
+    rad = math.sqrt(t_val * t_val + 2.0)
+    check(f'Dunnett m=1 df=2 t={t_val:g}', TP['dunnett_tail'][key], 2.0 / (rad * (rad + t_val)), rel=1e-9, abs_=0)
+for t_val, key in [(2.0, 'm2_df2_t2'), (20.0, 'm2_df2_t20'), (200.0, 'm2_df2_t200')]:
+    check(f'Dunnett m=2 df=2 t={t_val:g}', TP['dunnett_tail'][key], dunnett_tail_ref(t_val, 2, [2, 2], 2), rel=1e-5, abs_=0)
+check('Dunnett m=3 df=3 t=50', TP['dunnett_tail']['m3_df3_t50'], dunnett_tail_ref(50.0, 2, [2, 2, 2], 3), rel=1e-5, abs_=0)
 
 print(f'\n{bad} to check' if bad else '\nAll agree.')
 sys.exit(1 if bad else 0)
