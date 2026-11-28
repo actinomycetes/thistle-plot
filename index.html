@@ -4791,34 +4791,64 @@ function loadProject(event){
       const id=identifyProjectFile(file.name,e.target.result);
       if(!id.ok){alert(id.msg);return;}
       const snap=id.snap;
-      Object.values(chartInst).forEach(ch=>{try{ch.destroy()}catch(e){}});
-      for(const k in chartInst)delete chartInst[k];
-      G.nReps=snap.G.nReps||3;G.nRows=snap.G.nRows||6;
-      G.rowNames=snap.G.rowNames||[];
-      G.groups=snap.G.groups.map(g=>({name:g.name,reps:g.reps||[],data:g.data||[]}));
-      const dsName=(file.name||'').replace(/\.[^.]+$/,'')||'Dataset 1';
-      datasets=[{id:'ds0',name:dsName,G:JSON.parse(JSON.stringify(G)),activePT:-1,activeST:-1}];
-      activeDS=0;activePT=-1;activeST=-1;
+      // Stage and validate all incoming data before modifying any active dataset or tabs
+      if(!snap.G.groups.length||snap.G.groups.some(g=>!g||typeof g!=='object')){
+        alert(`“${file.name}” has an invalid data table and could not be loaded.`);return;
+      }
+      const nextG={
+        nReps:snap.G.nReps||3,
+        nRows:snap.G.nRows||6,
+        rowNames:Array.isArray(snap.G.rowNames)?[...snap.G.rowNames]:[],
+        groups:snap.G.groups.map(g=>({
+          name:String(g.name??''),
+          reps:Array.isArray(g.reps)?[...g.reps]:[],
+          data:Array.isArray(g.data)?g.data.map(r=>Array.isArray(r)?[...r]:[]):[]
+        }))
+      };
+      const nextST=(Array.isArray(snap.statTabs)?snap.statTabs:[]).map(t=>({
+        title:String((t&&t.title)||'Result'),
+        html:sanitizeStatHTML(t&&t.html)
+      }));
+      const nextPT=(Array.isArray(snap.plotTabs)?snap.plotTabs:[])
+        .filter(t=>t&&_safeImgSrc(t.imageData))
+        .map(t=>({title:String(t.title||'Plot'),safeTitle:_esc(t.title||'Plot'),safeSrc:t.imageData}));
+      const dsName=(file.name||'').replace(/\.[^.]+$/,'')||('Dataset '+(datasets.length+1));
+      const reuseEmpty=datasets.length===1&&!_hasData(G)&&!statTabs.length&&!plotTabs.length;
+      if(reuseEmpty){
+        datasets[0].name=dsName;
+        activeDS=0;
+      }else{
+        datasets[activeDS].G=JSON.parse(JSON.stringify(G));
+        datasets[activeDS].activePT=activePT;
+        datasets[activeDS].activeST=activeST;
+        let dsNum=datasets.length;
+        while(datasets.some(d=>d.id==='ds'+dsNum))dsNum++;
+        datasets.push({id:'ds'+dsNum,name:dsName,G:JSON.parse(JSON.stringify(nextG)),activePT:-1,activeST:-1});
+        activeDS=datasets.length-1;
+      }
+      activePT=-1;activeST=-1;
+      G.nReps=nextG.nReps;G.nRows=nextG.nRows;G.rowNames=nextG.rowNames;G.groups=nextG.groups;
+      datasets[activeDS].G=JSON.parse(JSON.stringify(G));
       document.getElementById('n-reps').value=G.nReps;
       document.getElementById('n-grps').value=G.groups.length;
       renderGrid();onTypeChange();onPlotTypeChange();renderDataStrip();
-      // Restore stat tabs (sanitized against XSS from untrusted project files)
-      statTabs=[];stCount=0;
-      document.getElementById('stats-content').innerHTML='';
-      (snap.statTabs||[]).forEach(t=>{addStatTab(String(t.title||'Result'),sanitizeStatHTML(t.html));});
+      // Restore stat tabs with fresh IDs associated with the active dataset (sanitized against XSS)
+      nextST.forEach(t=>{addStatTab(t.title,t.html);});
       renderStatStrip();
-      // Restore plot tabs as image previews (validated data URL + escaped title)
-      plotTabs=[];ptCount=0;
-      document.getElementById('plot-content').innerHTML='';
-      (snap.plotTabs||[]).forEach(t=>{
-        if(_safeImgSrc(t.imageData)){
-          const safeTitle=_esc(t.title||'Plot'),safeSrc=t.imageData;
-          addPlotTab(String(t.title||'Plot'),page=>{
-            page.innerHTML=`<div class="plot-topbar"><span style="font-size:12px;font-weight:600;color:var(--tx)">${safeTitle}</span></div><div class="plot-area" style="flex:1;display:flex;align-items:center;justify-content:center"><img src="${safeSrc}" style="max-width:100%;max-height:100%" alt="${safeTitle}"></div>`;
-          });
-        }
+      // Restore plot tabs as image previews with fresh IDs (validated data URL + escaped title)
+      nextPT.forEach(t=>{
+        const pid=addPlotTab(t.title,page=>{
+          page.innerHTML=`<div class="plot-topbar"><span style="font-size:12px;font-weight:600;color:var(--tx)">${t.safeTitle}</span></div><div class="plot-area" style="flex:1;display:flex;align-items:center;justify-content:center"><img src="${t.safeSrc}" style="max-width:100%;max-height:100%" alt="${t.safeTitle}"></div>`;
+          const tab=plotTabs.find(x=>x.id===pid);
+          if(tab){tab._keptImg=t.safeSrc;tab._keptDraws=tab.draws;}
+        });
+        const ptab=plotTabs.find(x=>x.id===pid);
+        if(ptab){ptab._keptImg=t.safeSrc;ptab._keptDraws=ptab.draws;}
       });
       renderPlotStrip();
+      datasets[activeDS].activeST=activeST;
+      datasets[activeDS].activePT=activePT;
+      if(typeof keepSoon==='function')keepSoon();
       alert('Project loaded successfully');
     }catch(err){alert('Failed to load: '+err.message)}
   };

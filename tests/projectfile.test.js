@@ -87,43 +87,140 @@ test('loadProject sanitizes statTabs HTML, rejects unsafe plot imageData, and es
   assert.deepStrictEqual(app.errors, []);
 });
 
-test('multi-dataset saveProject exports only active dataset tabs, removeDataset cleans/re-indexes tabs, and loadProject resets datasets', async () => {
-  const cleanInit = JSON.stringify({
-    app: 'Thistle Plot', format: 2,
-    G: { nReps: 1, nRows: 2, rowNames: ['R1', 'R2'], groups: [{ name: 'A', reps: ['R1'], data: [[1], [2]] }, { name: 'B', reps: ['R1'], data: [[3], [4]] }] },
-    statTabs: [], plotTabs: [],
-  });
-  assert.match(await load('reset.tplot', cleanInit), /loaded/);
-  await app.page.evaluate(async () => {
-    loadExampleKey('groups');
-    const a = document.getElementById('asel'); a.value = 'desc'; a.dispatchEvent(new Event('change'));
-    await new Promise(r => setTimeout(r, 40));
-    const ap = document.getElementById('opt-autoplot'); if (ap) ap.checked = false;
-    runAnalysis(); await new Promise(r => setTimeout(r, 80));
-    addDataset(); loadExampleKey('xy');
-    runAnalysis(); await new Promise(r => setTimeout(r, 80));
-    addDataset(); loadExampleKey('paired');
-    runAnalysis(); await new Promise(r => setTimeout(r, 80));
-    switchDataset(1);
-  });
-  const [dl] = await Promise.all([app.page.waitForEvent('download'), app.page.evaluate(() => saveProject())]);
-  const text = require('fs').readFileSync(await dl.path(), 'utf8');
-  const snap = JSON.parse(text);
-  assert.strictEqual(snap.statTabs.length, 1, 'only active dataset stat tabs exported');
-  assert.strictEqual(snap.G.groups[0].name, 'Body weight (g)');
+test('multi-dataset saveProject, removeDataset, and loadProject preserve unrelated datasets across refresh and invalid files', async () => {
+  const a2 = await openApp({ consoleErrors: true });
+  const p = a2.page;
+  const loadOn = async (name, content) => {
+    const msg = new Promise(res => p.once('dialog', async d => { res(d.message()); await d.accept(); }));
+    await p.setInputFiles('#fi-load', { name, mimeType: 'application/octet-stream', buffer: Buffer.from(content) });
+    return msg;
+  };
+  try {
+    // First prepare an incoming .tplot project saved from the paired example (with its own stat result + figure)
+    await p.evaluate(async () => {
+      loadExampleKey('paired');
+      const a = document.getElementById('asel'); a.value = 'ttest_rel'; a.dispatchEvent(new Event('change'));
+      await new Promise(r => setTimeout(r, 60));
+      const ap = document.getElementById('opt-autoplot'); if (ap) ap.checked = false;
+      runAnalysis(); await new Promise(r => setTimeout(r, 120));
+    });
+    const [dlIn] = await Promise.all([p.waitForEvent('download'), p.evaluate(() => saveProject())]);
+    const incomingText = require('fs').readFileSync(await dlIn.path(), 'utf8');
+    const incomingSnap = JSON.parse(incomingText);
+    assert.strictEqual(incomingSnap.statTabs.length, 1, 'saved project contains its active stat tab');
+    assert.strictEqual(incomingSnap.G.groups[0].name, 'Before');
 
-  const afterRemove = await app.page.evaluate(() => {
-    removeDataset(1);
-    return { nDS: datasets.length, activeDS, tabDs: statTabs.map(t => t.ds) };
-  });
-  assert.strictEqual(afterRemove.nDS, 2);
-  assert.deepStrictEqual(afterRemove.tabDs, [0, 1], 'dataset 1 tab removed and dataset 2 tab re-indexed to 1');
+    // Open a clean app with empty initial workspace and verify reusing the first tab
+    const aEmpty = await openApp({ consoleErrors: true });
+    try {
+      const msgEmpty = new Promise(res => aEmpty.page.once('dialog', async d => { res(d.message()); await d.accept(); }));
+      await aEmpty.page.setInputFiles('#fi-load', { name: 'first.tplot', mimeType: 'application/octet-stream', buffer: Buffer.from(incomingText) });
+      assert.match(await msgEmpty, /loaded/);
+      const emptyRes = await aEmpty.page.evaluate(() => ({ nDS: datasets.length, activeDS, name: datasets[0].name, g0: G.groups[0].name }));
+      assert.strictEqual(emptyRes.nDS, 1, 'empty initial workspace reuses its first tab');
+      assert.strictEqual(emptyRes.activeDS, 0);
+      assert.strictEqual(emptyRes.name, 'first');
+      assert.strictEqual(emptyRes.g0, 'Before');
+      assert.deepStrictEqual(aEmpty.errors, []);
+    } finally { await aEmpty.close(); }
 
-  assert.match(await load('single.tplot', text), /loaded/);
-  const afterLoad = await app.page.evaluate(() => ({ nDS: datasets.length, activeDS, name: datasets[0].name }));
-  assert.strictEqual(afterLoad.nDS, 1, 'loadProject resets datasets array');
-  assert.strictEqual(afterLoad.activeDS, 0);
-  assert.strictEqual(afterLoad.name, 'single');
-  assert.deepStrictEqual(app.errors, []);
+    // Now test the two-populated-datasets workflow on a clean workspace
+    const a3 = await openApp({ consoleErrors: true });
+    const p3 = a3.page;
+    const loadOn3 = async (name, content) => {
+      const msg = new Promise(res => p3.once('dialog', async d => { res(d.message()); await d.accept(); }));
+      await p3.setInputFiles('#fi-load', { name, mimeType: 'application/octet-stream', buffer: Buffer.from(content) });
+      return msg;
+    };
+    try {
+      // Dataset 0: Unsaved A (groups example + one-way ANOVA)
+      await p3.evaluate(async () => {
+        loadExampleKey('groups');
+        datasets[0].name = 'Unsaved A';
+        const a = document.getElementById('asel'); a.value = 'anova'; a.dispatchEvent(new Event('change'));
+        await new Promise(r => setTimeout(r, 60));
+        const ap = document.getElementById('opt-autoplot'); if (ap) ap.checked = false;
+        runAnalysis(); await new Promise(r => setTimeout(r, 120));
+        // Dataset 1: Unsaved B (xy example + Pearson correlation)
+        addDataset();
+        loadExampleKey('xy');
+        datasets[1].name = 'Unsaved B';
+        a.value = 'pearson'; a.dispatchEvent(new Event('change'));
+        await new Promise(r => setTimeout(r, 60));
+        const ap2 = document.getElementById('opt-autoplot'); if (ap2) ap2.checked = false;
+        runAnalysis(); await new Promise(r => setTimeout(r, 120));
+        renderDataStrip();
+      });
+
+      // Open incoming.tplot as a third active dataset without overwriting Unsaved A / Unsaved B
+      assert.match(await loadOn3('incoming.tplot', incomingText), /loaded/);
+      await p3.waitForTimeout(80);
+
+      const checkAllThree = async (phase) => {
+        const meta = await p3.evaluate(() => ({
+          names: datasets.map(d => d.name),
+          stIds: statTabs.map(t => t.id),
+          stDs: statTabs.map(t => t.ds),
+        }));
+        assert.deepStrictEqual(meta.names, ['Unsaved A', 'Unsaved B', 'incoming'], `${phase}: all three datasets preserved`);
+        assert.strictEqual(new Set(meta.stIds).size, meta.stIds.length, `${phase}: all stat tab IDs unique`);
+        assert.deepStrictEqual(meta.stDs.slice().sort(), [0, 1, 2], `${phase}: each dataset owns its stat tab`);
+
+        await p3.evaluate(() => switchDataset(0));
+        const d0 = await p3.evaluate(() => ({ g0: G.groups[0].name, txt: document.querySelector('#stats-content .tab-page.active')?.innerText || '' }));
+        assert.strictEqual(d0.g0, 'Control', `${phase}: dataset 0 table`);
+        assert.match(d0.txt, /ANOVA/i, `${phase}: dataset 0 result`);
+
+        await p3.evaluate(() => switchDataset(1));
+        const d1 = await p3.evaluate(() => ({ g0: G.groups[0].name, txt: document.querySelector('#stats-content .tab-page.active')?.innerText || '' }));
+        assert.strictEqual(d1.g0, 'Body weight (g)', `${phase}: dataset 1 table`);
+        assert.match(d1.txt, /Pearson/i, `${phase}: dataset 1 result`);
+
+        await p3.evaluate(() => switchDataset(2));
+        const d2 = await p3.evaluate(() => ({ g0: G.groups[0].name, txt: document.querySelector('#stats-content .tab-page.active')?.innerText || '' }));
+        assert.strictEqual(d2.g0, 'Before', `${phase}: dataset 2 table`);
+        assert.match(d2.txt, /Paired/i, `${phase}: dataset 2 result`);
+      };
+
+      await checkAllThree('after loadProject');
+
+      // Persist in kept session, reload page, and verify all three datasets and their results survive
+      await p3.click('#hdr');
+      await p3.waitForFunction(() => sessionKept(), null, { timeout: 15000 });
+      await p3.reload();
+      await p3.waitForFunction(() => document.getElementById('hdr').style.display !== 'none');
+      await p3.waitForSelector('.restore-note');
+      await checkAllThree('after refresh');
+
+      // Opening invalid project files must leave the active dataset and all tabs completely untouched
+      const snapBeforeInvalid = await p3.evaluate(() => ({
+        nDS: datasets.length, activeDS, G: JSON.stringify(G),
+        stIds: statTabs.map(t => [t.id, t.ds]), ptIds: plotTabs.map(t => [t.id, t.ds]),
+      }));
+      assert.match(await loadOn3('broken.tplot', '{not valid json'), /not a Thistle Plot project/);
+      assert.match(await loadOn3('bad-groups.tplot', JSON.stringify({ app: 'Thistle Plot', format: 2, G: { groups: [null] } })), /invalid data table/i);
+      const snapAfterInvalid = await p3.evaluate(() => ({
+        nDS: datasets.length, activeDS, G: JSON.stringify(G),
+        stIds: statTabs.map(t => [t.id, t.ds]), ptIds: plotTabs.map(t => [t.id, t.ds]),
+      }));
+      assert.deepStrictEqual(snapAfterInvalid, snapBeforeInvalid, 'invalid project files must leave active dataset and tabs untouched');
+
+      // Also verify saveProject exports only the active dataset and removeDataset cleans & re-indexes tabs
+      await p3.evaluate(() => switchDataset(1));
+      const [dlMid] = await Promise.all([p3.waitForEvent('download'), p3.evaluate(() => saveProject())]);
+      const snapMid = JSON.parse(require('fs').readFileSync(await dlMid.path(), 'utf8'));
+      assert.strictEqual(snapMid.statTabs.length, 1, 'saveProject exports only active dataset stat tabs');
+      assert.strictEqual(snapMid.G.groups[0].name, 'Body weight (g)');
+
+      const afterRemove = await p3.evaluate(() => {
+        removeDataset(1);
+        return { nDS: datasets.length, activeDS, tabDs: statTabs.map(t => t.ds) };
+      });
+      assert.strictEqual(afterRemove.nDS, 2);
+      assert.deepStrictEqual(afterRemove.tabDs, [0, 1], 'dataset 1 tab removed and dataset 2 tab re-indexed to 1');
+      assert.deepStrictEqual(a3.errors, []);
+    } finally { await a3.close(); }
+    assert.deepStrictEqual(a2.errors, []);
+  } finally { await a2.close(); }
 });
 
