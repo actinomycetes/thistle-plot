@@ -4783,6 +4783,18 @@ function identifyProjectFile(name,text){
   if(!snap||!snap.G||!Array.isArray(snap.G.groups))return{ok:false,msg:`“${name}” is not a Thistle Plot project (.tplot).`};
   return{ok:true,snap};
 }
+function _isUntouchedStarter(ds,g){
+  if(!ds||ds.name!=='Dataset 1'||!g||_hasData(g))return false;
+  const def=defaultG();
+  if(g.nReps!==def.nReps||g.nRows!==def.nRows||!Array.isArray(g.groups)||g.groups.length!==def.groups.length)return false;
+  if(!Array.isArray(g.rowNames)||g.rowNames.length!==def.rowNames.length||g.rowNames.some((r,i)=>r!==def.rowNames[i]))return false;
+  return g.groups.every((gr,i)=>{
+    const dg=def.groups[i];
+    return gr&&gr.name===dg.name&&Array.isArray(gr.reps)&&gr.reps.length===dg.reps.length
+      &&gr.reps.every((rp,k)=>rp===dg.reps[k])&&Array.isArray(gr.data)&&gr.data.length===def.nRows
+      &&gr.data.every(r=>Array.isArray(r)&&r.length===def.nReps);
+  });
+}
 function loadProject(event){
   const file=event.target.files[0];if(!file)return;
   const reader=new FileReader();
@@ -4813,7 +4825,7 @@ function loadProject(event){
         .filter(t=>t&&_safeImgSrc(t.imageData))
         .map(t=>({title:String(t.title||'Plot'),safeTitle:_esc(t.title||'Plot'),safeSrc:t.imageData}));
       const dsName=(file.name||'').replace(/\.[^.]+$/,'')||('Dataset '+(datasets.length+1));
-      const reuseEmpty=datasets.length===1&&!_hasData(G)&&!statTabs.length&&!plotTabs.length;
+      const reuseEmpty=datasets.length===1&&!statTabs.length&&!plotTabs.length&&_isUntouchedStarter(datasets[0],G);
       if(reuseEmpty){
         datasets[0].name=dsName;
         activeDS=0;

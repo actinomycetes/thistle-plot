@@ -110,19 +110,44 @@ test('multi-dataset saveProject, removeDataset, and loadProject preserve unrelat
     assert.strictEqual(incomingSnap.statTabs.length, 1, 'saved project contains its active stat tab');
     assert.strictEqual(incomingSnap.G.groups[0].name, 'Before');
 
-    // Open a clean app with empty initial workspace and verify reusing the first tab
+    // Open a clean app with an untouched starter workspace and verify reusing the first tab
     const aEmpty = await openApp({ consoleErrors: true });
     try {
       const msgEmpty = new Promise(res => aEmpty.page.once('dialog', async d => { res(d.message()); await d.accept(); }));
       await aEmpty.page.setInputFiles('#fi-load', { name: 'first.tplot', mimeType: 'application/octet-stream', buffer: Buffer.from(incomingText) });
       assert.match(await msgEmpty, /loaded/);
       const emptyRes = await aEmpty.page.evaluate(() => ({ nDS: datasets.length, activeDS, name: datasets[0].name, g0: G.groups[0].name }));
-      assert.strictEqual(emptyRes.nDS, 1, 'empty initial workspace reuses its first tab');
+      assert.strictEqual(emptyRes.nDS, 1, 'untouched starter workspace reuses its first tab');
       assert.strictEqual(emptyRes.activeDS, 0);
       assert.strictEqual(emptyRes.name, 'first');
       assert.strictEqual(emptyRes.g0, 'Before');
       assert.deepStrictEqual(aEmpty.errors, []);
     } finally { await aEmpty.close(); }
+
+    // A labels-only table (group/row headers edited, no numeric cells) must be preserved, not overwritten
+    const aLabels = await openApp({ consoleErrors: true });
+    try {
+      await aLabels.page.evaluate(() => {
+        G.groups[0].name = 'Vehicle';
+        G.rowNames[0] = 'Baseline';
+        renderGrid();
+      });
+      const msgLab = new Promise(res => aLabels.page.once('dialog', async d => { res(d.message()); await d.accept(); }));
+      await aLabels.page.setInputFiles('#fi-load', { name: 'incoming.tplot', mimeType: 'application/octet-stream', buffer: Buffer.from(incomingText) });
+      assert.match(await msgLab, /loaded/);
+      const labRes = await aLabels.page.evaluate(() => {
+        const cur = { nDS: datasets.length, activeDS, names: datasets.map(d => d.name), incomingG0: G.groups[0].name };
+        switchDataset(0);
+        return { ...cur, origG0: G.groups[0].name, origRow0: G.rowNames[0] };
+      });
+      assert.strictEqual(labRes.nDS, 2, 'labels-only table is preserved alongside incoming project');
+      assert.strictEqual(labRes.activeDS, 1);
+      assert.deepStrictEqual(labRes.names, ['Dataset 1', 'incoming']);
+      assert.strictEqual(labRes.incomingG0, 'Before');
+      assert.strictEqual(labRes.origG0, 'Vehicle');
+      assert.strictEqual(labRes.origRow0, 'Baseline');
+      assert.deepStrictEqual(aLabels.errors, []);
+    } finally { await aLabels.close(); }
 
     // Now test the two-populated-datasets workflow on a clean workspace
     const a3 = await openApp({ consoleErrors: true });
