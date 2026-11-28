@@ -1214,8 +1214,9 @@ function _mvtTailProb(c,lam,df,relTol=1e-8){
     const zhi=Math.min(zSat,Math.sqrt(cs*cs+80));
     const tailAnalytic=zSat<38?2*_normTail(zSat):0;
     if(!(zhi>zlo))return tailAnalytic;
-    // Subdivide at Gaussian peak and saturation transitions so sharp high-correlation steps (small sq_i) are resolved.
+    // Subdivide at Gaussian tail landmarks plus peak and saturation transitions so both smooth tails and sharp high-correlation steps are resolved.
     const zRaw=[zlo,zhi];
+    for(const p of [1.5,3,5,7])if(p>zlo&&p<zhi)zRaw.push(p);
     for(let i=0;i<lam.length;i++){
       const m1=lam[i]*cs,m2=lam[i]>1e-9?cs/lam[i]:zhi;
       for(const p of [m1-4*sq[i],m1,m1+4*sq[i],m2-4*sq[i],m2,m2+4*sq[i]])if(p>zlo&&p<zhi)zRaw.push(p);
@@ -1232,7 +1233,7 @@ function _mvtTailProb(c,lam,df,relTol=1e-8){
       return invSqrt2Pi*Math.exp(-0.5*z*z)*tail;
     };
     let acc=0;
-    for(let i=0;i<zPts.length-1;i++)acc+=_simpson(fz,zPts[i],zPts[i+1],24);
+    for(let i=0;i<zPts.length-1;i++)acc+=_simpson(fz,zPts[i],zPts[i+1],32);
     return Math.min(1,2*acc+tailAnalytic);
   };
   if(!isFinite(df)||df>1e6)return Math.min(1,Math.max(0,inner(c)));
