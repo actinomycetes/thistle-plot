@@ -659,7 +659,7 @@ function describeGroup(vals){
 // Two-sided p-value of a t statistic (computed from the tail, so very small p-values keep their precision)
 // Upper-tail p of an F statistic (via the incomplete beta, so very small p-values keep their precision)
 const fP=(F,d1,d2)=>F>0?(isFinite(F)?jStat.ibeta(d2/(d2+d1*F),d2/2,d1/2):0):1;
-const tP2=(t,df)=>!isFinite(t)?(isNaN(t)?NaN:0):(!isFinite(df)||df>1e7?2*_normTail(Math.abs(t)):Math.min(1,fP(t*t,1,df)));
+const tP2=(t,df)=>{if(!isFinite(t))return isNaN(t)?NaN:0;const a=Math.abs(t);if(a===0)return 1;if(!isFinite(df)||df>1e7)return 2*_normTail(a);if(df===1)return (2/Math.PI)*Math.atan(1/a);if(df===2){const r=Math.sqrt(a*a+2);return 2/(r*(r+a));}return Math.min(1,fP(a*a,1,df));};
 // Regularized upper incomplete gamma Q(a, x) via series (x < a+1) and modified Lentz continued fraction (x >= a+1),
 // avoiding catastrophic 1 - cdf cancellation in extreme tails (chi-square, normal, Dunnett).
 function _gammaQ(a,x){
